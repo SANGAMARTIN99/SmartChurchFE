@@ -1,14 +1,17 @@
 import React, { useState } from 'react';
 import { useMutation, useQuery } from '@apollo/client';
 import { useTranslation } from 'react-i18next';
-import { FaUser, FaLock, FaEnvelope, FaPhone, FaMapMarkerAlt, FaSignInAlt, FaUserPlus, FaEye, FaEyeSlash } from 'react-icons/fa';
+import { useNavigate } from 'react-router-dom';
+import { FaUser, FaLock, FaEnvelope, FaPhone, FaMapMarkerAlt, FaSignInAlt, FaUserPlus, FaEye, FaEyeSlash, FaUsers } from 'react-icons/fa';
 import { LOGIN_USER, REGISTER_USER } from '../api/mutations';
 import { GET_STREETS_AND_GROUPS } from '../api/queries';
 import Navbar from '../components/NavBar';
 import Footer from '../components/Footer';
+import { setAuthToken } from '../utils/auth';
 
 const AuthPage = () => {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const [isLogin, setIsLogin] = useState(true);
   const [message, setMessage] = useState({ text: '', type: '' });
   const [showPassword, setShowPassword] = useState(false);
@@ -31,10 +34,13 @@ const AuthPage = () => {
 
   // GraphQL Mutations
   const [loginUser, { loading: loginLoading }] = useMutation(LOGIN_USER, {
-    onCompleted: (data) => {
+    onCompleted: async (data) => {
+      const { accessToken, refreshToken, member } = data.loginUser;
+      await setAuthToken(accessToken, refreshToken, member); // Ensure token is stored
+      console.log('Stored accessToken:', accessToken);
       showMessage(t('login_success'), 'success');
       setTimeout(() => {
-        window.location.href = '/dashboard';
+        navigate('/dashboard');
       }, 1500);
     },
     onError: (err) => showMessage(err.message, 'error'),
@@ -83,7 +89,7 @@ const AuthPage = () => {
       showMessage(t('fields_required'), 'error');
       return;
     }
-    loginUser({ variables: { email: loginData.email, password: loginData.password } });
+    loginUser({ variables: { input: { email: loginData.email, password: loginData.password } } });
   };
 
   const handleRegisterSubmit = (e: React.FormEvent) => {
@@ -109,7 +115,6 @@ const AuthPage = () => {
         phoneNumber: registerData.phoneNumber,
         streetId: parseInt(registerData.streetId),
         password: registerData.password,
-        groupIds: registerData.groupIds,
       },
     });
   };
@@ -171,13 +176,13 @@ const AuthPage = () => {
             {isLogin ? (
               <form onSubmit={handleLoginSubmit} className="space-y-6">
                 <div className="space-y-1">
-                  <label htmlFor="login-email" className="block text-gray-700 font-medium flex items-center">
+                  <label htmlFor="email" className="block text-gray-700 font-medium flex items-center">
                     <FaEnvelope className="mr-2 text-[#5E936C]" />
                     {t('email')}
                   </label>
                   <input
                     type="email"
-                    id="login-email"
+                    id="email"
                     name="email"
                     value={loginData.email}
                     onChange={handleLoginChange}
@@ -188,19 +193,19 @@ const AuthPage = () => {
                 </div>
 
                 <div className="space-y-1">
-                  <label htmlFor="login-password" className="block text-gray-700 font-medium flex items-center">
+                  <label htmlFor="password" className="block text-gray-700 font-medium flex items-center">
                     <FaLock className="mr-2 text-[#5E936C]" />
                     {t('password')}
                   </label>
                   <div className="relative">
                     <input
                       type={showPassword ? 'text' : 'password'}
-                      id="login-password"
+                      id="password"
                       name="password"
                       value={loginData.password}
                       onChange={handleLoginChange}
                       className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#5E936C] focus:border-transparent"
-                      placeholder="••••••••"
+                      placeholder={t('password_placeholder')}
                       required
                     />
                     <button
@@ -214,20 +219,7 @@ const AuthPage = () => {
                 </div>
 
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center">
-                    <input
-                      type="checkbox"
-                      id="remember-me"
-                      className="h-4 w-4 text-[#5E936C] focus:ring-[#5E936C] border-gray-300 rounded"
-                    />
-                    <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-700">
-                      {t('remember_me')}
-                    </label>
-                  </div>
-
-                  <a href="/forgot-password" className="text-sm text-[#5E936C] hover:underline">
-                    {t('forgot_password')}
-                  </a>
+                  <a href="/forgot-password" className="text-[#5E936C] hover:underline">{t('forgot_password')}</a>
                 </div>
 
                 <button
@@ -241,7 +233,7 @@ const AuthPage = () => {
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                       </svg>
-                      {t('processing')}
+                      {t('logging_in')}
                     </>
                   ) : (
                     <>
@@ -252,8 +244,7 @@ const AuthPage = () => {
                 </button>
               </form>
             ) : (
-              /* Registration Form */
-              <form onSubmit={handleRegisterSubmit} className="space-y-4">
+              <form onSubmit={handleRegisterSubmit} className="space-y-6">
                 <div className="space-y-1">
                   <label htmlFor="fullName" className="block text-gray-700 font-medium flex items-center">
                     <FaUser className="mr-2 text-[#5E936C]" />
@@ -325,7 +316,6 @@ const AuthPage = () => {
                     ))}
                   </select>
                 </div>
-
 
                 <div className="space-y-1">
                   <label htmlFor="password" className="block text-gray-700 font-medium flex items-center">

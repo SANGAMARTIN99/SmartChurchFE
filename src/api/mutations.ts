@@ -9,13 +9,15 @@ mutation RefreshToken($refreshToken: String!) {
 `;
 
 export const LOGIN_USER = gql`
-  mutation LoginUser($email: String!, $password: String!) {
-    loginUser(input: { email: $email, password: $password }) {
-      token
+  mutation LoginUser($input: LoginInput!) {
+    loginUser(input: $input) {
+      accessToken
+      refreshToken
       member {
         id
         fullName
         email
+        role
       }
     }
   }

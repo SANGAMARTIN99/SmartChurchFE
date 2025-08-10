@@ -3,6 +3,7 @@ import LandingPage from '../pages/LandingPage';
 import AuthPage from '../pages/Login';
 import ForgotPassword from '../pages/ForgotPassword';
 import ResetPassword from '../pages/ResetPassword';
+import PastorDashboard from '../pages/PASTOR/dashboard';
 
 
 const AppRoutes = () => {
@@ -13,6 +14,8 @@ const AppRoutes = () => {
         <Route path="/login" element={<AuthPage />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password/:token" element={<ResetPassword />} />
+        <Route path="/dashboard" element={<PastorDashboard />} />
+        
       </Routes>
     </Router>
   );

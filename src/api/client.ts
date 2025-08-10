@@ -1,24 +1,25 @@
 import { ApolloClient, InMemoryCache, createHttpLink, ApolloLink, from } from '@apollo/client';
 import { setContext } from '@apollo/client/link/context';
 import { Observable } from '@apollo/client/utilities';
-import { getAccessToken, getRefreshToken, setAuthToken } from '../utils/auth';
+import { getAccessToken, getRefreshToken, setAuthToken, getUser } from '../utils/auth';
 import { REFRESH_TOKEN } from '../api/mutations';
 
 import { ENDPOINT } from '../api/environment';
 
 const httpLink = createHttpLink({
-  uri: `${ENDPOINT}/graphql/`, // Correct string interpolation
+  uri: `${ENDPOINT}/graphql/`,
 });
-
 
 // Add the JWT token to the headers
 const authLink = setContext((_, { headers }) => {
   const token = getAccessToken();
+  const authHeaders = {
+    ...headers,
+    authorization: token ? `Bearer ${token}` : '',
+  };
+  console.log('Auth Headers being sent:', authHeaders);
   return {
-    headers: {
-      ...headers,
-      authorization: token ? `Bearer ${token}` : '', // Include the token if available
-    },
+    headers: authHeaders,
   };
 });
 
@@ -27,67 +28,79 @@ const errorLink = new ApolloLink((operation, forward) => {
   return new Observable((observer) => {
     const sub = forward(operation).subscribe({
       next: (result) => {
-        // Check for token expiry error
-        if (result.errors && result.errors.some((err) => err.message === 'Token has expired. Please log in again.')) {
+        if (result.errors && result.errors.some((err) => err.message === 'Not authenticated' || err.message.includes('Invalid token') || err.message.includes('Token expired'))) {
           const refreshToken = getRefreshToken();
 
           if (!refreshToken) {
-            // No refresh token available, redirect to login
+            console.log('No refresh token available, redirecting to login');
             window.location.href = '/login';
             observer.complete();
             return;
           }
 
-          // Refresh the token
-          fetch(`${ENDPOINT}/graphql/`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              query: REFRESH_TOKEN,
-              variables: { refreshToken },
-            }),
+          console.log('Attempting to refresh token with:', refreshToken);
+          const refreshClient = new ApolloClient({
+            link: httpLink,
+            cache: new InMemoryCache(),
+          });
+
+          refreshClient.mutate({
+            mutation: REFRESH_TOKEN,
+            variables: { refreshToken },
           })
-            .then((res) => res.json())
             .then(({ data }) => {
+              console.log('Refresh token response:', data);
               if (data?.refreshToken?.accessToken) {
-                // Save the new access token
-                setAuthToken(data.refreshToken.accessToken, refreshToken, data.refreshToken.user);
+                console.log('Token refreshed successfully, new accessToken:', data.refreshToken.accessToken);
+                setAuthToken(data.refreshToken.accessToken, refreshToken, getUser());
 
-                // Update the headers with the new token
-                operation.setContext(({ headers = {} }) => ({
-                  headers: {
-                    ...headers,
+                // Force a small delay to ensure localStorage update is reflected
+                setTimeout(() => {
+                  const newHeaders = {
+                    ...operation.getContext().headers,
                     authorization: `Bearer ${data.refreshToken.accessToken}`,
-                  },
-                }));
+                  };
+                  console.log('Retry headers:', newHeaders);
+                  operation.setContext({ headers: newHeaders });
 
-                // Retry the original request
-                const retrySub = forward(operation).subscribe({
-                  next: (retryResult) => observer.next(retryResult),
-                  error: (retryError) => observer.error(retryError),
-                  complete: () => observer.complete(),
-                });
+                  // Retry the original request
+                  const retrySub = forward(operation).subscribe({
+                    next: (retryResult) => {
+                      console.log('Retry result:', retryResult);
+                      observer.next(retryResult);
+                    },
+                    error: (retryError) => {
+                      console.error('Retry failed:', retryError);
+                      console.error('Retry error details:', retryError.networkError?.result);
+                      window.location.href = '/login';
+                      observer.complete();
+                    },
+                    complete: () => observer.complete(),
+                  });
 
-                return () => retrySub.unsubscribe();
+                  return () => retrySub.unsubscribe();
+                }, 100);  // Small delay to ensure storage sync
               } else {
-                // Redirect to login if token refresh fails
+                console.log('No accessToken in refresh response, redirecting to login');
                 window.location.href = '/login';
                 observer.complete();
               }
             })
-            .catch(() => {
-              // Redirect to login if token refresh fails
+            .catch((error) => {
+              console.error('Token refresh failed:', error);
+              console.error('Refresh error details:', error.networkError?.result);
               window.location.href = '/login';
               observer.complete();
             });
         } else {
-          // No token expiry error, pass the result through
           observer.next(result);
         }
       },
-      error: (err) => observer.error(err),
+      error: (err) => {
+        console.error('GraphQL Error:', err);
+        console.error('Error details:', err.networkError?.result);
+        observer.error(err);
+      },
       complete: () => observer.complete(),
     });
 
@@ -96,7 +109,7 @@ const errorLink = new ApolloLink((operation, forward) => {
 });
 
 const client = new ApolloClient({
-  link: from([errorLink, authLink, httpLink]), // Chain the links
+  link: from([errorLink, authLink, httpLink]),
   cache: new InMemoryCache(),
 });
 
