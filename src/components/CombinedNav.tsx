@@ -62,16 +62,24 @@ const CombinedNav = () => {
   const [profileOpen, setProfileOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [languageOpen, setLanguageOpen] = useState(false);
-  const { data, loading, error } = useQuery(ME_QUERY, {
-    fetchPolicy: 'network-only', // Ensure fresh data
+  const { data, error } = useQuery(ME_QUERY, {
+    fetchPolicy: 'network-only',
   });
   const [logout] = useMutation(LOGOUT_MUTATION);
   const navigate = useNavigate();
 
-  // Debug: Log GraphQL errors
+  // Track window width for responsive behavior
+  const [windowWidth, setWindowWidth] = useState(window.innerWidth);
+
+  // Update window width on resize
+  useState(() => {
+    const handleResize = () => setWindowWidth(window.innerWidth);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   if (error) {
     console.error('ME_QUERY Error:', error);
-    // Don't redirect here; let errorLink handle it
     return <div className="min-h-screen bg-gray-100 flex items-center justify-center">{t('auth_error')}</div>;
   }
 
@@ -89,14 +97,24 @@ const CombinedNav = () => {
   const changeLanguage = (lng: string) => {
     i18n.changeLanguage(lng);
     setLanguageOpen(false);
-    setIsSidebarOpen(false);
+    // Only close sidebar on mobile when changing language
+    if (windowWidth < 768) {
+      setIsSidebarOpen(false);
+    }
   };
 
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
 
-  if (loading) {
-    return <div className="min-h-screen bg-gray-100 flex items-center justify-center">{t('loading')}</div>;
-  }
+  // Close sidebar when clicking on a link (mobile only)
+  const handleSidebarLinkClick = () => {
+    if (windowWidth < 768) {
+      setIsSidebarOpen(false);
+    }
+  };
+
+  // if (loading) {
+  //   return <div className="min-h-screen bg-gray-100 flex items-center justify-center">{t('loading')}</div>;
+  // }
 
   if (!data?.me) {
     return <div className="min-h-screen bg-gray-100 flex items-center justify-center">{t('auth_error')}</div>;
@@ -104,10 +122,11 @@ const CombinedNav = () => {
 
   const userRole = data.me.role;
   const allowedItems = sidebarItems.filter(item => item.roles.includes(userRole));
+  // const allowedItems = sidebarItems
   const notifications = []; 
 
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className="min-h-screen bg-gray-100 flex flex-col md:flex-row">
       {/* Top Navbar */}
       <motion.nav
         initial={{ y: -100 }}
@@ -120,23 +139,26 @@ const CombinedNav = () => {
           <div className="flex items-center space-x-2">
             <button
               className="md:hidden text-2xl"
-              onClick= {toggleSidebar}
+              onClick={toggleSidebar}
+              aria-label="Toggle sidebar"
             >
               {isSidebarOpen ? <FaTimes /> : <FaBars />}
             </button>
             <Link to="/dashboard" className="flex items-center space-x-2">
               <FaChurch className="text-2xl" />
               <span className="text-lg font-bold hidden md:block">KKKT Usharika wa Mkimbizi</span>
+              <span className="text-lg font-bold md:hidden">KKKT</span>
             </Link>
           </div>
 
           {/* Right Side Actions */}
-          <div className="flex items-center space-x-4 ">
+          <div className="flex items-center space-x-4">
             {/* Notifications */}
             <div className="relative">
               <button
                 onClick={() => setNotificationsOpen(!notificationsOpen)}
                 className="relative flex items-center"
+                aria-label="Notifications"
               >
                 <FaBell className="text-xl" />
                 {notifications.length > 0 && (
@@ -171,6 +193,7 @@ const CombinedNav = () => {
               <button
                 onClick={() => setLanguageOpen(!languageOpen)}
                 className="flex items-center space-x-1"
+                aria-label="Language selector"
               >
                 <FaGlobe className="text-xl" />
                 <span className="hidden md:inline">{i18n.language.toUpperCase()}</span>
@@ -202,6 +225,7 @@ const CombinedNav = () => {
               <button
                 onClick={() => setProfileOpen(!profileOpen)}
                 className="flex items-center space-x-2"
+                aria-label="User profile"
               >
                 <FaUser className="text-xl" />
                 <span className="hidden md:inline">{data.me.fullName}</span>
@@ -233,35 +257,44 @@ const CombinedNav = () => {
         </div>
       </motion.nav>
 
-      {/* Sidebar */}
-      <motion.div
-        initial={{ x: '-100%' }}
-        animate={{ x: isSidebarOpen ? 0 : '-100%' }}
-        transition={{ duration: 0.3 }}
-        className={`fixed md:static top-16 md:top-0 left-0 h-[calc(100vh-64px)] md:h-full bg-[#5E936C] text-[#E8FFD7] w-64 z-40 transform md:transform-none md:flex flex-col ${isSidebarOpen ? 'block' : 'hidden md:block'}`}
+      <motion.aside
+        initial={false}
+        animate={{
+          width: '16rem',
+          opacity: window.innerWidth < 768 ? (isSidebarOpen ? 1 : 0) : 1,
+        }}
+        className={`
+          fixed md:relative top-16 md:top-0 left-0 h-[calc(100vh-64px)] md:h-screen
+          bg-[#5E936C] text-[#E8FFD7] z-40 overflow-hidden
+          md:w-64 md:opacity-100 md:block
+          flex-shrink-0
+        `}
       >
-        <div className="p-4 text-xl font-bold flex items-center space-x-2 md:hidden">
-          <span>KKKT Usharika</span>
+
+        <div className="w-64 h-full flex flex-col">
+          <div className="p-4 text-xl font-bold flex items-center space-x-2 md:hidden">
+            <span>KKKT Usharika</span>
+          </div>
+          <nav className="flex-1 overflow-y-auto">
+            {allowedItems.map(item => {
+              const Icon = item.icon;
+              return (
+                <Link
+                  key={item.name}
+                  to={item.href}
+                  className="flex items-center px-4 py-3 hover:bg-[#93DA97] hover:text-[#2D3748] transition-colors"
+                  onClick={handleSidebarLinkClick}
+                >
+                  <span className="mr-3">
+                    <Icon />
+                  </span>
+                  {t(item.name)}
+                </Link>
+              );
+            })}
+          </nav>
         </div>
-        <nav className="flex-1 overflow-y-auto">
-          {allowedItems.map(item => {
-            const Icon = item.icon;
-            return (
-              <Link
-                key={item.name}
-                to={item.href}
-                className="flex items-center px-4 py-3 hover:bg-[#93DA97] hover:text-[#2D3748] transition-colors"
-                onClick={() => setIsSidebarOpen(false)}
-              >
-                <span className="mr-3">
-                  <Icon />
-                </span>
-                {t(item.name)}
-              </Link>
-            );
-          })}
-        </nav>
-      </motion.div>
+      </motion.aside>
 
       {/* Overlay for Mobile Sidebar */}
       {isSidebarOpen && (
@@ -272,7 +305,7 @@ const CombinedNav = () => {
       )}
 
       {/* Main Content */}
-      <main className="md:ml-64 mt-16 p-6">
+      <main className="flex-1 mt-16 md:mt-0 overflow-auto">
         <Outlet />
       </main>
     </div>
