@@ -68,3 +68,172 @@ export const RESET_PASSWORD = gql`
     }
   }
 `;
+
+
+
+export const CREATE_EVENT = gql`
+  mutation CreateEvent($input: EventInput!) {
+    createEvent(input: $input) {
+      event {
+        id
+        title
+        date
+        time
+        location
+        description
+      }
+    }
+  }
+`;
+
+export const DELETE_EVENT = gql`
+  mutation DeleteEvent($id: String!) {
+    deleteEvent(id: $id) {
+      success
+    }
+  }
+`;
+
+export const CREATE_PRAYER_REQUEST = gql`
+  mutation CreatePrayerRequest($input: PrayerRequestInput!) {
+    createPrayerRequest(input: $input) {
+      prayerRequest {
+        id
+        member
+        request
+        date
+        status
+      }
+    }
+  }
+`;
+
+export const UPDATE_PRAYER_REQUEST_STATUS = gql`
+  mutation UpdatePrayerRequestStatus($input: UpdatePrayerRequestStatusInput!) {
+    updatePrayerRequestStatus(input: $input) {
+      prayerRequest {
+        id
+        member
+        request
+        date
+        status
+      }
+    }
+  }
+`;
+
+export const CREATE_DEVOTIONAL = gql`
+  mutation CreateDevotional($input: DevotionalInput!) {
+    createDevotional(input: $input) {
+      devotional {
+        id
+        title
+        content
+        scripture
+        publishedAt
+        author {
+          fullName
+        }
+        imageUrl
+        audioUrl
+        videoUrl
+      }
+    }
+  }
+`;
+
+export const UPDATE_DEVOTIONAL = gql`
+  mutation UpdateDevotional($id: String!, $input: DevotionalInput!) {
+    updateDevotional(id: $id, input: $input) {
+      devotional {
+        id
+        title
+        content
+        scripture
+        publishedAt
+        author {
+          fullName
+        }
+        imageUrl
+        audioUrl
+        videoUrl
+      }
+    }
+  }
+`;
+
+export const DELETE_DEVOTIONAL = gql`
+  mutation DeleteDevotional($id: String!) {
+    deleteDevotional(id: $id) {
+      success
+    }
+  }
+`;
+
+
+export const CREATE_ANNOUNCEMENT = gql`
+  mutation CreateAnnouncement($input: CreateAnnouncementInput!) {
+    createAnnouncement(input: $input) {
+      announcement {
+        id
+        title
+        content
+        category
+        isPinned
+        targetGroup {
+          id
+          name
+        }
+        eventDate
+        eventTime
+        location
+        createdBy {
+          id
+          fullName
+        }
+        createdAt
+        rsvpCount
+      }
+      success
+      message
+    }
+  }
+`;
+
+export const UPDATE_ANNOUNCEMENT = gql`
+  mutation UpdateAnnouncement($id: String!, $input: UpdateAnnouncementInput!) {
+    updateAnnouncement(id: $id, input: $input) {
+      announcement {
+        id
+        title
+        content
+        category
+        isPinned
+        targetGroup {
+          id
+          name
+        }
+        eventDate
+        eventTime
+        location
+        createdBy {
+          id
+          fullName
+        }
+        createdAt
+        rsvpCount
+      }
+      success
+      message
+    }
+  }
+`;
+
+export const DELETE_ANNOUNCEMENT = gql`
+  mutation DeleteAnnouncement($id: String!) {
+    deleteAnnouncement(id: $id) {
+      success
+      message
+    }
+  }
+`;

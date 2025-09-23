@@ -1,4 +1,4 @@
-import { useState, type ComponentType } from 'react';
+import { useEffect, useState, type ComponentType } from 'react';
 import { FaChurch, FaUser, FaBell, FaGlobe, FaSignOutAlt, FaBars, FaTimes, FaTachometerAlt, FaBook, FaPray, FaBullhorn, FaDonate, FaUsers, FaFileAlt, FaCalendarAlt, FaChartBar, FaFileExport, FaRss } from 'react-icons/fa';
 import { motion } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
@@ -37,7 +37,7 @@ const sidebarItems: SidebarItem[] = [
   { name: 'Prayer Requests', icon: FaPray, href: '/prayer-requests', roles: ['PASTOR', 'ASSISTANT_PASTOR', 'EVANGELIST', 'CHURCH_MEMBER'] },
   { name: 'Announcements', icon: FaBullhorn, href: '/announcements', roles: ['PASTOR', 'ASSISTANT_PASTOR', 'EVANGELIST', 'CHURCH_SECRETARY', 'CHURCH_MEMBER'] },
   { name: 'Offerings Overview', icon: FaDonate, href: '/offerings', roles: ['PASTOR', 'ASSISTANT_PASTOR'] },
-  { name: 'Group Management', icon: FaUsers, href: '/groups', roles: ['PASTOR', 'ASSISTANT_PASTOR', 'EVANGELIST', 'CHURCH_SECRETARY', 'CHURCH_MEMBER'] },
+  { name: 'Group Management', icon: FaUsers, href: '/group-management', roles: ['PASTOR', 'ASSISTANT_PASTOR', 'EVANGELIST', 'CHURCH_SECRETARY', 'CHURCH_MEMBER'] },
   { name: 'Member Contributions', icon: FaFileAlt, href: '/contributions', roles: ['PASTOR'] },
   { name: 'Blog', icon: FaRss, href: '/blog', roles: ['PASTOR', 'ASSISTANT_PASTOR', 'EVANGELIST', 'CHURCH_MEMBER'] },
   { name: 'Service Schedule', icon: FaCalendarAlt, href: '/services', roles: ['PASTOR', 'ASSISTANT_PASTOR', 'CHURCH_SECRETARY'] },
@@ -72,7 +72,7 @@ const CombinedNav = () => {
   const [windowWidth, setWindowWidth] = useState(window.innerWidth);
 
   // Update window width on resize
-  useState(() => {
+  useEffect(() => {
     const handleResize = () => setWindowWidth(window.innerWidth);
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
@@ -112,12 +112,17 @@ const CombinedNav = () => {
     }
   };
 
+  // Close sidebar when clicking on overlay
+  const handleOverlayClick = () => {
+    setIsSidebarOpen(false);
+  };
+
   // if (loading) {
   //   return <div className="min-h-screen bg-gray-100 flex items-center justify-center">{t('loading')}</div>;
   // }
 
   if (!data?.me) {
-    return <div className="min-h-screen bg-gray-100 flex items-center justify-center">{t('auth_error')}</div>;
+    return <div className="min-h-screen bg-gray-100 flex items-center justify-center">{t('loading Sidebar')}</div>;
   }
 
   const userRole = data.me.role;
@@ -260,20 +265,26 @@ const CombinedNav = () => {
       <motion.aside
         initial={false}
         animate={{
-          width: '16rem',
-          opacity: window.innerWidth < 768 ? (isSidebarOpen ? 1 : 0) : 1,
+          x: windowWidth < 768 ? (isSidebarOpen ? 0 : -300) : 0,
+          opacity: windowWidth < 768 ? (isSidebarOpen ? 1 : 0) : 1,
         }}
+        transition={{ type: "tween", duration: 0.3 }}
         className={`
           fixed md:relative top-16 md:top-0 left-0 h-[calc(100vh-64px)] md:h-screen
           bg-[#5E936C] text-[#E8FFD7] z-40 overflow-hidden
-          md:w-64 md:opacity-100 md:block
+          md:w-64 w-64
           flex-shrink-0
+          ${windowWidth < 768 && !isSidebarOpen ? 'pointer-events-none' : ''}
         `}
+        style={{
+          // Ensure sidebar doesn't block clicks when closed on mobile
+          display: windowWidth < 768 && !isSidebarOpen ? 'none' : 'block',
+        }}
       >
 
-        <div className="w-64 h-full flex flex-col">
-          <div className="p-4 text-xl font-bold flex items-center space-x-2 md:hidden">
-            <span>KKKT Usharika</span>
+        <div className="w-64 h-full flex flex-col mt-16">
+          <div className="p-4 text-xl font-bold flex items-center space-x-2 md:hidden ">
+            <span>KKKT Mkimbizi</span>
           </div>
           <nav className="flex-1 overflow-y-auto">
             {allowedItems.map(item => {
@@ -297,15 +308,25 @@ const CombinedNav = () => {
       </motion.aside>
 
       {/* Overlay for Mobile Sidebar */}
-      {isSidebarOpen && (
-        <div
+      {isSidebarOpen && windowWidth < 768 && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
           className="md:hidden fixed inset-0 bg-black bg-opacity-50 z-30"
-          onClick={toggleSidebar}
-        ></div>
+          onClick={handleOverlayClick}
+        />
       )}
 
       {/* Main Content */}
-      <main className="flex-1 mt-16 md:mt-0 overflow-auto">
+      <main 
+        className={`flex-1 transition-all duration-300 ${
+          windowWidth >= 768 ? 'ml-0' : 'ml-0'
+        } mt-16 md:mt-0 overflow-auto`}
+        style={{
+          marginLeft: windowWidth >= 768 && isSidebarOpen ? '16rem' : '0',
+        }}
+      >
         <Outlet />
       </main>
     </div>

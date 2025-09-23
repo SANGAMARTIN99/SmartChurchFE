@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { FaChurch, FaCalendarAlt, FaUsers, FaPhone, FaGlobe } from 'react-icons/fa';
+import { FaChurch, FaCalendarAlt, FaUsers, FaPhone, FaGlobe, FaDoorOpen } from 'react-icons/fa';
 import { GiCrossedChains } from 'react-icons/gi';
 import { motion } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
@@ -60,7 +60,8 @@ const Navbar = () => {
         { name: 'English', href: '#', action: () => changeLanguage('en') },
         { name: 'Swahili', href: '#', action: () => changeLanguage('sw') }
       ]
-    }
+    },
+    { name: 'SignUp', icon: <FaDoorOpen />, href: '/login' },
   ];
 
   return (
