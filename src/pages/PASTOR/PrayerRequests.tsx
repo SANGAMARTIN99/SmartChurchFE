@@ -1,71 +1,33 @@
 import { useState, useEffect } from 'react';
 import { useQuery } from '@apollo/client';
-import { gql } from '@apollo/client';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import { FaPray, FaFilter, FaSort, FaEye, FaTimes } from 'react-icons/fa';
 import CombinedNav from '../../components/CombinedNav';
+import { GET_PRAYER_REQUESTS } from '../../api/queries';
 
-// GraphQL query for fetching prayer requests
-const GET_PRAYER_REQUESTS = gql`
-  query GetPrayerRequests($page: Int!, $status: String, $search: String) {
-    prayerRequests(page: $page, status: $status, search: $search) {
-      totalCount
-      edges {
-        node {
-          id
-          title
-          description
-          submittedBy {
-            fullName
-            email
-          }
-          status
-          createdAt
-          updatedAt
-        }
-      }
-      pageInfo {
-        hasNextPage
-        currentPage
-      }
-    }
-  }
-`;
-
-interface PrayerRequest {
+// Types aligned with backend PastorQuery.prayer_requests
+interface PrayerRequestItem {
   id: string;
-  title: string;
-  description: string;
-  submittedBy: {
-    fullName: string;
-    email: string;
-  };
-  status: string;
-  createdAt: string;
-  updatedAt: string;
+  member: string; // full name
+  request: string;
+  date: string; // YYYY-MM-DD
+  status: string; // PENDING/ANSWERED/IN_PROGRESS
 }
 
 interface PrayerRequestsData {
-  prayerRequests: {
-    totalCount: number;
-    edges: { node: PrayerRequest }[];
-    pageInfo: {
-      hasNextPage: boolean;
-      currentPage: number;
-    };
-  };
+  prayerRequests: PrayerRequestItem[];
 }
 
 const PrayerRequests = () => {
   const { t } = useTranslation();
-  const [page, setPage] = useState(1);
+  const [page, setPage] = useState(1); // client-side pagination only
   const [statusFilter, setStatusFilter] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [sortField, setSortField] = useState('createdAt');
   const [sortOrder, setSortOrder] = useState('desc');
   const [isFilterOpen, setIsFilterOpen] = useState(false);
-  const [selectedRequest, setSelectedRequest] = useState<PrayerRequest | null>(null);
+  const [selectedRequest, setSelectedRequest] = useState<PrayerRequestItem | null>(null);
   const [windowWidth, setWindowWidth] = useState(window.innerWidth);
 
   // Update window width on resize
@@ -75,15 +37,13 @@ const PrayerRequests = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  const { data, loading, error, refetch } = useQuery<PrayerRequestsData>(GET_PRAYER_REQUESTS, {
-    variables: { page, status: statusFilter, search: searchTerm },
+  const { data, loading, error } = useQuery<PrayerRequestsData>(GET_PRAYER_REQUESTS, {
     fetchPolicy: 'network-only',
   });
 
   // Handle pagination
   const handlePageChange = (newPage: number) => {
     setPage(newPage);
-    refetch({ page: newPage, status: statusFilter, search: searchTerm });
   };
 
   // Handle sorting
@@ -91,13 +51,11 @@ const PrayerRequests = () => {
     const newOrder = sortField === field && sortOrder === 'asc' ? 'desc' : 'asc';
     setSortField(field);
     setSortOrder(newOrder);
-    refetch({ page: 1, status: statusFilter, search: searchTerm });
   };
 
   // Handle filter and search
   const applyFilters = () => {
     setPage(1);
-    refetch({ page: 1, status: statusFilter, search: searchTerm });
     setIsFilterOpen(false);
   };
 
@@ -106,7 +64,6 @@ const PrayerRequests = () => {
     setStatusFilter('');
     setSearchTerm('');
     setPage(1);
-    refetch({ page: 1, status: '', search: '' });
     setIsFilterOpen(false);
   };
 
@@ -121,6 +78,36 @@ const PrayerRequests = () => {
     });
   };
 
+  // Derived data: filter, search, sort, and simple client-side pagination
+  const filtered = (data?.prayerRequests || [])
+    .filter((pr) =>
+      (statusFilter ? pr.status === statusFilter : true) &&
+      (searchTerm
+        ? pr.request.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          pr.member.toLowerCase().includes(searchTerm.toLowerCase())
+        : true)
+    )
+    .sort((a, b) => {
+      const dir = sortOrder === 'asc' ? 1 : -1;
+      if (sortField === 'title' || sortField === 'request') {
+        return a.request.localeCompare(b.request) * dir;
+      }
+      if (sortField === 'submittedBy' || sortField === 'member') {
+        return a.member.localeCompare(b.member) * dir;
+      }
+      if (sortField === 'status') {
+        return a.status.localeCompare(b.status) * dir;
+      }
+      // default createdAt -> using `date`
+      return (new Date(a.date).getTime() - new Date(b.date).getTime()) * dir;
+    });
+
+  const pageSize = 10;
+  const start = (page - 1) * pageSize;
+  const paged = filtered.slice(start, start + pageSize);
+  const totalCount = filtered.length;
+  const hasNextPage = start + pageSize < totalCount;
+
   if (error) {
     return (
       <div className="min-h-screen bg-gray-100 flex items-center justify-center">
@@ -131,7 +118,7 @@ const PrayerRequests = () => {
 
   return (
     <CombinedNav>
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 py-8 mt-16 ">
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
@@ -142,7 +129,7 @@ const PrayerRequests = () => {
           <div className="flex items-center space-x-3">
             <FaPray className="text-3xl text-[#5E936C]" />
             <h1 className="text-3xl font-bold text-[#2D3748]">
-              {t('prayer_requests')}
+              {t('PrayerRequests')}
             </h1>
           </div>
           <button
@@ -223,10 +210,10 @@ const PrayerRequests = () => {
                 <tr>
                   <th
                     className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider cursor-pointer"
-                    onClick={() => handleSort('title')}
+                    onClick={() => handleSort('request')}
                   >
                     <div className="flex items-center space-x-1">
-                      <span>{t('title')}</span>
+                      <span>{t('request')}</span>
                       {sortField === 'title' && (
                         <FaSort className={sortOrder === 'asc' ? 'rotate-180' : ''} />
                       )}
@@ -234,7 +221,7 @@ const PrayerRequests = () => {
                   </th>
                   <th
                     className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider cursor-pointer"
-                    onClick={() => handleSort('submittedBy')}
+                    onClick={() => handleSort('member')}
                   >
                     <div className="flex items-center space-x-1">
                       <span>{t('submitted_by')}</span>
@@ -277,20 +264,20 @@ const PrayerRequests = () => {
                       {t('loading')}
                     </td>
                   </tr>
-                ) : data?.prayerRequests.edges.length === 0 ? (
+                ) : paged.length === 0 ? (
                   <tr>
                     <td colSpan={5} className="px-6 py-4 text-center text-gray-500">
                       {t('no_prayer_requests')}
                     </td>
                   </tr>
                 ) : (
-                  data?.prayerRequests.edges.map(({ node }) => (
+                  paged.map((node) => (
                     <tr key={node.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-[#2D3748]">
-                        {node.title}
+                        {node.request}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-[#2D3748]">
-                        {node.submittedBy.fullName}
+                        {node.member}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm">
                         <span
@@ -306,7 +293,7 @@ const PrayerRequests = () => {
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-[#2D3748]">
-                        {formatDate(node.createdAt)}
+                        {formatDate(node.date)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm">
                         <button
@@ -326,11 +313,10 @@ const PrayerRequests = () => {
         </motion.div>
 
         {/* Pagination */}
-        {data?.prayerRequests.pageInfo && (
+        {true && (
           <div className="mt-6 flex justify-between items-center">
             <div className="text-sm text-[#2D3748]">
-              {t('showing')} {data.prayerRequests.edges.length} {t('of')}{' '}
-              {data.prayerRequests.totalCount} {t('prayer_requests')}
+              {t('showing')} {paged.length} {t('of')} {totalCount} {t('prayer_requests')}
             </div>
             <div className="flex space-x-2">
               <button
@@ -341,11 +327,11 @@ const PrayerRequests = () => {
                 {t('previous')}
               </button>
               <span className="px-4 py-2 text-[#2D3748]">
-                {t('page')} {data.prayerRequests.pageInfo.currentPage}
+                {t('page')} {page}
               </span>
               <button
                 onClick={() => handlePageChange(page + 1)}
-                disabled={!data.prayerRequests.pageInfo.hasNextPage}
+                disabled={!hasNextPage}
                 className="px-4 py-2 bg-[#5E936C] text-[#E8FFD7] rounded-md disabled:bg-gray-300 disabled:text-gray-500"
               >
                 {t('next')}
@@ -383,8 +369,7 @@ const PrayerRequests = () => {
                 </div>
                 <p className="text-sm text-[#2D3748] mb-2">
                   <span className="font-semibold">{t('submitted_by')}:</span>{' '}
-                  {selectedRequest.submittedBy.fullName} (
-                  {selectedRequest.submittedBy.email})
+                  {selectedRequest.member}
                 </p>
                 <p className="text-sm text-[#2D3748] mb-2">
                   <span className="font-semibold">{t('status')}:</span>{' '}
@@ -392,11 +377,11 @@ const PrayerRequests = () => {
                 </p>
                 <p className="text-sm text-[#2D3748] mb-2">
                   <span className="font-semibold">{t('submitted_on')}:</span>{' '}
-                  {formatDate(selectedRequest.createdAt)}
+                  {formatDate(selectedRequest.date)}
                 </p>
                 <p className="text-sm text-[#2D3748] mb-4">
                   <span className="font-semibold">{t('description')}:</span>{' '}
-                  {selectedRequest.description}
+                  {selectedRequest.request}
                 </p>
                 <button
                   onClick={() => setSelectedRequest(null)}

@@ -1,4 +1,4 @@
-import { useEffect, useState, type ComponentType } from 'react';
+import { useEffect, useState, type ComponentType, type ReactNode } from 'react';
 import { FaChurch, FaUser, FaBell, FaGlobe, FaSignOutAlt, FaBars, FaTimes, FaTachometerAlt, FaBook, FaPray, FaBullhorn, FaDonate, FaUsers, FaFileAlt, FaCalendarAlt, FaChartBar, FaFileExport, FaRss } from 'react-icons/fa';
 import { motion } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
@@ -56,7 +56,11 @@ const sidebarItems: SidebarItem[] = [
   { name: 'Notifications Settings', icon: FaBell, href: '/notifications-settings', roles: ['CHURCH_MEMBER'] },
 ];
 
-const CombinedNav = () => {
+interface CombinedNavProps {
+  children?: ReactNode;
+}
+
+const CombinedNav = ({ children }: CombinedNavProps) => {
   const { t, i18n } = useTranslation();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
@@ -327,7 +331,7 @@ const CombinedNav = () => {
           marginLeft: windowWidth >= 768 && isSidebarOpen ? '16rem' : '0',
         }}
       >
-        <Outlet />
+        {children ?? <Outlet />}
       </main>
     </div>
   );

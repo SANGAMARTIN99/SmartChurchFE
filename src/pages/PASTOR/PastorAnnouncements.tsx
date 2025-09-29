@@ -97,23 +97,32 @@ const AnnouncementsPage = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const input = {
-      input: {  // Wrap the fields in an 'input' object
-        title: formData.title,
-        content: formData.content,
-        category: formData.category,
-        isPinned: formData.isPinned,
-        targetGroupId: formData.targetGroup || null, // Assuming targetGroup is an ID string
-        eventDate: formData.eventDate || null,
-        eventTime: formData.eventTime || null,
-        location: formData.location || null,
+    // Graphene auto-camelCases GraphQL schema fields. Use camelCase here; Graphene maps to snake_case in Python.
+    // AnnouncementInput fields: title, content, category, isPinned, targetGroupId, eventDate, eventTime, location
+    const variables = {
+      input: {
+        input: {
+          title: formData.title,
+          content: formData.content,
+          category: formData.category,
+          isPinned: formData.isPinned,
+          // NOTE: Provide a real group ID when available; using label will fail. Send null if not an ID.
+          targetGroupId: formData.targetGroup && /^\d+$/.test(formData.targetGroup) ? formData.targetGroup : null,
+          eventDate: formData.eventDate ? formData.eventDate : null,
+          eventTime: formData.eventTime ? formData.eventTime : null,
+          location: formData.location ? formData.location : null,
+        },
       },
-    };
+    } as const;
 
     try {
-      await createAnnouncement({
-        variables: { input },
-      });
+      const { data } = await createAnnouncement({ variables });
+      const resp = data?.createAnnouncement;
+      if (!resp?.success) {
+        console.error('CreateAnnouncement failed:', resp?.message);
+        alert(`Failed to create announcement: ${resp?.message || 'Unknown error'}`);
+        return;
+      }
       alert('Announcement created successfully!');
       setFormData({
         title: '',
@@ -128,7 +137,7 @@ const AnnouncementsPage = () => {
       setActiveView('list');
       setSelectedAnnouncement(null);
     } catch (err) {
-      console.error('GraphQL Error:', err.graphQLErrors);
+      console.error('GraphQL Error:', err);
       alert('Error saving announcement. Please try again.');
     }
   };
