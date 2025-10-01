@@ -9,7 +9,8 @@ import { GiCrossedChains } from 'react-icons/gi';
 import { MdOutlineDashboard, MdGroupWork } from 'react-icons/md';
 import { BsGraphUp, BsPeopleFill, BsThreeDotsVertical } from 'react-icons/bs';
 import { motion, AnimatePresence } from 'framer-motion';
-import CombinedNav from '../../components/CombinedNav';
+import { useQuery } from '@apollo/client';
+import { GET_STREETS_AND_GROUPS } from '../../api/queries';
 
 // Types
 interface Group {
@@ -50,9 +51,10 @@ const GroupsManagement = () => {
   const [messagesOpen, setMessagesOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
+  const { data, loading, error } = useQuery(GET_STREETS_AND_GROUPS, { fetchPolicy: 'network-only' });
 
   // Sample data - replace with real data from your API
-  const groups: Group[] = [
+  let groups: Group[] = [
     {
       id: '1',
       name: 'Kwaya Ya Vijana',
@@ -186,6 +188,40 @@ const GroupsManagement = () => {
     }
   ];
 
+  // Override with backend data if available
+  if (data?.groups) {
+    groups = (data.groups as any[]).map((g: any) => ({
+      id: g.id,
+      name: g.name ?? '',
+      description: '',
+      category: 'all',
+      leader: { id: '', name: '', email: '', phone: '' },
+      meetingDays: [],
+      meetingTime: '',
+      location: '',
+      memberCount: 0,
+      createdAt: new Date().toISOString(),
+      isActive: true,
+    }));
+  }
+
+  // Loading and error states
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#E8FFD7] flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#5E936C]"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-[#E8FFD7] flex items-center justify-center text-red-600">
+        Failed to load groups.
+      </div>
+    );
+  }
+
   // Filter groups based on search and category
   const filteredGroups = groups.filter(group => {
     const matchesSearch = group.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
@@ -231,214 +267,11 @@ const GroupsManagement = () => {
   return (
     <div className="flex h-screen bg-[#E8FFD7] overflow-hidden">
       {/* Combined Navigation - Extended with Dashboard Items */}
-      <CombinedNav 
-        sidebarOpen={sidebarOpen} 
-        toggleSidebar={toggleSidebar}
-        dashboardItems={[
-          {
-            title: 'Dashboard',
-            icon: <MdOutlineDashboard />,
-            onClick: () => window.location.href = '/dashboard',
-            active: false
-          },
-          {
-            title: 'Groups',
-            icon: <FaUsers />,
-            onClick: () => {},
-            active: true
-          },
-          {
-            title: 'Members',
-            icon: <FaUserFriends />,
-            onClick: () => window.location.href = '/members',
-            active: false
-          },
-          {
-            title: 'Offerings',
-            icon: <FaChurch />,
-            onClick: () => window.location.href = '/offerings',
-            active: false
-          },
-          {
-            title: 'Events',
-            icon: <FaCalendarAlt />,
-            onClick: () => window.location.href = '/events',
-            active: false
-          },
-          {
-            title: 'Prayer Requests',
-            icon: <FaPray />,
-            onClick: () => window.location.href = '/prayers',
-            active: false
-          },
-          {
-            title: 'Ministries',
-            icon: <GiCrossedChains />,
-            onClick: () => window.location.href = '/ministries',
-            active: false
-          },
-          {
-            title: 'Reports',
-            icon: <FaChartLine />,
-            onClick: () => window.location.href = '/reports',
-            active: false
-          }
-        ]}
-      />
+      
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Top Bar */}
-        <header className="bg-[#5E936C] text-white p-4 shadow-md flex items-center justify-between">
-          <div className="flex items-center">
-            <button 
-              onClick={toggleSidebar}
-              className="mr-4 text-white focus:outline-none md:hidden"
-            >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16"></path>
-              </svg>
-            </button>
-            <h1 className="text-xl font-bold">Groups Management</h1>
-          </div>
-          
-          <div className="flex items-center space-x-4">
-            <div className="relative">
-              <button 
-                onClick={() => {
-                  setNotificationsOpen(!notificationsOpen);
-                  setMessagesOpen(false);
-                }}
-                className="p-2 rounded-full hover:bg-[#93DA97] relative"
-              >
-                <FaBell className="text-xl" />
-                <span className="absolute top-0 right-0 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                  3
-                </span>
-              </button>
-              
-              {notificationsOpen && (
-                <motion.div 
-                  initial={{ opacity: 0, y: -20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="absolute right-0 mt-2 w-72 bg-white rounded-md shadow-lg z-50 py-1"
-                >
-                  <div className="px-4 py-2 border-b border-gray-200">
-                    <h3 className="text-lg font-medium text-gray-800">Notifications</h3>
-                  </div>
-                  <div className="divide-y divide-gray-100">
-                    <a href="#" className="block px-4 py-3 hover:bg-gray-50">
-                      <div className="flex items-center">
-                        <div className="flex-shrink-0 bg-[#E8FFD7] rounded-full p-2">
-                          <FaUsers className="text-[#5E936C]" />
-                        </div>
-                        <div className="ml-3">
-                          <p className="text-sm font-medium text-gray-900">New member joined Youth Choir</p>
-                          <p className="text-sm text-gray-500">Elias Mfinanga</p>
-                          <p className="text-xs text-gray-400">2 hours ago</p>
-                        </div>
-                      </div>
-                    </a>
-                    <a href="#" className="block px-4 py-3 hover:bg-gray-50">
-                      <div className="flex items-center">
-                        <div className="flex-shrink-0 bg-[#E8FFD7] rounded-full p-2">
-                          <FaCalendarAlt className="text-[#5E936C]" />
-                        </div>
-                        <div className="ml-3">
-                          <p className="text-sm font-medium text-gray-900">Choir practice cancelled</p>
-                          <p className="text-sm text-gray-500">This Friday</p>
-                          <p className="text-xs text-gray-400">5 hours ago</p>
-                        </div>
-                      </div>
-                    </a>
-                    <a href="#" className="block px-4 py-3 hover:bg-gray-50">
-                      <div className="flex items-center">
-                        <div className="flex-shrink-0 bg-[#E8FFD7] rounded-full p-2">
-                          <FaUserFriends className="text-[#5E936C]" />
-                        </div>
-                        <div className="ml-3">
-                          <p className="text-sm font-medium text-gray-900">Elders meeting reminder</p>
-                          <p className="text-sm text-gray-500">Tomorrow at 2 PM</p>
-                          <p className="text-xs text-gray-400">1 day ago</p>
-                        </div>
-                      </div>
-                    </a>
-                  </div>
-                  <div className="px-4 py-2 border-t border-gray-200">
-                    <a href="#" className="text-sm font-medium text-[#5E936C] hover:text-[#4a7a58]">
-                      View all notifications
-                    </a>
-                  </div>
-                </motion.div>
-              )}
-            </div>
-            
-            <div className="relative">
-              <button 
-                onClick={() => {
-                  setMessagesOpen(!messagesOpen);
-                  setNotificationsOpen(false);
-                }}
-                className="p-2 rounded-full hover:bg-[#93DA97] relative"
-              >
-                <FaEnvelope className="text-xl" />
-                <span className="absolute top-0 right-0 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                  2
-                </span>
-              </button>
-              
-              {messagesOpen && (
-                <motion.div 
-                  initial={{ opacity: 0, y: -20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="absolute right-0 mt-2 w-72 bg-white rounded-md shadow-lg z-50 py-1"
-                >
-                  <div className="px-4 py-2 border-b border-gray-200">
-                    <h3 className="text-lg font-medium text-gray-800">Messages</h3>
-                  </div>
-                  <div className="divide-y divide-gray-100">
-                    <a href="#" className="block px-4 py-3 hover:bg-gray-50">
-                      <div className="flex items-center">
-                        <div className="flex-shrink-0 bg-[#E8FFD7] rounded-full p-2">
-                          <FaUserFriends className="text-[#5E936C]" />
-                        </div>
-                        <div className="ml-3">
-                          <p className="text-sm font-medium text-gray-900">Youth Leader</p>
-                          <p className="text-sm text-gray-500">Need to discuss practice schedule</p>
-                          <p className="text-xs text-gray-400">Yesterday</p>
-                        </div>
-                      </div>
-                    </a>
-                    <a href="#" className="block px-4 py-3 hover:bg-gray-50">
-                      <div className="flex items-center">
-                        <div className="flex-shrink-0 bg-[#E8FFD7] rounded-full p-2">
-                          <BsPeopleFill className="text-[#5E936C]" />
-                        </div>
-                        <div className="ml-3">
-                          <p className="text-sm font-medium text-gray-900">Elders Council</p>
-                          <p className="text-sm text-gray-500">Meeting agenda for next week</p>
-                          <p className="text-xs text-gray-400">2 days ago</p>
-                        </div>
-                      </div>
-                    </a>
-                  </div>
-                  <div className="px-4 py-2 border-t border-gray-200">
-                    <a href="#" className="text-sm font-medium text-[#5E936C] hover:text-[#4a7a58]">
-                      View all messages
-                    </a>
-                  </div>
-                </motion.div>
-              )}
-            </div>
-            
-            <div className="flex items-center">
-              <div className="h-8 w-8 rounded-full bg-[#93DA97] flex items-center justify-center text-white font-bold">
-                PM
-              </div>
-              <span className="ml-2 hidden md:inline">Pastor Mwambene</span>
-            </div>
-          </div>
-        </header>
+        
 
         {/* Main Content */}
         <main className="flex-1 overflow-y-auto p-4 md:p-6 bg-[#F7FCF5]">

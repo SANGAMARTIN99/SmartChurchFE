@@ -1,6 +1,20 @@
 // queries.ts
 import { gql } from '@apollo/client';
 
+export const ME_QUERY = gql`
+  query Me {
+    me {
+      id
+      fullName
+      email
+      phone_number
+      street { id name }
+      groups { id name }
+      role
+    }
+  }
+`;
+
 export const GET_STREETS_AND_GROUPS = gql`
   query {
     streets {
@@ -10,6 +24,44 @@ export const GET_STREETS_AND_GROUPS = gql`
     groups {
       id
       name
+    }
+  }
+`;
+
+// Offerings: recent list
+export const GET_RECENT_OFFERINGS = gql`
+  query RecentOfferings($limit: Int!) {
+    recentOfferings(limit: $limit) {
+      id
+      date
+      memberName
+      street
+      amount
+      offeringType
+      massType
+      attendant
+    }
+  }
+`;
+
+// Offerings breakdown by mass
+export const GET_OFFERINGS_BY_MASS = gql`
+  query OfferingsByMass($start: String, $end: String) {
+    offeringsByMass(start: $start, end: $end) {
+      type
+      amount
+      percentage
+    }
+  }
+`;
+
+// Offerings breakdown by type
+export const GET_OFFERINGS_BY_TYPE = gql`
+  query OfferingsByType($start: String, $end: String) {
+    offeringsByType(start: $start, end: $end) {
+      type
+      amount
+      percentage
     }
   }
 `;
@@ -118,6 +170,30 @@ export const GET_ANNOUNCEMENTS = gql`
         fullName
       }
       createdAt
+    }
+  }
+`;
+
+// Groups query for Groups Management page
+export const GET_GROUPS = gql`
+  query Groups {
+    groups {
+      id
+      name
+      description
+      category
+      leader {
+        id
+        fullName
+        email
+        phone
+      }
+      meetingDays
+      meetingTime
+      location
+      memberCount
+      createdAt
+      isActive
     }
   }
 `;

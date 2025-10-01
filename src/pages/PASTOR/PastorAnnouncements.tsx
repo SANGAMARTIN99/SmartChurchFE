@@ -29,7 +29,7 @@ interface Category {
   id: string;
   name: string;
   color: string;
-  icon: JSX.Element;
+  icon: React.ReactElement;
 }
 
 const AnnouncementsPage = () => {
@@ -48,7 +48,9 @@ const AnnouncementsPage = () => {
     { id: 'general', name: 'General', color: '#6B7280', icon: <FaInfoCircle /> }
   ];
 
-  const { data, loading, error, refetch } = useQuery(GET_ANNOUNCEMENTS);
+  const { data, loading, error, refetch } = useQuery(GET_ANNOUNCEMENTS, {
+    fetchPolicy: 'network-only',
+  });
   const [createAnnouncement] = useMutation(CREATE_ANNOUNCEMENT, {
     refetchQueries: [{ query: GET_ANNOUNCEMENTS }],
   });
@@ -59,7 +61,20 @@ const AnnouncementsPage = () => {
     refetchQueries: [{ query: GET_ANNOUNCEMENTS }],
   });
 
-  const announcements: Announcement[] = data?.announcements || [];
+  // Normalize API shape (objects) to UI shape (strings) for createdBy/targetGroup
+  const announcements: Announcement[] = (data?.announcements || []).map((a: any) => ({
+    id: a.id,
+    title: a.title,
+    content: a.content,
+    category: a.category,
+    isPinned: a.isPinned,
+    targetGroup: a.targetGroup?.name ?? null,
+    eventDate: a.eventDate ?? null,
+    eventTime: a.eventTime ?? null,
+    location: a.location ?? null,
+    createdBy: a.createdBy?.fullName ?? 'Church Office',
+    createdAt: a.createdAt,
+  }));
 
   const [formData, setFormData] = useState({
     title: '',
@@ -72,13 +87,27 @@ const AnnouncementsPage = () => {
     location: ''
   });
 
-  // Filter announcements based on search and category
-  const filteredAnnouncements = announcements.filter(announcement => {
-    const matchesSearch = announcement.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                          announcement.content.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory = selectedCategory === 'all' || announcement.category === selectedCategory;
-    const matchesPinned = !showPinnedOnly || announcement.isPinned;
-    
+  // Filter announcements based on search and category (case-insensitive, robust)
+  const normalizedSelectedCategory = (selectedCategory || '').toLowerCase();
+  const normalizedSearch = (searchQuery || '').toLowerCase().trim();
+
+  const filteredAnnouncements = announcements.filter((a) => {
+    const title = (a.title || '').toLowerCase();
+    const content = (a.content || '').toLowerCase();
+    const category = (a.category || '').toLowerCase();
+
+    // Search matches title or content
+    const matchesSearch = normalizedSearch
+      ? title.includes(normalizedSearch) || content.includes(normalizedSearch)
+      : true;
+
+    // Category matches exact id (case-insensitive) or 'all'
+    const matchesCategory =
+      normalizedSelectedCategory === 'all' || category === normalizedSelectedCategory;
+
+    // Pinned filter
+    const matchesPinned = showPinnedOnly ? !!a.isPinned : true;
+
     return matchesSearch && matchesCategory && matchesPinned;
   });
 
@@ -199,59 +228,7 @@ const AnnouncementsPage = () => {
   return (
     <div className="flex h-screen bg-[#E8FFD7] overflow-hidden">
       {/* Combined Navigation - Extended with Dashboard Items */}
-      <CombinedNav 
-        sidebarOpen={sidebarOpen} 
-        toggleSidebar={toggleSidebar}
-        dashboardItems={[
-          {
-            title: 'Dashboard',
-            icon: <FaBullhorn />, // Using FaBullhorn as a placeholder; replace with appropriate icon
-            onClick: () => window.location.href = '/dashboard',
-            active: false
-          },
-          {
-            title: 'Announcements',
-            icon: <FaBullhorn />,
-            onClick: () => {},
-            active: true
-          },
-          {
-            title: 'Members',
-            icon: <FaUsers />,
-            onClick: () => window.location.href = '/members',
-            active: false
-          },
-          {
-            title: 'Offerings',
-            icon: <FaBell />, // Using FaBell as a placeholder; replace with appropriate icon
-            onClick: () => window.location.href = '/offerings',
-            active: false
-          },
-          {
-            title: 'Events',
-            icon: <FaCalendarAlt />,
-            onClick: () => window.location.href = '/events',
-            active: false
-          },
-          {
-            title: 'Prayer Requests',
-            onClick: () => window.location.href = '/prayers',
-            active: false
-          },
-          {
-            title: 'Ministries',
-            icon: <FaUsers />, // Using FaUsers as a placeholder; replace with appropriate icon
-            onClick: () => window.location.href = '/ministries',
-            active: false
-          },
-          {
-            title: 'Reports',
-            // icon: <FaChartLine />, // Using FaChartLine as a placeholder; replace with appropriate icon
-            onClick: () => window.location.href = '/reports',
-            active: false
-          }
-        ]}
-      />
+      
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col overflow-hidden">
@@ -377,7 +354,7 @@ const AnnouncementsPage = () => {
                                 <div className="flex justify-between items-start mb-3">
                                   <div className="flex items-center">
                                     <div className="p-2 rounded-full mr-3" style={{ backgroundColor: categoryInfo.color + '20' }}>
-                                      {React.cloneElement(categoryInfo.icon, { className: "text-lg", style: { color: categoryInfo.color } })}
+                                      <span className="text-lg" style={{ color: categoryInfo.color }}>{categoryInfo.icon}</span>
                                     </div>
                                     <span className="font-medium" style={{ color: categoryInfo.color }}>
                                       {categoryInfo.name}
@@ -466,7 +443,7 @@ const AnnouncementsPage = () => {
                                 <div className="flex-1">
                                   <div className="flex items-center mb-2">
                                     <div className="p-1 rounded-full mr-2" style={{ backgroundColor: categoryInfo.color + '20' }}>
-                                      {React.cloneElement(categoryInfo.icon, { className: "text-sm", style: { color: categoryInfo.color } })}
+                                      <span className="text-sm" style={{ color: categoryInfo.color }}>{categoryInfo.icon}</span>
                                     </div>
                                     <span className="text-sm font-medium" style={{ color: categoryInfo.color }}>
                                       {categoryInfo.name}

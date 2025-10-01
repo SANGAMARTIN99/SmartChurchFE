@@ -8,6 +8,10 @@ import WordOfTheDay from '../pages/PASTOR/WordOfTheDay';
 import PrayerRequests from '../pages/PASTOR/PrayerRequests';
 import AnnouncementsPage from '../pages/PASTOR/PastorAnnouncements';
 import GroupManagement from '../pages/PASTOR/GroupManagement';
+import CombinedNav from '../components/CombinedNav';
+import OfferingsOverview from '../pages/PASTOR/OfferingsOverview';
+import MemberContributions from '../pages/PASTOR/MemberContributions';
+import MemberDashboard from '../pages/MEMBER/member-dashboard';
 
 
 const AppRoutes = () => {
@@ -18,11 +22,19 @@ const AppRoutes = () => {
         <Route path="/login" element={<AuthPage />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password/:token" element={<ResetPassword />} />
-        <Route path="/dashboard" element={<PastorDashboard />} />
-        <Route path="/word-of-the-day" element={<WordOfTheDay />} />
-        <Route path="/prayer-requests" element={<PrayerRequests />} />
-        <Route path="/announcements" element={<AnnouncementsPage />} />
-        <Route path="/group-management" element={<GroupManagement />} />
+        {/* Authenticated section with persistent CombinedNav layout */}
+        <Route element={<CombinedNav />}>
+          <Route path="/dashboard" element={<PastorDashboard />} />
+          <Route path="/word-of-the-day" element={<WordOfTheDay />} />
+          <Route path="/prayer-requests" element={<PrayerRequests />} />
+          <Route path="/announcements" element={<AnnouncementsPage />} />
+          <Route path="/group-management" element={<GroupManagement />} />
+          <Route path="/offerings" element={<OfferingsOverview />} />
+          <Route path="/contributions" element={<MemberContributions />} />
+
+
+          <Route path="/member-dashboard" element={<MemberDashboard />} />
+        </Route>
         
       </Routes>
     </Router>

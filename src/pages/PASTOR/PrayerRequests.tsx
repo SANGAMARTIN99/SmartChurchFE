@@ -3,7 +3,6 @@ import { useQuery } from '@apollo/client';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import { FaPray, FaFilter, FaSort, FaEye, FaTimes } from 'react-icons/fa';
-import CombinedNav from '../../components/CombinedNav';
 import { GET_PRAYER_REQUESTS } from '../../api/queries';
 
 // Types aligned with backend PastorQuery.prayer_requests
@@ -117,8 +116,7 @@ const PrayerRequests = () => {
   }
 
   return (
-    <CombinedNav>
-      <div className="container mx-auto px-4 py-8 mt-16 ">
+    <div className="container mx-auto px-4 py-8 mt-8">
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
@@ -393,8 +391,7 @@ const PrayerRequests = () => {
             </motion.div>
           )}
         </AnimatePresence>
-      </div>
-    </CombinedNav>
+    </div>
   );
 };
 

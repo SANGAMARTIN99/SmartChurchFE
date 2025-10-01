@@ -174,60 +174,7 @@ const [deleteDevotional] = useMutation(DELETE_DEVOTIONAL, {
   return (
     <div className="flex h-screen bg-[#E8FFD7] overflow-hidden">
       {/* Combined Navigation - Extended with Dashboard Items */}
-      <CombinedNav 
-        sidebarOpen={sidebarOpen} 
-        toggleSidebar={toggleSidebar}
-        dashboardItems={[
-          {
-            title: 'Dashboard',
-            icon: <MdOutlineDashboard />,
-            onClick: () => window.location.href = '/dashboard',
-            active: false
-          },
-          {
-            title: 'Word of the Day',
-            icon: <FaBook />,
-            onClick: () => {},
-            active: true
-          },
-          {
-            title: 'Members',
-            icon: <FaUsers />,
-            onClick: () => window.location.href = '/members',
-            active: false
-          },
-          {
-            title: 'Offerings',
-            icon: <FaMoneyBillWave />,
-            onClick: () => window.location.href = '/offerings',
-            active: false
-          },
-          {
-            title: 'Events',
-            icon: <FaCalendarAlt />,
-            onClick: () => window.location.href = '/events',
-            active: false
-          },
-          {
-            title: 'Prayer Requests',
-            icon: <FaPrayingHands />,
-            onClick: () => window.location.href = '/prayers',
-            active: false
-          },
-          {
-            title: 'Ministries',
-            icon: <GiCrossedChains />,
-            onClick: () => window.location.href = '/ministries',
-            active: false
-          },
-          {
-            title: 'Reports',
-            icon: <FaChartLine />,
-            onClick: () => window.location.href = '/reports',
-            active: false
-          }
-        ]}
-      />
+      
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col overflow-hidden">

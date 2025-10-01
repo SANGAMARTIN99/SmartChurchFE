@@ -38,10 +38,29 @@ const AuthPage = () => {
       const { accessToken, refreshToken, member } = data.loginUser;
       await setAuthToken(accessToken, refreshToken, member); // Ensure token is stored
       console.log('Stored accessToken:', accessToken);
+
+      // Determine dashboard path based on role
+      const getDashboardPath = (role?: string) => {
+        switch (role) {
+          case 'PASTOR':
+          case 'ASSISTANT_PASTOR':
+            return '/dashboard';
+          case 'CHURCH_MEMBER':
+            return '/member-dashboard';
+          case 'CHURCH_SECRETARY':
+            return '/secretary-dashboard';
+          case 'EVANGELIST':
+            return '/evangelist-dashboard';
+          default:
+            return '/dashboard';
+        }
+      };
+
+      const target = getDashboardPath(member?.role);
       showMessage(t('login_success'), 'success');
       setTimeout(() => {
-        navigate('/dashboard');
-      }, 1500);
+        navigate(target);
+      }, 1200);
     },
     onError: (err) => showMessage(err.message, 'error'),
   });

@@ -170,55 +170,7 @@ const PastorDashboard = () => {
 
   return (
     <div className="flex h-screen bg-[#E8FFD7] overflow-hidden">
-      {/* Combined Navigation - Extended with Dashboard Items */}
-      <CombinedNav 
-        sidebarOpen={sidebarOpen} 
-        toggleSidebar={toggleSidebar}
-        dashboardItems={[
-          {
-            title: 'Dashboard',
-            icon: <MdOutlineDashboard />,
-            onClick: () => setActiveTab('overview'),
-            active: activeTab === 'overview'
-          },
-          {
-            title: 'Members',
-            icon: <FaUsers />,
-            onClick: () => setActiveTab('members'),
-            active: activeTab === 'members'
-          },
-          {
-            title: 'Offerings',
-            icon: <FaMoneyBillWave />,
-            onClick: () => setActiveTab('offerings'),
-            active: activeTab === 'offerings'
-          },
-          {
-            title: 'Events',
-            icon: <FaCalendarAlt />,
-            onClick: () => setActiveTab('events'),
-            active: activeTab === 'events'
-          },
-          {
-            title: 'Prayer Requests',
-            icon: <FaPrayingHands />,
-            onClick: () => setActiveTab('prayers'),
-            active: activeTab === 'prayers'
-          },
-          {
-            title: 'Ministries',
-            icon: <GiCrossedChains />,
-            onClick: () => setActiveTab('ministries'),
-            active: activeTab === 'ministries'
-          },
-          {
-            title: 'Reports',
-            icon: <FaChartLine />,
-            onClick: () => setActiveTab('reports'),
-            active: activeTab === 'reports'
-          }
-        ]}
-      />
+      
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col overflow-hidden mt-16">

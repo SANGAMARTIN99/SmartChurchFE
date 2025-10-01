@@ -32,15 +32,21 @@ interface SidebarItem {
 }
 
 const sidebarItems: SidebarItem[] = [
-  { name: 'Dashboard', icon: FaTachometerAlt, href: '/dashboard', roles: ['PASTOR', 'ASSISTANT_PASTOR', 'EVANGELIST', 'CHURCH_SECRETARY', 'CHURCH_MEMBER'] },
-  { name: 'Word of the Day', icon: FaBook, href: '/word-of-the-day', roles: ['PASTOR', 'ASSISTANT_PASTOR', 'EVANGELIST', 'CHURCH_MEMBER'] },
-  { name: 'Prayer Requests', icon: FaPray, href: '/prayer-requests', roles: ['PASTOR', 'ASSISTANT_PASTOR', 'EVANGELIST', 'CHURCH_MEMBER'] },
-  { name: 'Announcements', icon: FaBullhorn, href: '/announcements', roles: ['PASTOR', 'ASSISTANT_PASTOR', 'EVANGELIST', 'CHURCH_SECRETARY', 'CHURCH_MEMBER'] },
+  { name: 'Dashboard', icon: FaTachometerAlt, href: '/dashboard', roles: ['PASTOR', 'ASSISTANT_PASTOR'] },
+  { name: 'Dashboard', icon: FaTachometerAlt, href: '/member-dashboard', roles: ['CHURCH_MEMBER'] },
+  { name: 'Dashboard', icon: FaTachometerAlt, href: '/secretary-dashboard', roles: ['CHURCH_SECRETARY'] },
+  { name: 'Dashboard', icon: FaTachometerAlt, href: '/evangelist-dashboard', roles: ['EVANGELIST'] },
+  { name: 'Word of the Day', icon: FaBook, href: '/word-of-the-day', roles: ['PASTOR', 'ASSISTANT_PASTOR', 'EVANGELIST'] },
+  { name: 'The Word of the Day', icon: FaTachometerAlt, href: '/member-word-of-the-day', roles: ['CHURCH_MEMBER'] },
+  { name: 'Prayer Requests', icon: FaPray, href: '/prayer-requests', roles: ['PASTOR', 'ASSISTANT_PASTOR', 'EVANGELIST'] },
+  { name: 'My Prayer Requests', icon: FaTachometerAlt, href: '/my-prayer-requests', roles: ['CHURCH_MEMBER'] },
+  { name: 'Announcements', icon: FaBullhorn, href: '/announcements', roles: ['PASTOR', 'ASSISTANT_PASTOR', 'EVANGELIST', 'CHURCH_SECRETARY'] },
+  { name: 'Todays-Announcements', icon: FaTachometerAlt, href: '/my-announcements', roles: ['CHURCH_MEMBER'] },
   { name: 'Offerings Overview', icon: FaDonate, href: '/offerings', roles: ['PASTOR', 'ASSISTANT_PASTOR'] },
-  { name: 'Group Management', icon: FaUsers, href: '/group-management', roles: ['PASTOR', 'ASSISTANT_PASTOR', 'EVANGELIST', 'CHURCH_SECRETARY', 'CHURCH_MEMBER'] },
+  { name: 'Group Management', icon: FaUsers, href: '/group-management', roles: ['PASTOR', 'ASSISTANT_PASTOR', 'EVANGELIST', 'CHURCH_SECRETARY'] },
   { name: 'Member Contributions', icon: FaFileAlt, href: '/contributions', roles: ['PASTOR'] },
   { name: 'Blog', icon: FaRss, href: '/blog', roles: ['PASTOR', 'ASSISTANT_PASTOR', 'EVANGELIST', 'CHURCH_MEMBER'] },
-  { name: 'Service Schedule', icon: FaCalendarAlt, href: '/services', roles: ['PASTOR', 'ASSISTANT_PASTOR', 'CHURCH_SECRETARY'] },
+  { name: 'Service Schedule', icon: FaCalendarAlt, href: '/services', roles: ['PASTOR', 'ASSISTANT_PASTOR', 'EVANGELIST'] },
   { name: 'Notifications Center', icon: FaBell, href: '/notifications', roles: ['PASTOR'] },
   { name: 'Analytics Dashboard', icon: FaChartBar, href: '/analytics', roles: ['PASTOR'] },
   { name: 'Offering Card Management', icon: FaFileAlt, href: '/offering-cards', roles: ['CHURCH_SECRETARY'] },
@@ -58,6 +64,10 @@ const sidebarItems: SidebarItem[] = [
 
 interface CombinedNavProps {
   children?: ReactNode;
+  // Optional legacy props to avoid breaking existing pages; ignored internally
+  sidebarOpen?: boolean;
+  toggleSidebar?: () => void;
+  dashboardItems?: any[];
 }
 
 const CombinedNav = ({ children }: CombinedNavProps) => {
