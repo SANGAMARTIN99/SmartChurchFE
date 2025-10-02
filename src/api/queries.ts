@@ -7,7 +7,7 @@ export const ME_QUERY = gql`
       id
       fullName
       email
-      phone_number
+      phoneNumber
       street { id name }
       groups { id name }
       role
@@ -115,6 +115,11 @@ export const GET_PRAYER_REQUESTS = gql`
       request
       date
       status
+      replies {
+        responder
+        message
+        date
+      }
     }
   }
 `;
@@ -138,13 +143,49 @@ export const GET_DEVOTIONALS = gql`
       title
       content
       scripture
-      publishedAt
+      publishedAt: publishedAt
       author {
-        fullName
+        fullName: fullName
       }
-      imageUrl
-      audioUrl
-      videoUrl
+      imageUrl: imageUrl
+      audioUrl: audioUrl
+      videoUrl: videoUrl
+      amenCount: amenCount
+    }
+  }
+`;
+
+export const GET_MY_DEVOTIONAL_INTERACTION = gql`
+  query MyDevotionalInteraction($devotionalId: String!) {
+    myDevotionalInteraction(devotionalId: $devotionalId) {
+      bookmarked
+      amened
+      journal
+    }
+  }
+`;
+
+export const TOGGLE_BOOKMARK = gql`
+  mutation ToggleBookmark($devotionalId: String!) {
+    toggleBookmark(devotionalId: $devotionalId) {
+      bookmarked
+    }
+  }
+`;
+
+export const TOGGLE_AMEN = gql`
+  mutation ToggleAmen($devotionalId: String!) {
+    toggleAmen(devotionalId: $devotionalId) {
+      amened
+      amenCount
+    }
+  }
+`;
+
+export const SAVE_JOURNAL = gql`
+  mutation SaveJournal($devotionalId: String!, $text: String!) {
+    saveJournal(devotionalId: $devotionalId, text: $text) {
+      journal
     }
   }
 `;

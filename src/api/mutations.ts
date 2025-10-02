@@ -130,13 +130,13 @@ export const CREATE_DEVOTIONAL = gql`
         title
         content
         scripture
-        publishedAt
+        publishedAt: publishedAt
         author {
-          fullName
+          fullName: fullName
         }
-        imageUrl
-        audioUrl
-        videoUrl
+        imageUrl: imageUrl
+        audioUrl: audioUrl
+        videoUrl: videoUrl
       }
     }
   }
@@ -150,13 +150,13 @@ export const UPDATE_DEVOTIONAL = gql`
         title
         content
         scripture
-        publishedAt
+        publishedAt: publishedAt
         author {
-          fullName
+          fullName: fullName
         }
-        imageUrl
-        audioUrl
-        videoUrl
+        imageUrl: imageUrl
+        audioUrl: audioUrl
+        videoUrl: videoUrl
       }
     }
   }
@@ -234,6 +234,48 @@ export const DELETE_ANNOUNCEMENT = gql`
     deleteAnnouncement(id: $id) {
       success
       message
+    }
+  }
+`;
+
+// Prayer interactions
+export const CREATE_PRAYER_REPLY = gql`
+  mutation CreatePrayerReply($input: PrayerReplyInput!) {
+    createPrayerReply(input: $input) {
+      prayerRequest {
+        id
+        member
+        request
+        date
+        status
+        replies {
+          responder
+          message
+          date
+        }
+      }
+    }
+  }
+`;
+
+export const MARK_PRAYER_AS_PRAYED = gql`
+  mutation MarkPrayerAsPrayed($input: MarkPrayerInput!) {
+    markPrayerAsPrayed(input: $input) {
+      prayerRequest {
+        id
+        status
+      }
+    }
+  }
+`;
+
+export const MEMBER_MARK_PRAYER_ANSWERED = gql`
+  mutation MemberMarkPrayerAnswered($input: MarkPrayerInput!) {
+    memberMarkPrayerAnswered(input: $input) {
+      prayerRequest {
+        id
+        status
+      }
     }
   }
 `;

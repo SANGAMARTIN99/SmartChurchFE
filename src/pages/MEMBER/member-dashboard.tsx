@@ -16,14 +16,14 @@ const MemberDashboard = () => {
   const [newPrayerRequestOpen, setNewPrayerRequestOpen] = useState(false);
 
   // Live data
-  const { data: meData } = useQuery(ME_QUERY);
+  const { data: meData, loading: meLoading, error: meError } = useQuery(ME_QUERY);
   const { data: offeringsData } = useQuery(GET_RECENT_OFFERINGS, { variables: { limit: 10 } });
   const { data: eventsData } = useQuery(GET_UPCOMING_EVENTS);
 
   // Removed sample data (profile, offerings, groups, events, prayer requests)
 
   // Map live data to view models
-  const memberFirstName = meData?.me?.fullName || 'Member';
+  const memberFirstName = meData?.me?.fullName?.split(' ')[0] || (meLoading ? 'Loading' : (meError ? 'Error' : 'Member'));
   const memberStreet = meData?.me?.street?.name || '';
   const myGroups = meData?.me?.groups || [];
   const recentOfferings = (offeringsData?.recentOfferings || []).slice(0, 5).map((o: any) => ({
@@ -72,7 +72,7 @@ const MemberDashboard = () => {
   };
 
   return (
-    <div className="flex h-[calc(100vh-3rem)] bg-gradient-to-br from-[#E8FFD7] to-[#93DA97] overflow-hidden mt-12">
+    <div className="flex h-[calc(100vh-3rem)] bg-gradient-to-br from-[#E8FFD7] to-[#93DA97] overflow-hidden ">
       {/* Sidebar Navigation */}
       
 
@@ -82,6 +82,11 @@ const MemberDashboard = () => {
 
         {/* Main Content */}
         <main className="flex-1 overflow-y-auto scrollbar-hide p-4 md:p-6">
+          {meError && (
+            <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-red-700">
+              Failed to load your profile. Please re-login. Details: {meError.message}
+            </div>
+          )}
           <AnimatePresence mode="wait">
             {activeTab === 'overview' && (
               <motion.div

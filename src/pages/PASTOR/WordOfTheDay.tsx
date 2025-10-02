@@ -9,6 +9,7 @@ import {  CREATE_DEVOTIONAL, UPDATE_DEVOTIONAL, DELETE_DEVOTIONAL } from '../../
 import { GET_DEVOTIONALS } from '../../api/queries';
 import { format } from 'date-fns';
 import CombinedNav from '../../components/CombinedNav'; // Import your CombinedNav component
+import { getAccessToken } from '../../utils/auth';
 
 // Types
 interface Devotional {
@@ -26,7 +27,13 @@ const WordOfTheDay = () => {
   const [activeView, setActiveView] = useState<'create' | 'preview' | 'list'>('create');
   const [selectedDevotional, setSelectedDevotional] = useState<Devotional | null>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
+  const [videoFile, setVideoFile] = useState<File | null>(null);
+  const [audioFile, setAudioFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [audioPreview, setAudioPreview] = useState<string | null>(null);
+  const [isRecording, setIsRecording] = useState<boolean>(false);
+  const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
+  const [recordedChunks, setRecordedChunks] = useState<BlobPart[]>([]);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [messagesOpen, setMessagesOpen] = useState(false);
@@ -80,10 +87,101 @@ const [deleteDevotional] = useMutation(DELETE_DEVOTIONAL, {
     }
   };
 
+  const handleVideoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setVideoFile(file);
+    }
+  };
+
+  const handleAudioChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setAudioFile(file);
+      const url = URL.createObjectURL(file);
+      setAudioPreview(url);
+    }
+  };
+
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const recorder = new MediaRecorder(stream);
+      const chunks: BlobPart[] = [];
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) chunks.push(e.data);
+      };
+      recorder.onstop = () => {
+        const blob = new Blob(chunks, { type: 'audio/webm' });
+        const file = new File([blob], `devotional-audio-${Date.now()}.webm`, { type: 'audio/webm' });
+        setAudioFile(file);
+        const url = URL.createObjectURL(blob);
+        setAudioPreview(url);
+        setRecordedChunks([]);
+      };
+      setRecordedChunks([]);
+      setMediaRecorder(recorder);
+      recorder.start();
+      setIsRecording(true);
+    } catch (err) {
+      console.error('Error starting recording:', err);
+      alert('Microphone access denied or unavailable.');
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorder && isRecording) {
+      mediaRecorder.stop();
+      mediaRecorder.stream.getTracks().forEach(t => t.stop());
+      setIsRecording(false);
+    }
+  };
+
+  const uploadAndGetUrl = async (file: File, folder: string): Promise<string> => {
+    const form = new FormData();
+    form.append('file', file);
+    form.append('folder', folder);
+    const token = getAccessToken();
+    const API_BASE = (import.meta as any).env?.VITE_API_BASE_URL || 'http://127.0.0.1:8000';
+    const endpoint = `${API_BASE.replace(/\/$/, '')}/api/upload/`;
+    const resp = await fetch(endpoint, {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      body: form,
+      mode: 'cors',
+    });
+    if (!resp.ok) {
+      let details = '';
+      try { details = await resp.text(); } catch {}
+      if (resp.status === 401) {
+        throw new Error('Unauthorized (401). Please log in again.');
+      }
+      throw new Error(`Upload failed ${resp.status}. ${details}`);
+    }
+    const data = await resp.json();
+    if (!data?.url) throw new Error('Upload succeeded but no URL returned');
+    return data.url as string;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     try {
+      // Upload media first (if any)
+      let imageUrl: string | undefined;
+      let audioUrl: string | undefined;
+      let videoUrl: string | undefined;
+
+      if (imageFile) {
+        imageUrl = await uploadAndGetUrl(imageFile, 'devotionals/images');
+      }
+      if (audioFile) {
+        audioUrl = await uploadAndGetUrl(audioFile, 'devotionals/audios');
+      }
+      if (videoFile) {
+        videoUrl = await uploadAndGetUrl(videoFile, 'devotionals/videos');
+      }
+
       if (selectedDevotional) {
         // Update existing devotional
         await updateDevotional({
@@ -93,7 +191,11 @@ const [deleteDevotional] = useMutation(DELETE_DEVOTIONAL, {
               title: formData.title,
               scripture: formData.scripture,
               content: formData.content,
-              publishedAt: formData.publishDate
+              // Using camelCase to match GraphQL schema
+              publishedAt: formData.publishDate,
+              imageUrl: imageUrl,
+              audioUrl: audioUrl,
+              videoUrl: videoUrl,
             }
           }
         });
@@ -105,7 +207,11 @@ const [deleteDevotional] = useMutation(DELETE_DEVOTIONAL, {
               title: formData.title,
               scripture: formData.scripture,
               content: formData.content,
-              publishedAt: formData.publishDate
+              // Using camelCase to match GraphQL schema
+              publishedAt: formData.publishDate,
+              imageUrl: imageUrl,
+              audioUrl: audioUrl,
+              videoUrl: videoUrl,
             }
           }
         });
@@ -119,14 +225,18 @@ const [deleteDevotional] = useMutation(DELETE_DEVOTIONAL, {
         publishDate: format(new Date(), 'yyyy-MM-dd'),
       });
       setImageFile(null);
+      setVideoFile(null);
+      setAudioFile(null);
       setImagePreview(null);
+      setAudioPreview(null);
       setSelectedDevotional(null);
       
       // Show success message
       alert(selectedDevotional ? 'Devotional updated successfully!' : 'Devotional created successfully!');
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error saving devotional:', err);
-      alert('Error saving devotional. Please try again.');
+      const message = err?.message || 'Unknown error';
+      alert(`Error saving devotional. ${message}`);
     }
   };
 
@@ -181,7 +291,7 @@ const [deleteDevotional] = useMutation(DELETE_DEVOTIONAL, {
         
 
         {/* Dashboard Content */}
-        <main className="flex-1 overflow-y-auto p-4 md:p-6 bg-[#F7FCF5] mt-16">
+        <main className="flex-1 overflow-y-auto p-4 md:p-6 bg-[#F7FCF5] ">
           <div className="max-w-6xl mx-auto">
             {/* Header */}
             <motion.div 
@@ -311,6 +421,52 @@ const [deleteDevotional] = useMutation(DELETE_DEVOTIONAL, {
                                 accept="image/*"
                               />
                             </label>
+                          </div>
+                        </div>
+
+                        <div className="mb-4">
+                          <label className="block text-gray-700 mb-2">Video (Optional)</label>
+                          <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
+                            <FaUpload className="text-3xl text-gray-400 mx-auto mb-2" />
+                            <p className="text-gray-500 mb-2">Upload a short video (testimony/summary)</p>
+                            <label className="bg-[#5E936C] text-white px-4 py-2 rounded-lg cursor-pointer">
+                              Browse Files
+                              <input
+                                type="file"
+                                onChange={handleVideoChange}
+                                className="hidden"
+                                accept="video/*"
+                              />
+                            </label>
+                          </div>
+                        </div>
+
+                        <div className="mb-4">
+                          <label className="block text-gray-700 mb-2">Audio (Upload or Record)</label>
+                          <div className="border-2 border-dashed border-gray-300 rounded-lg p-4">
+                            <div className="flex items-center gap-2 mb-3">
+                              {!isRecording ? (
+                                <button type="button" onClick={startRecording} className="bg-[#5E936C] text-white px-3 py-2 rounded-lg">Start Recording</button>
+                              ) : (
+                                <button type="button" onClick={stopRecording} className="bg-red-500 text-white px-3 py-2 rounded-lg">Stop Recording</button>
+                              )}
+                              <label className="ml-auto bg-[#5E936C] text-white px-3 py-2 rounded-lg cursor-pointer">
+                                Upload Audio
+                                <input type="file" accept="audio/*" className="hidden" onChange={handleAudioChange} />
+                              </label>
+                            </div>
+                            {audioPreview && (
+                              <div className="mt-2">
+                                <audio src={audioPreview} controls className="w-full" />
+                                <button
+                                  type="button"
+                                  onClick={() => { setAudioFile(null); setAudioPreview(null); }}
+                                  className="mt-2 text-red-500 text-sm"
+                                >
+                                  Remove Audio
+                                </button>
+                              </div>
+                            )}
                           </div>
                         </div>
                         

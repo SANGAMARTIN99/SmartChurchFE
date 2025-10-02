@@ -12,6 +12,9 @@ import CombinedNav from '../components/CombinedNav';
 import OfferingsOverview from '../pages/PASTOR/OfferingsOverview';
 import MemberContributions from '../pages/PASTOR/MemberContributions';
 import MemberDashboard from '../pages/MEMBER/member-dashboard';
+import TheWordOfTheDay from '../pages/MEMBER/TheWordOfTheDay';
+import MyPrayerRequests from '../pages/MEMBER/MyPrayerRequests';
+import TodayAnnouncements from '../pages/MEMBER/TodayAnnouncements';
 
 
 const AppRoutes = () => {
@@ -34,6 +37,9 @@ const AppRoutes = () => {
 
 
           <Route path="/member-dashboard" element={<MemberDashboard />} />
+          <Route path="/member-word-of-the-day" element={<TheWordOfTheDay />} />
+          <Route path="/member-prayer-requests" element={<MyPrayerRequests />} />
+          <Route path="/my-announcements" element={<TodayAnnouncements />} />
         </Route>
         
       </Routes>

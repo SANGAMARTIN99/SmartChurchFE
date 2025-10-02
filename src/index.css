@@ -1,3 +1,16 @@
+/* Global layout reset: remove default margins and make app full-height */
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+/* Prevent body from scrolling; main app content handles its own scroll */
+body {
+  overflow: hidden;
+  overscroll-behavior: none; /* disable bounce on body */
+}
+
 /* Hide scrollbar but keep scroll functionality */
 .scrollbar-hide {
   -ms-overflow-style: none; /* IE and Edge */
@@ -5,4 +18,9 @@
 }
 .scrollbar-hide::-webkit-scrollbar {
   display: none;            /* Chrome, Safari, Opera */
+}
+
+/* Utility to disable overscroll bounce on specific containers */
+.no-overscroll {
+  overscroll-behavior: contain;
 }

@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
-import { useQuery } from '@apollo/client';
+import { useQuery, useMutation } from '@apollo/client';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import { FaPray, FaFilter, FaSort, FaEye, FaTimes } from 'react-icons/fa';
 import { GET_PRAYER_REQUESTS } from '../../api/queries';
+import { CREATE_PRAYER_REPLY, MARK_PRAYER_AS_PRAYED } from '../../api/mutations';
 
 // Types aligned with backend PastorQuery.prayer_requests
 interface PrayerRequestItem {
@@ -11,7 +12,8 @@ interface PrayerRequestItem {
   member: string; // full name
   request: string;
   date: string; // YYYY-MM-DD
-  status: string; // PENDING/ANSWERED/IN_PROGRESS
+  status: string; // PENDING/PRAYED/ANSWERED
+  replies?: { responder: string; message: string; date: string }[];
 }
 
 interface PrayerRequestsData {
@@ -27,6 +29,7 @@ const PrayerRequests = () => {
   const [sortOrder, setSortOrder] = useState('desc');
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState<PrayerRequestItem | null>(null);
+  const [replyText, setReplyText] = useState('');
   const [windowWidth, setWindowWidth] = useState(window.innerWidth);
 
   // Update window width on resize
@@ -36,9 +39,28 @@ const PrayerRequests = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  const { data, loading, error } = useQuery<PrayerRequestsData>(GET_PRAYER_REQUESTS, {
+  const { data, loading, error, refetch } = useQuery<PrayerRequestsData>(GET_PRAYER_REQUESTS, {
     fetchPolicy: 'network-only',
   });
+
+  const [markPrayed] = useMutation(MARK_PRAYER_AS_PRAYED, {
+    refetchQueries: [{ query: GET_PRAYER_REQUESTS }],
+  });
+  const [createReply, { loading: replying }] = useMutation(CREATE_PRAYER_REPLY, {
+    refetchQueries: [{ query: GET_PRAYER_REQUESTS }],
+  });
+
+  // when a request is opened, if it's PENDING mark as PRAYED
+  useEffect(() => {
+    (async () => {
+      if (selectedRequest && selectedRequest.status === 'PENDING') {
+        try {
+          await markPrayed({ variables: { input: { id: parseInt(selectedRequest.id, 10) } } });
+          await refetch();
+        } catch {}
+      }
+    })();
+  }, [selectedRequest]);
 
   // Handle pagination
   const handlePageChange = (newPage: number) => {
@@ -282,9 +304,9 @@ const PrayerRequests = () => {
                           className={`px-2 py-1 rounded-full text-xs font-semibold ${
                             node.status === 'PENDING'
                               ? 'bg-yellow-100 text-yellow-800'
-                              : node.status === 'ANSWERED'
-                              ? 'bg-green-100 text-green-800'
-                              : 'bg-blue-100 text-blue-800'
+                              : node.status === 'PRAYED'
+                              ? 'bg-blue-100 text-blue-800'
+                              : 'bg-green-100 text-green-800'
                           }`}
                         >
                           {t(node.status.toLowerCase())}
@@ -355,7 +377,7 @@ const PrayerRequests = () => {
               >
                 <div className="flex justify-between items-center mb-4">
                   <h2 className="text-2xl font-bold text-[#2D3748]">
-                    {selectedRequest.title}
+                    Prayer from {selectedRequest.member}
                   </h2>
                   <button
                     onClick={() => setSelectedRequest(null)}
@@ -381,6 +403,53 @@ const PrayerRequests = () => {
                   <span className="font-semibold">{t('description')}:</span>{' '}
                   {selectedRequest.request}
                 </p>
+                {/* Replies thread */}
+                <div className="mb-4">
+                  <h3 className="text-md font-semibold text-[#2D3748] mb-2">Replies</h3>
+                  {selectedRequest.replies && selectedRequest.replies.length > 0 ? (
+                    <div className="space-y-2 max-h-56 overflow-auto pr-1">
+                      {selectedRequest.replies.map((r, i) => (
+                        <div key={i} className="bg-gray-50 rounded p-2">
+                          <div className="text-xs text-gray-600">
+                            <span className="font-medium">{r.responder}</span> • {r.date}
+                          </div>
+                          <div className="text-sm text-gray-700 whitespace-pre-line">{r.message}</div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-sm text-gray-500">No replies yet.</div>
+                  )}
+                </div>
+
+                {/* Reply form */}
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-[#2D3748] mb-1">Write a reply</label>
+                  <textarea
+                    value={replyText}
+                    onChange={(e) => setReplyText(e.target.value)}
+                    rows={3}
+                    className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-[#5E936C]"
+                    placeholder="Type your prayer reply..."
+                  />
+                  <button
+                    disabled={!replyText.trim() || replying}
+                    onClick={async () => {
+                      if (!selectedRequest) return;
+                      try {
+                        await createReply({ variables: { input: { prayerId: parseInt(selectedRequest.id, 10), message: replyText.trim() } } });
+                        setReplyText('');
+                        await refetch();
+                        // update selectedRequest with fresh data
+                        const refreshed = (refetch as any)?.last?
+                          null : null; // noop; the modal will re-render from query cache
+                      } catch {}
+                    }}
+                    className="mt-2 w-full bg-[#5E936C] text-[#E8FFD7] px-4 py-2 rounded-md hover:bg-[#4A7557] transition-colors disabled:opacity-60"
+                  >
+                    {replying ? 'Sending...' : 'Send Reply'}
+                  </button>
+                </div>
                 <button
                   onClick={() => setSelectedRequest(null)}
                   className="w-full bg-[#5E936C] text-[#E8FFD7] px-4 py-2 rounded-md hover:bg-[#4A7557] transition-colors"

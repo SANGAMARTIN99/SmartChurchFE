@@ -233,7 +233,7 @@ const AnnouncementsPage = () => {
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Main Content */}
-        <main className="flex-1 overflow-y-auto p-4 md:p-6 bg-[#F7FCF5] mt-16">
+        <main className="flex-1 overflow-y-auto p-4 md:p-6 bg-[#F7FCF5] ">
           <div className="max-w-6xl mx-auto">
             {/* Header */}
             <motion.div 

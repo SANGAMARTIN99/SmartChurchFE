@@ -107,7 +107,11 @@ const errorLink = new ApolloLink((operation, forward) => {
                 msg.includes('Token expired') ||
                 msg.includes('JWT token is invalid or expired') ||
                 msg.includes('Authentication credentials were not provided') ||
-                msg.includes('Signature has expired')
+                msg.includes('Signature has expired') ||
+                msg.includes('No Authorization header provided') ||
+                msg.includes('Invalid Authorization header format') ||
+                msg.includes('User not found') ||
+                msg.includes('Authentication error')
               );
             }
           )
@@ -138,7 +142,11 @@ const errorLink = new ApolloLink((operation, forward) => {
             msg.includes('Token expired') ||
             msg.includes('JWT token is invalid or expired') ||
             msg.includes('Authentication credentials were not provided') ||
-            msg.includes('Signature has expired')
+            msg.includes('Signature has expired') ||
+            msg.includes('No Authorization header provided') ||
+            msg.includes('Invalid Authorization header format') ||
+            msg.includes('User not found') ||
+            msg.includes('Authentication error')
           );
         });
 

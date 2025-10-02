@@ -37,9 +37,9 @@ const sidebarItems: SidebarItem[] = [
   { name: 'Dashboard', icon: FaTachometerAlt, href: '/secretary-dashboard', roles: ['CHURCH_SECRETARY'] },
   { name: 'Dashboard', icon: FaTachometerAlt, href: '/evangelist-dashboard', roles: ['EVANGELIST'] },
   { name: 'Word of the Day', icon: FaBook, href: '/word-of-the-day', roles: ['PASTOR', 'ASSISTANT_PASTOR', 'EVANGELIST'] },
-  { name: 'The Word of the Day', icon: FaTachometerAlt, href: '/member-word-of-the-day', roles: ['CHURCH_MEMBER'] },
+  { name: 'The Word of the Day', icon: FaTachometerAlt, href: '/member-word-of-the-day', roles: ['CHURCH_MEMBER','CHURCH_SECRETARY'] },
   { name: 'Prayer Requests', icon: FaPray, href: '/prayer-requests', roles: ['PASTOR', 'ASSISTANT_PASTOR', 'EVANGELIST'] },
-  { name: 'My Prayer Requests', icon: FaTachometerAlt, href: '/my-prayer-requests', roles: ['CHURCH_MEMBER'] },
+  { name: 'My Prayer Requests', icon: FaTachometerAlt, href: '/member-prayer-requests', roles: ['CHURCH_MEMBER'] },
   { name: 'Announcements', icon: FaBullhorn, href: '/announcements', roles: ['PASTOR', 'ASSISTANT_PASTOR', 'EVANGELIST', 'CHURCH_SECRETARY'] },
   { name: 'Todays-Announcements', icon: FaTachometerAlt, href: '/my-announcements', roles: ['CHURCH_MEMBER'] },
   { name: 'Offerings Overview', icon: FaDonate, href: '/offerings', roles: ['PASTOR', 'ASSISTANT_PASTOR'] },
@@ -145,15 +145,15 @@ const CombinedNav = ({ children }: CombinedNavProps) => {
   const notifications = []; 
 
   return (
-    <div className="min-h-screen bg-gray-100 flex flex-col md:flex-row">
+    <div className="min-h-screen bg-gray-100 flex flex-col md:flex-row pt-16">
       {/* Top Navbar */}
       <motion.nav
         initial={{ y: -100 }}
         animate={{ y: 0 }}
         transition={{ duration: 0.5 }}
-        className="fixed top-0 left-0 right-0 bg-[#5E936C] text-[#E8FFD7] shadow-lg z-50"
+        className="fixed top-0 left-0 right-0 h-16 bg-[#5E936C] text-[#E8FFD7] shadow-lg z-50"
       >
-        <div className="container mx-auto px-4 py-3 flex justify-between items-center">
+        <div className="container mx-auto px-4 h-full flex justify-between items-center">
           {/* Logo and Mobile Sidebar Toggle */}
           <div className="flex items-center space-x-2">
             <button
@@ -300,7 +300,7 @@ const CombinedNav = ({ children }: CombinedNavProps) => {
           <div className="p-4 text-xl font-bold flex items-center space-x-2 md:hidden ">
             <span>KKKT Mkimbizi</span>
           </div>
-          <nav className="flex-1 overflow-y-auto">
+          <nav className="flex-1 overflow-y-auto no-overscroll">
             {allowedItems.map(item => {
               const Icon = item.icon;
               return (
@@ -334,9 +334,9 @@ const CombinedNav = ({ children }: CombinedNavProps) => {
 
       {/* Main Content */}
       <main 
-        className={`flex-1 transition-all duration-300 ${
+        className={`flex-1 min-h-0 transition-all duration-300 scrollbar-hide overflow-auto no-overscroll h-[calc(100vh-64px)] ${
           windowWidth >= 768 ? 'ml-0' : 'ml-0'
-        } mt-16 md:mt-0 overflow-auto`}
+        }`}
         style={{
           marginLeft: windowWidth >= 768 && isSidebarOpen ? '16rem' : '0',
         }}
