@@ -126,33 +126,47 @@ const AnnouncementsPage = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Graphene auto-camelCases GraphQL schema fields. Use camelCase here; Graphene maps to snake_case in Python.
-    // AnnouncementInput fields: title, content, category, isPinned, targetGroupId, eventDate, eventTime, location
-    const variables = {
-      input: {
-        input: {
-          title: formData.title,
-          content: formData.content,
-          category: formData.category,
-          isPinned: formData.isPinned,
-          // NOTE: Provide a real group ID when available; using label will fail. Send null if not an ID.
-          targetGroupId: formData.targetGroup && /^\d+$/.test(formData.targetGroup) ? formData.targetGroup : null,
-          eventDate: formData.eventDate ? formData.eventDate : null,
-          eventTime: formData.eventTime ? formData.eventTime : null,
-          location: formData.location ? formData.location : null,
-        },
-      },
+    // Build common input payload
+    const inputPayload = {
+      title: formData.title,
+      content: formData.content,
+      category: formData.category,
+      isPinned: formData.isPinned,
+      // NOTE: Provide a real group ID when available; using label will fail. Send null if not an ID.
+      targetGroupId: formData.targetGroup && /^\d+$/.test(formData.targetGroup) ? formData.targetGroup : null,
+      eventDate: formData.eventDate ? formData.eventDate : null,
+      eventTime: formData.eventTime ? formData.eventTime : null,
+      location: formData.location ? formData.location : null,
     } as const;
 
     try {
-      const { data } = await createAnnouncement({ variables });
-      const resp = data?.createAnnouncement;
-      if (!resp?.success) {
-        console.error('CreateAnnouncement failed:', resp?.message);
-        alert(`Failed to create announcement: ${resp?.message || 'Unknown error'}`);
-        return;
+      if (selectedAnnouncement) {
+        // Update existing announcement
+        const { data } = await updateAnnouncement({
+          variables: { input: { id: selectedAnnouncement.id, input: inputPayload } },
+        });
+        const resp = data?.updateAnnouncement;
+        if (!resp?.success) {
+          console.error('UpdateAnnouncement failed:', resp?.message);
+          alert(`Failed to update announcement: ${resp?.message || 'Unknown error'}`);
+          return;
+        }
+        alert('Announcement updated successfully!');
+      } else {
+        // Create new announcement
+        const { data } = await createAnnouncement({
+          variables: { input: inputPayload },
+        });
+        const resp = data?.createAnnouncement;
+        if (!resp?.success) {
+          console.error('CreateAnnouncement failed:', resp?.message);
+          alert(`Failed to create announcement: ${resp?.message || 'Unknown error'}`);
+          return;
+        }
+        alert('Announcement created successfully!');
       }
-      alert('Announcement created successfully!');
+
+      // Reset form and go back to list
       setFormData({
         title: '',
         content: '',
@@ -189,7 +203,13 @@ const AnnouncementsPage = () => {
   const handleDelete = async (id: string) => {
     if (window.confirm('Are you sure you want to delete this announcement?')) {
       try {
-        await deleteAnnouncement({ variables: { id } });
+        const { data } = await deleteAnnouncement({ variables: { input: { id } } });
+        const resp = data?.deleteAnnouncement;
+        if (!resp?.success) {
+          console.error('DeleteAnnouncement failed:', resp?.message);
+          alert(`Failed to delete announcement: ${resp?.message || 'Unknown error'}`);
+          return;
+        }
         alert('Announcement deleted successfully!');
       } catch (err) {
         console.error('Error deleting announcement:', err);

@@ -15,6 +15,7 @@ import MemberDashboard from '../pages/MEMBER/member-dashboard';
 import TheWordOfTheDay from '../pages/MEMBER/TheWordOfTheDay';
 import MyPrayerRequests from '../pages/MEMBER/MyPrayerRequests';
 import TodayAnnouncements from '../pages/MEMBER/TodayAnnouncements';
+import MyOfferingsOverview from '../pages/MEMBER/My-Offerings-Overview';
 
 
 const AppRoutes = () => {
@@ -40,6 +41,7 @@ const AppRoutes = () => {
           <Route path="/member-word-of-the-day" element={<TheWordOfTheDay />} />
           <Route path="/member-prayer-requests" element={<MyPrayerRequests />} />
           <Route path="/my-announcements" element={<TodayAnnouncements />} />
+          <Route path="/my-offerings-overview" element={<MyOfferingsOverview />} />
         </Route>
         
       </Routes>

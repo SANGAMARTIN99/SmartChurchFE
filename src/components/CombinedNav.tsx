@@ -55,7 +55,7 @@ const sidebarItems: SidebarItem[] = [
   { name: 'Export Reports', icon: FaFileExport, href: '/reports', roles: ['CHURCH_SECRETARY'] },
   { name: 'Member Directory', icon: FaUsers, href: '/directory', roles: ['ASSISTANT_PASTOR', 'CHURCH_SECRETARY'] },
   { name: 'Community Events Calendar', icon: FaCalendarAlt, href: '/events', roles: ['EVANGELIST'] },
-  { name: 'My Offerings', icon: FaDonate, href: '/my-offerings', roles: ['CHURCH_MEMBER'] },
+  { name: 'My Offerings', icon: FaDonate, href: '/my-offerings-overview', roles: ['CHURCH_MEMBER'] },
   { name: 'My Profile', icon: FaUser, href: '/profile', roles: ['CHURCH_MEMBER'] },
   { name: 'My Groups', icon: FaUsers, href: '/my-groups', roles: ['CHURCH_MEMBER'] },
   { name: 'RSVP to Events', icon: FaCalendarAlt, href: '/rsvp', roles: ['CHURCH_MEMBER'] },

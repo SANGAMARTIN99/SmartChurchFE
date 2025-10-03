@@ -201,8 +201,8 @@ export const CREATE_ANNOUNCEMENT = gql`
 `;
 
 export const UPDATE_ANNOUNCEMENT = gql`
-  mutation UpdateAnnouncement($id: String!, $input: UpdateAnnouncementInput!) {
-    updateAnnouncement(id: $id, input: $input) {
+  mutation UpdateAnnouncement($input: UpdateAnnouncementInput!) {
+    updateAnnouncement(input: $input) {
       announcement {
         id
         title
@@ -230,8 +230,8 @@ export const UPDATE_ANNOUNCEMENT = gql`
 `;
 
 export const DELETE_ANNOUNCEMENT = gql`
-  mutation DeleteAnnouncement($id: String!) {
-    deleteAnnouncement(id: $id) {
+  mutation DeleteAnnouncement($input: DeleteAnnouncementInput!) {
+    deleteAnnouncement(input: $input) {
       success
       message
     }
