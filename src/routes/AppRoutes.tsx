@@ -16,6 +16,8 @@ import TheWordOfTheDay from '../pages/MEMBER/TheWordOfTheDay';
 import MyPrayerRequests from '../pages/MEMBER/MyPrayerRequests';
 import TodayAnnouncements from '../pages/MEMBER/TodayAnnouncements';
 import MyOfferingsOverview from '../pages/MEMBER/My-Offerings-Overview';
+import SecretaryDashboard from '../pages/SECRETARY/secretaryDashboard';
+import OfferingCards from '../pages/SECRETARY/OfferingCards';
 
 
 const AppRoutes = () => {
@@ -42,6 +44,10 @@ const AppRoutes = () => {
           <Route path="/member-prayer-requests" element={<MyPrayerRequests />} />
           <Route path="/my-announcements" element={<TodayAnnouncements />} />
           <Route path="/my-offerings-overview" element={<MyOfferingsOverview />} />
+
+
+          <Route path="/secretaryDashboard" element={<SecretaryDashboard />} />
+          <Route path="/offering-cards" element={<OfferingCards />} />
         </Route>
         
       </Routes>

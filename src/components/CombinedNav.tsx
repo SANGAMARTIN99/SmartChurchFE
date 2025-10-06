@@ -34,7 +34,7 @@ interface SidebarItem {
 const sidebarItems: SidebarItem[] = [
   { name: 'Dashboard', icon: FaTachometerAlt, href: '/dashboard', roles: ['PASTOR', 'ASSISTANT_PASTOR'] },
   { name: 'Dashboard', icon: FaTachometerAlt, href: '/member-dashboard', roles: ['CHURCH_MEMBER'] },
-  { name: 'Dashboard', icon: FaTachometerAlt, href: '/secretary-dashboard', roles: ['CHURCH_SECRETARY'] },
+  { name: 'Dashboard', icon: FaTachometerAlt, href: '/secretaryDashboard', roles: ['CHURCH_SECRETARY'] },
   { name: 'Dashboard', icon: FaTachometerAlt, href: '/evangelist-dashboard', roles: ['EVANGELIST'] },
   { name: 'Word of the Day', icon: FaBook, href: '/word-of-the-day', roles: ['PASTOR', 'ASSISTANT_PASTOR', 'EVANGELIST'] },
   { name: 'The Word of the Day', icon: FaTachometerAlt, href: '/member-word-of-the-day', roles: ['CHURCH_MEMBER','CHURCH_SECRETARY'] },
@@ -49,7 +49,7 @@ const sidebarItems: SidebarItem[] = [
   { name: 'Service Schedule', icon: FaCalendarAlt, href: '/services', roles: ['PASTOR', 'ASSISTANT_PASTOR', 'EVANGELIST'] },
   { name: 'Notifications Center', icon: FaBell, href: '/notifications', roles: ['PASTOR'] },
   { name: 'Analytics Dashboard', icon: FaChartBar, href: '/analytics', roles: ['PASTOR'] },
-  { name: 'Offering Card Management', icon: FaFileAlt, href: '/offering-cards', roles: ['CHURCH_SECRETARY'] },
+  { name: 'Offering Cards ', icon: FaFileAlt, href: '/offering-cards', roles: ['CHURCH_SECRETARY'] },
   { name: 'Offerings Entry', icon: FaDonate, href: '/offerings-entry', roles: ['CHURCH_SECRETARY'] },
   { name: 'Member Records', icon: FaUser, href: '/member-records', roles: ['CHURCH_SECRETARY'] },
   { name: 'Export Reports', icon: FaFileExport, href: '/reports', roles: ['CHURCH_SECRETARY'] },

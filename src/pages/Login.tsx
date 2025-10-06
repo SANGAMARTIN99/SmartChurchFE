@@ -48,7 +48,7 @@ const AuthPage = () => {
           case 'CHURCH_MEMBER':
             return '/member-dashboard';
           case 'CHURCH_SECRETARY':
-            return '/secretary-dashboard';
+            return '/secretaryDashboard';
           case 'EVANGELIST':
             return '/evangelist-dashboard';
           default:

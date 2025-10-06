@@ -25,11 +25,16 @@ const authLink = setContext((_, { headers }) => {
 
 // Error handling and token refresh logic
 const errorLink = new ApolloLink((operation, forward) => {
+  // Prevent infinite refresh loops
+  const triedRefresh = operation.getContext().triedRefresh === true;
+
   // Helper to attempt refresh and retry the original operation
   const attemptRefreshAndRetry = (observer: any) => {
     const refreshToken = getRefreshToken();
     if (!refreshToken) {
       console.log('No refresh token available, redirecting to login');
+      // Clear any stale tokens to stop repeated invalid attempts
+      try { setAuthToken('', '', null as any); } catch {}
       window.location.href = '/login';
       observer.complete();
       return;
@@ -59,7 +64,7 @@ const errorLink = new ApolloLink((operation, forward) => {
               authorization: `Bearer ${data.refreshToken.accessToken}`,
             };
             console.log('Retry headers:', newHeaders);
-            operation.setContext({ headers: newHeaders });
+            operation.setContext({ headers: newHeaders, triedRefresh: true });
 
             // Retry the original request
             const retrySub = forward(operation).subscribe({
@@ -80,6 +85,7 @@ const errorLink = new ApolloLink((operation, forward) => {
           }, 100); // Small delay to ensure storage sync
         } else {
           console.log('No accessToken in refresh response, redirecting to login');
+          try { setAuthToken('', '', null as any); } catch {}
           window.location.href = '/login';
           observer.complete();
         }
@@ -87,6 +93,7 @@ const errorLink = new ApolloLink((operation, forward) => {
       .catch((error) => {
         console.error('Token refresh failed:', error);
         console.error('Refresh error details:', error.networkError?.result);
+        try { setAuthToken('', '', null as any); } catch {}
         window.location.href = '/login';
         observer.complete();
       });
@@ -118,6 +125,13 @@ const errorLink = new ApolloLink((operation, forward) => {
         );
 
         if (hasAuthError) {
+          if (triedRefresh) {
+            // Already tried refresh once for this operation; avoid looping
+            try { setAuthToken('', '', null as any); } catch {}
+            window.location.href = '/login';
+            observer.complete();
+            return;
+          }
           attemptRefreshAndRetry(observer);
         } else {
           observer.next(result);
@@ -151,6 +165,12 @@ const errorLink = new ApolloLink((operation, forward) => {
         });
 
         if (isUnauthorized || networkHasAuthError) {
+          if (triedRefresh) {
+            try { setAuthToken('', '', null as any); } catch {}
+            window.location.href = '/login';
+            observer.complete();
+            return;
+          }
           attemptRefreshAndRetry(observer);
         } else {
           observer.error(err);

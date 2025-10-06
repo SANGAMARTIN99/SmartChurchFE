@@ -238,3 +238,89 @@ export const GET_GROUPS = gql`
     }
   }
 `;
+
+// Secretary dashboard queries
+export const GET_SECRETARY_DASHBOARD = gql`
+  query SecretaryDashboard($taskTimeFilter: String) {
+    secretaryTasks: secretaryTasks(timeFilter: $taskTimeFilter) {
+      id
+      title
+      description
+      priority
+      status
+      dueDate
+      assignedTo
+      category
+    }
+    memberRequests(status: "new") {
+      id
+      memberName
+      requestType
+      status
+      submittedDate
+      urgency
+      details
+    }
+    secretaryQuickStats {
+      title
+      value
+      change
+      trend
+    }
+    secretaryActivity(limit: 10) {
+      action
+      user
+      time
+      type
+    }
+  }
+`;
+
+// Offering Cards
+export const GET_OFFERING_CARDS = gql`
+  query OfferingCards($streetId: Int, $isTaken: Boolean, $search: String) {
+    offeringCards(streetId: $streetId, isTaken: $isTaken, search: $search) {
+      id
+      code
+      street
+      number
+      isTaken
+      assignedToName
+      assignedToId
+      pledgedAhadi
+      pledgedShukrani
+      pledgedMajengo
+      progressAhadi
+      progressShukrani
+      progressMajengo
+    }
+  }
+`;
+
+export const GET_AVAILABLE_CARD_NUMBERS = gql`
+  query AvailableCardNumbers($streetId: Int) {
+    availableCardNumbers(streetId: $streetId) {
+      street
+      number
+      code
+    }
+  }
+`;
+
+export const GET_CARDS_OVERVIEW = gql`
+  query CardsOverview($streetId: Int) {
+    cardsOverview(streetId: $streetId) {
+      totalCards
+      takenCards
+      freeCards
+      activelyUsedCards
+      leastActiveCard
+      totalPledgedAhadi
+      totalPledgedShukrani
+      totalPledgedMajengo
+      totalCollectedAhadi
+      totalCollectedShukrani
+      totalCollectedMajengo
+    }
+  }
+`;

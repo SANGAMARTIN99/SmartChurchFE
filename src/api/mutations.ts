@@ -279,3 +279,77 @@ export const MEMBER_MARK_PRAYER_ANSWERED = gql`
     }
   }
 `;
+
+// Secretary: Offering Cards
+export const CREATE_OFFERING_CARD = gql`
+  mutation CreateOfferingCard($input: CreateOfferingCardInput!) {
+    createOfferingCard(input: $input) {
+      ok
+      cardCode
+      cardId
+    }
+  }
+`;
+
+export const ASSIGN_CARD = gql`
+  mutation AssignCard($input: AssignCardInput!) {
+    assignCard(input: $input) {
+      ok
+      assignment {
+        id
+        cardCode
+        fullName
+        phoneNumber
+        year
+        pledgedAhadi
+        pledgedShukrani
+        pledgedMajengo
+        active
+      }
+    }
+  }
+`;
+
+export const UPDATE_ASSIGNMENT = gql`
+  mutation UpdateAssignment($input: UpdateAssignmentInput!) {
+    updateAssignment(input: $input) {
+      ok
+      assignment {
+        id
+        cardCode
+        fullName
+        phoneNumber
+        year
+        pledgedAhadi
+        pledgedShukrani
+        pledgedMajengo
+        active
+      }
+    }
+  }
+`;
+
+export const RECORD_OFFERING_ENTRY = gql`
+  mutation RecordOfferingEntry($input: OfferingEntryInput!) {
+    recordOfferingEntry(input: $input) {
+      ok
+      entry {
+        id
+        cardCode
+        entryType
+        amount
+        date
+      }
+    }
+  }
+`;
+
+export const BULK_GENERATE_CARDS = gql`
+  mutation BulkGenerateCards($input: BulkGenerateCardsInput!) {
+    bulkGenerateCards(input: $input) {
+      ok
+      created
+      skipped
+    }
+  }
+`;
