@@ -353,3 +353,20 @@ export const BULK_GENERATE_CARDS = gql`
     }
   }
 `;
+
+export const CREATE_CARD_APPLICATION = gql`
+  mutation CreateCardApplication($input: CardApplicationInput!) {
+    createCardApplication(input: $input) {
+      ok
+      application {
+        id
+        fullName
+        phoneNumber
+        street
+        preferredNumber
+        status
+        createdAt
+      }
+    }
+  }
+`;
