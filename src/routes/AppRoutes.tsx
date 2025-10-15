@@ -18,6 +18,7 @@ import TodayAnnouncements from '../pages/MEMBER/TodayAnnouncements';
 import MyOfferingsOverview from '../pages/MEMBER/My-Offerings-Overview';
 import SecretaryDashboard from '../pages/SECRETARY/secretaryDashboard';
 import OfferingCards from '../pages/SECRETARY/OfferingCards';
+import OfferingEntryPage from '../pages/SECRETARY/OfferingEntry';
 
 
 const AppRoutes = () => {
@@ -48,6 +49,7 @@ const AppRoutes = () => {
 
           <Route path="/secretaryDashboard" element={<SecretaryDashboard />} />
           <Route path="/offering-cards" element={<OfferingCards />} />
+          <Route path="/offering-entry" element={<OfferingEntryPage />} />
         </Route>
         
       </Routes>

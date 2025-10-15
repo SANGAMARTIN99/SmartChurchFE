@@ -50,7 +50,7 @@ const sidebarItems: SidebarItem[] = [
   { name: 'Notifications Center', icon: FaBell, href: '/notifications', roles: ['PASTOR'] },
   { name: 'Analytics Dashboard', icon: FaChartBar, href: '/analytics', roles: ['PASTOR'] },
   { name: 'Offering Cards ', icon: FaFileAlt, href: '/offering-cards', roles: ['CHURCH_SECRETARY'] },
-  { name: 'Offerings Entry', icon: FaDonate, href: '/offerings-entry', roles: ['CHURCH_SECRETARY'] },
+  { name: 'Offerings Entry', icon: FaDonate, href: '/offering-entry', roles: ['CHURCH_SECRETARY'] },
   { name: 'Member Records', icon: FaUser, href: '/member-records', roles: ['CHURCH_SECRETARY'] },
   { name: 'Export Reports', icon: FaFileExport, href: '/reports', roles: ['CHURCH_SECRETARY'] },
   { name: 'Member Directory', icon: FaUsers, href: '/directory', roles: ['ASSISTANT_PASTOR', 'CHURCH_SECRETARY'] },

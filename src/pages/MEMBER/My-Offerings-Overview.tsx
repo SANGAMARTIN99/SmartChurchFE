@@ -1,11 +1,13 @@
 import React, { useMemo, useState } from 'react';
-import { useQuery } from '@apollo/client';
+import { useMutation, useQuery } from '@apollo/client';
 import { format, parseISO } from 'date-fns';
 import {
   ME_QUERY,
   GET_RECENT_OFFERINGS,
   GET_OFFERINGS_BY_TYPE,
 } from '../../api/queries';
+import { CREATE_CARD_APPLICATION } from '../../api/mutations';
+import { GET_STREETS_AND_GROUPS, REGISTRATION_WINDOW_STATUS, NUMBER_SUGGESTIONS, MY_CARD_STATE } from '../../api/queries';
 
 type ViewMode = 'basic' | 'analytics';
 
@@ -73,6 +75,23 @@ const Pie = ({
   );
 };
 
+// Simple Modal used for card request
+const Modal: React.FC<{ open: boolean; title: string; onClose: () => void; children: React.ReactNode }> = ({ open, title, onClose, children }) => {
+  if (!open) return null;
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div className="absolute inset-0 bg-black/30" onClick={onClose} />
+      <div className="relative bg-white rounded shadow-lg w-full max-w-xl p-4">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-lg font-semibold text-[#5E936C]">{title}</h3>
+          <button className="text-gray-600" onClick={onClose}>✕</button>
+        </div>
+        {children}
+      </div>
+    </div>
+  );
+};
+
 const MyOfferingsOverview: React.FC = () => {
   const [view, setView] = useState<ViewMode>('basic');
   const [q, setQ] = useState('');
@@ -97,8 +116,55 @@ const MyOfferingsOverview: React.FC = () => {
     fetchPolicy: 'cache-and-network',
   });
 
-  const myName = (me?.me?.fullName || '').toLowerCase();
+  // Card request modal state and mutation
+  const [requestOpen, setRequestOpen] = useState(false);
+  const [fullName, setFullName] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState('');
+  const [streetId, setStreetId] = useState<number | ''>('' as any);
+  const [preferredNumber, setPreferredNumber] = useState<number | ''>('' as any);
+  const [pledgeAhadi, setPledgeAhadi] = useState<number | ''>('' as any);
+  const [pledgeShukrani, setPledgeShukrani] = useState<number | ''>('' as any);
+  const [pledgeMajengo, setPledgeMajengo] = useState<number | ''>('' as any);
+  const [requestError, setRequestError] = useState<string | null>(null);
+  const [createApplication, { loading: requesting }] = useMutation(CREATE_CARD_APPLICATION, {
+    onCompleted: () => {
+      setRequestOpen(false);
+      setPreferredNumber('' as any);
+      setPledgeAhadi('' as any);
+      setPledgeShukrani('' as any);
+      setPledgeMajengo('' as any);
+      setRequestError(null);
+      // update gating state
+      refetchMyCard && refetchMyCard();
+    },
+    onError: (err) => {
+      setRequestError(err.message || 'Failed to submit request');
+    }
+  });
 
+  const { data: streetsData } = useQuery(GET_STREETS_AND_GROUPS);
+  const streets = streetsData?.streets || [];
+
+  const { data: windowStatus } = useQuery(REGISTRATION_WINDOW_STATUS);
+  const { data: myCardStateData, refetch: refetchMyCard } = useQuery(MY_CARD_STATE);
+  const hasPendingApp = !!myCardStateData?.myCardState?.hasPendingApplication;
+  const hasCurrentAssignment = !!myCardStateData?.myCardState?.hasCurrentAssignment;
+
+  const { data: suggestionsData } = useQuery(NUMBER_SUGGESTIONS, {
+    variables: { streetId: streetId || 0, queryNumber: preferredNumber || 0, limit: 5 },
+    skip: !streetId || !preferredNumber,
+    fetchPolicy: 'cache-and-network',
+  });
+
+  React.useEffect(() => {
+    if (me?.me) {
+      setFullName(me.me.fullName || '');
+      setPhoneNumber(me.me.phoneNumber || '');
+      setStreetId(me.me.street?.id || 0);
+    }
+  }, [me]);
+
+  const myName = (me?.me?.fullName || '').toLowerCase();
   const all: OfferingVM[] = useMemo(() => {
     return (recent?.recentOfferings || []).map((o: any) => ({
       id: o.id,
@@ -208,6 +274,18 @@ const MyOfferingsOverview: React.FC = () => {
             <p className="text-gray-600">Your contributions and insights</p>
           </div>
           <div className="flex gap-2">
+            {!hasPendingApp && !hasCurrentAssignment ? (
+              <button
+                onClick={() => setRequestOpen(true)}
+                className="px-4 py-2 rounded-lg bg-[#5E936C] text-white"
+              >
+                Request Offering Card
+              </button>
+            ) : (
+              <div className="px-4 py-2 rounded-lg bg-gray-200 text-gray-600 cursor-not-allowed" title={hasCurrentAssignment ? 'You already have a current-year card' : 'You already have a pending application'}>
+                {hasCurrentAssignment ? 'Card Active' : 'Application Pending'}
+              </div>
+            )}
             <button
               onClick={() => setView('basic')}
               className={`px-4 py-2 rounded-lg ${
@@ -319,7 +397,7 @@ const MyOfferingsOverview: React.FC = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
                 <Pie slices={typeSlices} />
                 <div className="space-y-2">
-                  {typeSlices.map((s, i) => (
+                  {typeSlices.map((s: any, i: number) => (
                     <div key={i} className="flex items-center justify-between">
                       <div className="flex items-center">
                         <span
@@ -375,6 +453,102 @@ const MyOfferingsOverview: React.FC = () => {
             </div>
           </div>
         )}
+        {/* Request Card Modal */}
+        <Modal open={requestOpen} title="Request Offering Card" onClose={() => setRequestOpen(false)}>
+          <form
+            onSubmit={async (e) => {
+              e.preventDefault();
+              setRequestError(null);
+              await createApplication({
+                variables: {
+                  input: {
+                    fullName,
+                    phoneNumber,
+                    streetId: streetId ? Number(streetId) : null,
+                    preferredNumber: preferredNumber ? Number(preferredNumber) : null,
+                    pledgedAhadi: pledgeAhadi ? Number(pledgeAhadi) : 0,
+                    pledgedShukrani: pledgeShukrani ? Number(pledgeShukrani) : 0,
+                    pledgedMajengo: pledgeMajengo ? Number(pledgeMajengo) : 0,
+                  },
+                },
+              });
+            }}
+            className="grid md:grid-cols-2 gap-3 items-end"
+          >
+            {requestError && (
+              <div className="md:col-span-2 p-2 rounded border border-red-200 bg-red-50 text-red-700 text-sm">{requestError}</div>
+            )}
+            <label className="flex flex-col">
+              <span className="text-sm text-gray-600">Full Name</span>
+              <input className="border rounded px-2 py-1" value={fullName} onChange={(e) => setFullName(e.target.value)} />
+            </label>
+            <label className="flex flex-col">
+              <span className="text-sm text-gray-600">Phone Number</span>
+              <input className="border rounded px-2 py-1" value={phoneNumber} onChange={(e) => setPhoneNumber(e.target.value)} />
+            </label>
+            <label className="flex flex-col">
+              <span className="text-sm text-gray-600">Street</span>
+              <select className="border rounded px-2 py-1" value={streetId as any} onChange={(e) => setStreetId(e.target.value ? Number(e.target.value) : ('' as any))}>
+                <option value="">Select street</option>
+                {streets.map((s: any) => (
+                  <option key={s.id} value={s.id}>{s.name}</option>
+                ))}
+              </select>
+            </label>
+            <label className="flex flex-col">
+              <span className="text-sm text-gray-600">Preferred Card Number (optional)</span>
+              <input type="number" className="border rounded px-2 py-1" value={preferredNumber as any} onChange={(e) => setPreferredNumber(e.target.value ? Number(e.target.value) : ('' as any))} />
+            </label>
+
+            {/* Pledges */}
+            <label className="flex flex-col">
+              <span className="text-sm text-gray-600">Pledge - Ahadi</span>
+              <input type="number" className="border rounded px-2 py-1" value={pledgeAhadi as any} onChange={(e) => setPledgeAhadi(e.target.value ? Number(e.target.value) : ('' as any))} />
+            </label>
+            <label className="flex flex-col">
+              <span className="text-sm text-gray-600">Pledge - Shukrani</span>
+              <input type="number" className="border rounded px-2 py-1" value={pledgeShukrani as any} onChange={(e) => setPledgeShukrani(e.target.value ? Number(e.target.value) : ('' as any))} />
+            </label>
+            <label className="flex flex-col">
+              <span className="text-sm text-gray-600">Pledge - Majengo</span>
+              <input type="number" className="border rounded px-2 py-1" value={pledgeMajengo as any} onChange={(e) => setPledgeMajengo(e.target.value ? Number(e.target.value) : ('' as any))} />
+            </label>
+
+            {/* Suggestions */}
+            {streetId && preferredNumber && (
+              <div className="md:col-span-2 text-sm">
+                {suggestionsData?.numberSuggestions?.exactAvailable ? (
+                  <div className="p-2 bg-green-50 border border-green-200 rounded text-green-700">Exact number {preferredNumber} is available ({suggestionsData.numberSuggestions.exactCode}).</div>
+                ) : (
+                  <div className="p-2 bg-yellow-50 border border-yellow-200 rounded text-yellow-700">
+                    <div className="mb-2">Number {preferredNumber} is taken or unavailable. Suggested free numbers:</div>
+                    <div className="flex flex-wrap gap-2">
+                      {(suggestionsData?.numberSuggestions?.suggestions || []).map((s: any) => (
+                        <button type="button" key={s.code} className="px-2 py-1 border rounded hover:bg-green-50" onClick={() => setPreferredNumber(s.number)}>
+                          {s.code}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+            
+            <div className="md:col-span-2 text-xs text-gray-600 space-y-1">
+              <p>• Once approved and assigned, your offering card remains fixed for one full calendar year.</p>
+              <p>• Card request windows are opened by the secretary. If the window is closed, your request will be queued for manual review and approval.</p>
+              {windowStatus?.registrationWindowStatus && (
+                <p>
+                  Registration window is {windowStatus.registrationWindowStatus.isOpen ? 'OPEN' : 'CLOSED'}{windowStatus.registrationWindowStatus.startAt ? ` · ${windowStatus.registrationWindowStatus.startAt} → ${windowStatus.registrationWindowStatus.endAt}` : ''}
+                </p>
+              )}
+            </div>
+            <div className="md:col-span-2 flex gap-2">
+              <button disabled={requesting} className="bg-[#5E936C] text-white px-3 py-2 rounded disabled:opacity-50">{requesting ? 'Submitting…' : 'Submit Request'}</button>
+              <button type="button" className="border px-3 py-2 rounded" onClick={() => setRequestOpen(false)}>Cancel</button>
+            </div>
+          </form>
+        </Modal>
       </div>
     </div>
   );

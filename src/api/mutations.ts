@@ -1,11 +1,40 @@
 import { gql } from "@apollo/client";
-
 export const REFRESH_TOKEN = gql`
 mutation RefreshToken($refreshToken: String!) {
   refreshToken(refreshToken: $refreshToken) {
     accessToken
   }
-}
+}`;
+
+// Bulk record offering entries with batch metadata
+export const BULK_RECORD_OFFERING_ENTRIES = gql`
+  mutation BulkRecordOfferingEntries($input: BulkOfferingEntryInput!) {
+    bulkRecordOfferingEntries(input: $input) {
+      ok
+      count
+      totalAhadi
+      totalShukrani
+      totalMajengo
+      batch {
+        id
+        street
+        recorderName
+        date
+        massType
+        majorMassNumber
+        createdAt
+      }
+    }
+  }
+`;
+
+export const REJECT_CARD_APPLICATION = gql`
+  mutation RejectCardApplication($applicationId: ID!, $reason: String) {
+    rejectCardApplication(applicationId: $applicationId, reason: $reason) {
+      ok
+      application { id status note }
+    }
+  }
 `;
 
 export const LOGIN_USER = gql`
@@ -364,8 +393,61 @@ export const CREATE_CARD_APPLICATION = gql`
         phoneNumber
         street
         preferredNumber
-        status
+        pledgedAhadi
+        pledgedShukrani
+        pledgedMajengo
         createdAt
+      }
+    }
+  }
+`;
+
+export const OPEN_REGISTRATION_WINDOW = gql`
+  mutation OpenRegistrationWindow($startAt: String!, $endAt: String!) {
+    openRegistrationWindow(startAt: $startAt, endAt: $endAt) {
+      ok
+      window { isOpen startAt endAt }
+    }
+  }
+`;
+
+export const CLOSE_REGISTRATION_WINDOW = gql`
+  mutation CloseRegistrationWindow {
+    closeRegistrationWindow {
+      ok
+      window { isOpen startAt endAt }
+    }
+  }
+`;
+
+export const APPROVE_CARD_APPLICATION = gql`
+  mutation ApproveCardApplication(
+    $applicationId: ID!
+    $cardId: ID!
+    $year: Int!
+    $pledgedAhadi: Float
+    $pledgedShukrani: Float
+    $pledgedMajengo: Float
+  ) {
+    approveCardApplication(
+      applicationId: $applicationId
+      cardId: $cardId
+      year: $year
+      pledgedAhadi: $pledgedAhadi
+      pledgedShukrani: $pledgedShukrani
+      pledgedMajengo: $pledgedMajengo
+    ) {
+      ok
+      assignment {
+        id
+        cardCode
+        fullName
+        phoneNumber
+        year
+        pledgedAhadi
+        pledgedShukrani
+        pledgedMajengo
+        active
       }
     }
   }

@@ -15,6 +15,46 @@ export const ME_QUERY = gql`
   }
 `;
 
+export const REGISTRATION_WINDOW_STATUS = gql`
+  query RegistrationWindowStatus {
+    registrationWindowStatus {
+      isOpen
+      startAt
+      endAt
+    }
+  }
+`;
+
+export const NUMBER_SUGGESTIONS = gql`
+  query NumberSuggestions($streetId: Int!, $queryNumber: Int!, $limit: Int) {
+    numberSuggestions(streetId: $streetId, queryNumber: $queryNumber, limit: $limit) {
+      street
+      queryNumber
+      exactAvailable
+      exactCode
+      suggestions { street number code }
+    }
+  }
+`;
+
+export const GET_CARD_APPLICATIONS = gql`
+  query CardApplications($status: String) {
+    cardApplications(status: $status) {
+      id
+      fullName
+      phoneNumber
+      street
+      preferredNumber
+      note
+      pledgedAhadi
+      pledgedShukrani
+      pledgedMajengo
+      status
+      createdAt
+    }
+  }
+`;
+
 export const GET_STREETS_AND_GROUPS = gql`
   query {
     streets {
@@ -287,6 +327,8 @@ export const GET_OFFERING_CARDS = gql`
       isTaken
       assignedToName
       assignedToId
+      assignedPhone
+      assignedYear
       pledgedAhadi
       pledgedShukrani
       pledgedMajengo
@@ -321,6 +363,15 @@ export const GET_CARDS_OVERVIEW = gql`
       totalCollectedAhadi
       totalCollectedShukrani
       totalCollectedMajengo
+    }
+  }
+`;
+
+export const MY_CARD_STATE = gql`
+  query MyCardState {
+    myCardState {
+      hasPendingApplication
+      hasCurrentAssignment
     }
   }
 `;
