@@ -65,9 +65,12 @@ const OfferingsOverview = () => {
   const [messagesOpen, setMessagesOpen] = useState(false);
   const [timeRange, setTimeRange] = useState<'week' | 'month' | 'quarter' | 'year'>('month');
   const [selectedStreet, setSelectedStreet] = useState<string>('all');
+  // Default to current month
+  const todayIso = new Date().toISOString().slice(0,10);
+  const monthStartIso = (() => { const d = new Date(); d.setDate(1); return d.toISOString().slice(0,10); })();
   const [dateFilter, setDateFilter] = useState({
-    start: '2023-10-01',
-    end: '2023-10-31'
+    start: monthStartIso,
+    end: todayIso,
   });
 
   // Backend data
@@ -97,7 +100,7 @@ const OfferingsOverview = () => {
     };
     const normalizeMass = (val: string): Offering['massType'] => {
       const m = (val || '').toLowerCase();
-      if (m.includes('sunday')) return 'sunday';
+      if (m.includes('sunday') || m.includes('major')) return 'sunday';
       if (m.includes('morning')) return 'morning-glory';
       if (m.includes('evening')) return 'evening-glory';
       if (m.includes('seli')) return 'seli';
@@ -153,9 +156,22 @@ const OfferingsOverview = () => {
   }
 
   if (statsError || recentError || massError || typeError) {
+    // Log detailed errors for diagnostics
+    if (statsError) console.error('OfferingStats error:', statsError);
+    if (recentError) console.error('RecentOfferings error:', recentError);
+    if (massError) console.error('OfferingsByMass error:', massError);
+    if (typeError) console.error('OfferingsByType error:', typeError);
     return (
       <div className="min-h-screen bg-[#E8FFD7] flex items-center justify-center text-red-600">
         Failed to load offerings data.
+        <pre className="text-xs text-gray-700 bg-white p-2 ml-3 rounded max-w-xl overflow-auto">
+          {JSON.stringify({
+            stats: statsError?.message,
+            recent: recentError?.message,
+            mass: massError?.message,
+            type: typeError?.message,
+          }, null, 2)}
+        </pre>
       </div>
     );
   }
@@ -200,22 +216,32 @@ const OfferingsOverview = () => {
     special: <FaMoneyBillWave />,
     general: <FaChartBar />,
     pledge: <FaReceipt />,
+    ahadi: <FaMoneyBillWave />,
+    shukrani: <FaMoneyBillWave />,
+    majengo: <FaMoneyBillWave />,
   };
   const typeColorMap: Record<string, string> = {
     tithe: '#5E936C',
     special: '#93DA97',
     general: '#4A8C5F',
     pledge: '#3A7A4F',
+    ahadi: '#5E936C',
+    shukrani: '#93DA97',
+    majengo: '#4A8C5F',
   };
   const humanizeType = (t: string) => {
     const x = (t || '').toLowerCase();
     if (x === 'tithe') return 'Tithe';
     if (x === 'special') return 'Special Offering';
     if (x === 'pledge') return 'Pledge Payment';
+    if (x === 'ahadi') return 'Ahadi';
+    if (x === 'shukrani') return 'Shukrani';
+    if (x === 'majengo') return 'Majengo';
     return 'General Contribution';
   };
   const offeringTypes = (typeData?.offeringsByType || []).map((t: any) => {
-    const key = (t.type || 'general').toLowerCase();
+    const raw = (t.type || 'general');
+    const key = raw.toLowerCase();
     return {
       type: humanizeType(key),
       amount: Number(t.amount) || 0,
