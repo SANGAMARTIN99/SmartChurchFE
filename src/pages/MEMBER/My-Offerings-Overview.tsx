@@ -24,7 +24,7 @@ interface OfferingVM {
 const currency = (n: number) =>
   new Intl.NumberFormat('en-TZ', { style: 'currency', currency: 'TZS' }).format(n || 0);
 
-// Minimal SVG line chart
+// Improved Line Chart with labels and grid
 const LineChart = ({
   series,
   w = 520,
@@ -36,46 +36,107 @@ const LineChart = ({
   h?: number;
   color?: string;
 }) => {
-  if (!series.length) return <div className="text-sm text-gray-500">No data</div>;
+  if (!series.length) return <div className="text-sm text-gray-500">No data available</div>;
   const max = Math.max(1, ...series);
   const stepX = series.length > 1 ? w / (series.length - 1) : w;
   const pts = series
-    .map((v, i) => `${i * stepX},${h - (v / max) * (h - 8) - 4}`)
+    .map((v, i) => `${i * stepX},${h - (v / max) * (h - 40) - 20}`)
     .join(' ');
+  
+  // Add x-axis labels (months)
+  const months = ['6mo', '5mo', '4mo', '3mo', '2mo', '1mo'];
   return (
     <svg width="100%" height={h} viewBox={`0 0 ${w} ${h}`}>
+      {/* Grid lines */}
+      {series.map((_, i) => (
+        <line
+          key={i}
+          x1={i * stepX}
+          y1={0}
+          x2={i * stepX}
+          y2={h - 20}
+          stroke="#E0E0E0"
+          strokeDasharray="2"
+        />
+      ))}
+      {/* X-axis labels */}
+      {months.map((m, i) => (
+        <text
+          key={i}
+          x={i * stepX}
+          y={h - 5}
+          textAnchor="middle"
+          fontSize="10"
+          fill="#666"
+        >
+          {m}
+        </text>
+      ))}
+      {/* Y-axis label (currency) */}
+      <text
+        x={5}
+        y={10}
+        fontSize="10"
+        fill="#666"
+      >
+        {currency(max)}
+      </text>
+      <text
+        x={5}
+        y={h - 20}
+        fontSize="10"
+        fill="#666"
+      >
+        {currency(0)}
+      </text>
+      {/* Line */}
       <polyline fill="none" stroke={color} strokeWidth="2" points={pts} />
     </svg>
   );
 };
 
-// Minimal pie via CSS conic-gradient
+// Improved Pie Chart with legend and multiple colors
 const Pie = ({
   slices,
   size = 180,
 }: {
-  slices: { color: string; value: number }[];
+  slices: { color: string; value: number; label: string }[];
   size?: number;
 }) => {
+  if (!slices.length) return <div className="text-sm text-gray-500">No data available</div>;
   const total = Math.max(1, slices.reduce((s, x) => s + (x.value || 0), 0));
   let acc = 0;
-  const stops = slices
-    .map((s) => {
-      const start = (acc / total) * 360;
-      acc += s.value || 0;
-      const end = (acc / total) * 360;
-      return `${s.color} ${start}deg ${end}deg`;
-    })
-    .join(', ');
+  const colorPalette = ['#5E936C', '#93DA97', '#4A8C5F', '#3A7A4F', '#6B7280'];
+  const stops = slices.map((s, i) => {
+    const start = (acc / total) * 360;
+    acc += s.value || 0;
+    const end = (acc / total) * 360;
+    return `${colorPalette[i % colorPalette.length]} ${start}deg ${end}deg`;
+  }).join(', ');
+  
   return (
-    <div
-      className="rounded-full mx-auto"
-      style={{ width: size, height: size, background: `conic-gradient(${stops})` }}
-    />
+    <div className="flex items-center gap-4">
+      <div
+        className="rounded-full mx-auto"
+        style={{ width: size, height: size, background: `conic-gradient(${stops})` }}
+      />
+      <div className="space-y-2">
+        {slices.map((s, i) => (
+          <div key={i} className="flex items-center gap-2">
+            <span
+              className="w-3 h-3 rounded-full"
+              style={{ backgroundColor: colorPalette[i % colorPalette.length] }}
+            />
+            <span className="text-sm text-gray-700">{s.label}</span>
+            <span className="text-sm font-medium text-[#5E936C]">{currency(s.value)}</span>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 };
 
-// Simple Modal used for card request
+// Modal Component moved to file scope
 const Modal: React.FC<{ open: boolean; title: string; onClose: () => void; children: React.ReactNode }> = ({ open, title, onClose, children }) => {
   if (!open) return null;
   return (
@@ -264,6 +325,20 @@ const MyOfferingsOverview: React.FC = () => {
     URL.revokeObjectURL(url);
   };
 
+  // Pagination state and derivations
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(12);
+
+  // Reset to first page when filters or dataset change
+  React.useEffect(() => {
+    setPage(1);
+  }, [q, dateRange, mine.length]);
+
+  const totalPages = Math.max(1, Math.ceil(mine.length / pageSize));
+  const startIdx = Math.min((page - 1) * pageSize, Math.max(0, (totalPages - 1) * pageSize));
+  const endIdx = Math.min(startIdx + pageSize, mine.length);
+  const pageRows = mine.slice(startIdx, endIdx);
+
   return (
     <div className="p-4 md:p-6 bg-[#F7FCF5] min-h-[calc(100vh-3rem)]">
       <div className="max-w-6xl mx-auto">
@@ -357,7 +432,7 @@ const MyOfferingsOverview: React.FC = () => {
                 <div className="text-center text-gray-500">Loading...</div>
               ) : mine.length ? (
                 <div className="divide-y">
-                  {mine.slice(0, 12).map((o) => (
+                  {pageRows.map((o) => (
                     <div key={o.id} className="py-3 flex items-center justify-between">
                       <div>
                         <div className="font-medium text-gray-800">
@@ -374,6 +449,51 @@ const MyOfferingsOverview: React.FC = () => {
               ) : (
                 <div className="text-center text-gray-500">No offerings found.</div>
               )}
+
+              {/* Pagination controls */}
+              {mine.length > 0 && (
+                <div className="mt-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                  <div className="text-sm text-gray-600">
+                    Showing <span className="font-medium">{mine.length ? startIdx + 1 : 0}</span>
+                    {' '}
+                    to <span className="font-medium">{endIdx}</span> of{' '}
+                    <span className="font-medium">{mine.length}</span> entries
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <label className="text-sm text-gray-600">Rows per page</label>
+                    <select
+                      className="border rounded px-2 py-1 text-sm"
+                      value={pageSize}
+                      onChange={(e) => setPageSize(Number(e.target.value))}
+                    >
+                      {[5, 10, 12, 20, 50].map((n) => (
+                        <option key={n} value={n}>{n}</option>
+                      ))}
+                    </select>
+                    <div className="flex items-center gap-1">
+                      <button
+                        className="px-3 py-1 border rounded disabled:opacity-50"
+                        onClick={() => setPage((p) => Math.max(1, p - 1))}
+                        disabled={page <= 1}
+                        aria-label="Previous page"
+                      >
+                        Prev
+                      </button>
+                      <span className="text-sm text-gray-600 px-2">
+                        Page {page} of {totalPages}
+                      </span>
+                      <button
+                        className="px-3 py-1 border rounded disabled:opacity-50"
+                        onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                        disabled={page >= totalPages}
+                        aria-label="Next page"
+                      >
+                        Next
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -383,7 +503,7 @@ const MyOfferingsOverview: React.FC = () => {
             {/* Trend */}
             <div className="bg-white rounded-xl shadow p-5">
               <div className="flex items-center justify-between mb-3">
-                <h2 className="font-semibold text-[#5E936C]">Monthly Trend (last 6)</h2>
+                <h2 className="font-semibold text-[#5E936C]">Monthly Trend (last 6 months)</h2>
               </div>
               <LineChart series={monthlyTrend} />
               <div className="mt-2 text-sm text-gray-500">
@@ -393,7 +513,7 @@ const MyOfferingsOverview: React.FC = () => {
 
             {/* Type breakdown */}
             <div className="bg-white rounded-xl shadow p-5">
-              <h2 className="font-semibold text-[#5E936C] mb-4">Offering Types</h2>
+              <h2 className="font-semibold text-[#5E936C] mb-4">Offering Types Breakdown</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
                 <Pie slices={typeSlices} />
                 <div className="space-y-2">

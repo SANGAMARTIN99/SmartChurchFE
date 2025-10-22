@@ -17,6 +17,7 @@ import {
   GET_RECENT_OFFERINGS,
   GET_OFFERINGS_BY_MASS,
   GET_OFFERINGS_BY_TYPE,
+  GET_OFFERINGS_BY_STREET,
 } from '../../api/queries';
 
 // Types
@@ -129,25 +130,20 @@ const OfferingsOverview = () => {
   };
 
   // Derive street performance from fetched offerings
-  const streetTotals: Record<string, { total: number; count: number }> = {};
-  offerings.forEach((o) => {
-    const key = o.street || 'Unknown';
-    if (!streetTotals[key]) streetTotals[key] = { total: 0, count: 0 };
-    streetTotals[key].total += o.amount;
-    streetTotals[key].count += 1;
-  });
-  const streets: StreetStats[] = (streetsGroupsData?.streets || []).map((s: any) => {
-    const stats = streetTotals[s.name] || { total: 0, count: 0 };
-    return {
-      name: s.name,
-      total: stats.total,
-      memberCount: 0,
-      average: stats.count ? stats.total / stats.count : 0,
-      trend: 'up',
-    } as StreetStats;
-  });
+  // Backend-provided street performance for selected date range
+  const { data: streetAggData, loading: streetAggLoading, error: streetAggError } = useQuery(
+    GET_OFFERINGS_BY_STREET,
+    { variables: { start: dateFilter.start, end: dateFilter.end } }
+  );
+  const streets: StreetStats[] = (streetAggData?.offeringsByStreet || []).map((s: any) => ({
+    name: s.name,
+    total: Number(s.total) || 0,
+    memberCount: Number(s.memberCount) || 0,
+    average: Number(s.average) || 0,
+    trend: (s.trend || 'up') as 'up'|'down',
+  }));
 
-  if (statsLoading || recentLoading || massLoading || typeLoading) {
+  if (statsLoading || recentLoading || massLoading || typeLoading || streetAggLoading) {
     return (
       <div className="min-h-screen bg-[#E8FFD7] flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#5E936C]"></div>
@@ -155,12 +151,13 @@ const OfferingsOverview = () => {
     );
   }
 
-  if (statsError || recentError || massError || typeError) {
+  if (statsError || recentError || massError || typeError || streetAggError) {
     // Log detailed errors for diagnostics
     if (statsError) console.error('OfferingStats error:', statsError);
     if (recentError) console.error('RecentOfferings error:', recentError);
     if (massError) console.error('OfferingsByMass error:', massError);
     if (typeError) console.error('OfferingsByType error:', typeError);
+    if (streetAggError) console.error('OfferingsByStreet error:', streetAggError);
     return (
       <div className="min-h-screen bg-[#E8FFD7] flex items-center justify-center text-red-600">
         Failed to load offerings data.
@@ -170,6 +167,7 @@ const OfferingsOverview = () => {
             recent: recentError?.message,
             mass: massError?.message,
             type: typeError?.message,
+            street: streetAggError?.message,
           }, null, 2)}
         </pre>
       </div>
@@ -305,7 +303,7 @@ const OfferingsOverview = () => {
         
 
         {/* Main Content */}
-        <main className="flex-1 overflow-y-auto p-4 mt-12 md:p-6 bg-[#F7FCF5]">
+        <main className="flex-1 overflow-y-auto p-4  md:p-6 bg-[#F7FCF5]">
           <AnimatePresence mode="wait">
             {activeView === 'overview' && (
               <motion.div

@@ -106,6 +106,19 @@ export const GET_OFFERINGS_BY_TYPE = gql`
   }
 `;
 
+// Offerings aggregated by street (backend Pastor.queries)
+export const GET_OFFERINGS_BY_STREET = gql`
+  query OfferingsByStreet($start: String, $end: String) {
+    offeringsByStreet(start: $start, end: $end) {
+      name
+      total
+      memberCount
+      average
+      trend
+    }
+  }
+`;
+
 
 export const GET_DASHBOARD_STATS = gql`
   query DashboardStats {

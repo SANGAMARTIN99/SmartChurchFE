@@ -7,7 +7,8 @@ html, body, #root {
 
 /* Prevent body from scrolling; main app content handles its own scroll */
 body {
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
   overscroll-behavior: none; /* disable bounce on body */
 }
 
@@ -16,6 +17,7 @@ body {
   -ms-overflow-style: none; /* IE and Edge */
   scrollbar-width: none;    /* Firefox */
 }
+
 .scrollbar-hide::-webkit-scrollbar {
   display: none;            /* Chrome, Safari, Opera */
 }
