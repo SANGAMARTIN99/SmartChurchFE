@@ -1,1 +1,1 @@
-export const ENDPOINT = "https://smartchurchbe.onrender.com"
+export const ENDPOINT = "https://smartchurchbe.onrender.com/graphql/"
