@@ -7,7 +7,7 @@ import { REFRESH_TOKEN } from '../api/mutations';
 import { ENDPOINT } from '../api/environment';
 
 const httpLink = createHttpLink({
-  uri: `${ENDPOINT}/graphql/`,
+  uri: `${ENDPOINT}`,
 });
 
 // Add the JWT token to the headers
