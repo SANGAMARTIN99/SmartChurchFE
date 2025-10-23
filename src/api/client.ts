@@ -7,7 +7,8 @@ import { REFRESH_TOKEN } from '../api/mutations';
 import { ENDPOINT } from '../api/environment';
 
 const httpLink = createHttpLink({
-  uri: `${ENDPOINT}`,
+  uri: ENDPOINT.apiUrl,
+  credentials: 'include', // Important for cookies if using them
 });
 
 // Add the JWT token to the headers
