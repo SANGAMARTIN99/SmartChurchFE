@@ -9,7 +9,6 @@ import { format, isToday, isTomorrow, isThisWeek, parseISO } from 'date-fns';
 import { useQuery, useMutation } from '@apollo/client';
 import { GET_ANNOUNCEMENTS } from '../../api/queries';
 import { CREATE_ANNOUNCEMENT, UPDATE_ANNOUNCEMENT, DELETE_ANNOUNCEMENT } from '../../api/mutations';
-import CombinedNav from '../../components/CombinedNav'; // Import your CombinedNav component
 
 interface Announcement {
   id: string;
@@ -38,7 +37,6 @@ const AnnouncementsPage = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [showPinnedOnly, setShowPinnedOnly] = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
 
   const categories: Category[] = [
     { id: 'events', name: 'Events', color: '#5E936C', icon: <FaCalendarAlt /> },
@@ -48,7 +46,7 @@ const AnnouncementsPage = () => {
     { id: 'general', name: 'General', color: '#6B7280', icon: <FaInfoCircle /> }
   ];
 
-  const { data, loading, error, refetch } = useQuery(GET_ANNOUNCEMENTS, {
+  const { data, loading, error} = useQuery(GET_ANNOUNCEMENTS, {
     fetchPolicy: 'network-only',
   });
   const [createAnnouncement] = useMutation(CREATE_ANNOUNCEMENT, {
@@ -238,9 +236,7 @@ const AnnouncementsPage = () => {
     return categories.find(cat => cat.id === categoryId) || categories[categories.length - 1];
   };
 
-  const toggleSidebar = () => {
-    setSidebarOpen(!sidebarOpen);
-  };
+  
 
   if (loading) return <div className="min-h-screen bg-gradient-to-b from-[#E8FFD7] to-[#93DA97] p-4 md:p-6 text-center">Loading...</div>;
   if (error) return <div className="min-h-screen bg-gradient-to-b from-[#E8FFD7] to-[#93DA97] p-4 md:p-6 text-center">Error loading announcements: {error.message}</div>;
@@ -708,7 +704,13 @@ const AnnouncementsPage = () => {
                             return (
                               <>
                                 <div className="p-2 rounded-full mr-3" style={{ backgroundColor: categoryInfo.color + '20' }}>
-                                  {React.cloneElement(categoryInfo.icon, { className: "text-xl", style: { color: categoryInfo.color } })}
+                                {React.cloneElement(categoryInfo.icon as React.ReactElement<{ className?: string; style?: React.CSSProperties }>, {
+                                    className: "text-xl",
+                                    style: { 
+                                      ...(categoryInfo.icon.props as any)?.style,
+                                      color: categoryInfo.color 
+                                    }
+                                  })}
                                 </div>
                                 <span className="font-medium" style={{ color: categoryInfo.color }}>
                                   {categoryInfo.name}

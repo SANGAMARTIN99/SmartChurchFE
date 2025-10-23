@@ -1,18 +1,19 @@
-import React, { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { 
-  FaUserPlus, FaCalendarCheck, FaMoneyBillWave, FaBell, 
-  FaEnvelope, FaSearch, FaBolt, FaFilter, FaDownload, FaChartLine,
-  FaUsers, FaChurch, FaPrayingHands, FaFileAlt, FaCog,
-  FaClock, FaCheckCircle, FaExclamationTriangle, FaSync,
-  FaPaperPlane, FaDatabase, FaShieldAlt, FaUserFriends,
-  FaArrowUp, FaArrowDown, FaEye, FaEdit, FaTrash,
+  FaUserPlus, FaCalendarCheck, FaMoneyBillWave,
+   FaSearch, FaBolt, FaChartLine,
+  FaUsers, FaPrayingHands, FaFileAlt, 
+  FaClock, FaExclamationTriangle, FaSync,
+  FaPaperPlane, FaUserFriends,
+  FaArrowUp, FaArrowDown,
   FaPlus, FaHistory, FaChartBar, FaReceipt, FaQrcode
 } from 'react-icons/fa';
-import { GiCrossedChains } from 'react-icons/gi';
+
 import { motion, AnimatePresence } from 'framer-motion';
-import { format, parseISO, isToday, isThisWeek, differenceInDays } from 'date-fns';
+import { format, parseISO, isToday, isThisWeek} from 'date-fns';
 import { useQuery } from '@apollo/client';
 import { GET_SECRETARY_DASHBOARD } from '../../api/queries';
+import type { JSX } from 'react/jsx-runtime';
 
 // Types
 interface Task {
@@ -54,13 +55,11 @@ interface SecretaryDashboardData {
 
 const SecretaryDashboard = () => {
   const [activeView, setActiveView] = useState<'overview' | 'tasks' | 'requests' | 'reports'>('overview');
-  const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [notifications, setNotifications] = useState(true);
   const [quickActionsOpen, setQuickActionsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [timeFilter, setTimeFilter] = useState<'today' | 'week' | 'month'>('week');
 
-  const { data, loading, error, refetch } = useQuery<SecretaryDashboardData>(GET_SECRETARY_DASHBOARD, {
+  const { data, loading, refetch } = useQuery<SecretaryDashboardData>(GET_SECRETARY_DASHBOARD, {
     variables: { taskTimeFilter: timeFilter },
     fetchPolicy: 'network-only',
   });
@@ -88,7 +87,6 @@ const SecretaryDashboard = () => {
     return true;
   });
 
-  const pendingTasks = filteredTasks.filter(task => task.status !== 'completed');
   const urgentTasks = filteredTasks.filter(task => task.priority === 'urgent');
   const newRequests = memberRequests.filter(req => req.status === 'new');
 
@@ -382,7 +380,7 @@ const SecretaryDashboard = () => {
                     { icon: FaFileAlt, label: 'Generate Report', color: 'bg-[#4A7557]' },
                     { icon: FaPaperPlane, label: 'Send Announcement', color: 'bg-[#5E936C]' },
                     { icon: FaQrcode, label: 'Print Cards', color: 'bg-[#4A7557]' }
-                  ].map((action, index) => (
+                  ].map((action) => (
                     <motion.button
                       key={action.label}
                       whileHover={{ scale: 1.05 }}
@@ -625,7 +623,7 @@ const SecretaryDashboard = () => {
                   { icon: FaPaperPlane, label: 'Send Message', action: () => console.log('Send message') },
                   { icon: FaFileAlt, label: 'Quick Report', action: () => console.log('Generate report') },
                   { icon: FaSync, label: 'Sync Data', action: () => console.log('Sync data') }
-                ].map((item, index) => (
+                ].map((item) => (
                   <motion.button
                     key={item.label}
                     whileHover={{ x: 5 }}

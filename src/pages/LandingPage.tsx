@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { FaChurch, FaCalendarAlt, FaUsers, FaMusic, FaPray,  FaChild, FaArrowRight } from 'react-icons/fa';
+import { FaChurch, FaCalendarAlt, FaUsers, FaPray, FaArrowRight } from 'react-icons/fa';
 import { GiCrossedChains } from 'react-icons/gi';
 import { motion } from 'framer-motion';
 import Navbar from '../components/NavBar';
@@ -68,7 +68,7 @@ const LandingPage = () => {
 
   // Auto-advance slideshow
   useEffect(() => {
-    let interval: NodeJS.Timeout;
+    let interval: ReturnType<typeof setTimeout>;
     if (isAutoPlaying) {
       interval = setInterval(() => {
         setCurrentSlide((prev) => (prev + 1) % churchImages.length);

@@ -1,14 +1,10 @@
 import React, { useState } from 'react';
-import { FaBook, FaCalendarAlt, FaUpload, FaShare, FaEye, FaEdit, FaTrash, FaMoneyBillWave, FaUserFriends, FaUsers, FaPlus, FaHistory, FaBell, FaEnvelope, FaPrayingHands, FaChartLine } from 'react-icons/fa';
-import { GiCrossedChains } from 'react-icons/gi';
-import { MdOutlineDashboard, MdOutlineNotificationsActive } from 'react-icons/md';
-import { BsGraphUp, BsPeopleFill, BsThreeDotsVertical } from 'react-icons/bs';
+import { FaBook, FaCalendarAlt, FaUpload, FaShare, FaEye, FaEdit, FaTrash, FaPlus, FaHistory} from 'react-icons/fa';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useQuery, useMutation } from '@apollo/client';
 import {  CREATE_DEVOTIONAL, UPDATE_DEVOTIONAL, DELETE_DEVOTIONAL } from '../../api/mutations';
 import { GET_DEVOTIONALS } from '../../api/queries';
 import { format } from 'date-fns';
-import CombinedNav from '../../components/CombinedNav'; // Import your CombinedNav component
 import { getAccessToken } from '../../utils/auth';
 
 // Types
@@ -33,10 +29,7 @@ const WordOfTheDay = () => {
   const [audioPreview, setAudioPreview] = useState<string | null>(null);
   const [isRecording, setIsRecording] = useState<boolean>(false);
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
-  const [recordedChunks, setRecordedChunks] = useState<BlobPart[]>([]);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [notificationsOpen, setNotificationsOpen] = useState(false);
-  const [messagesOpen, setMessagesOpen] = useState(false);
+  const [, setRecordedChunks] = useState<BlobPart[]>([]);
   const [formData, setFormData] = useState({
     title: '',
     scripture: '',
@@ -65,9 +58,7 @@ const [deleteDevotional] = useMutation(DELETE_DEVOTIONAL, {
   const devotionals: Devotional[] = data?.devotionals || [];
 
   // Toggle sidebar on mobile
-  const toggleSidebar = () => {
-    setSidebarOpen(!sidebarOpen);
-  };
+  
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;

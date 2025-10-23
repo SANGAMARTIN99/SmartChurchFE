@@ -1,15 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import  { useState} from 'react';
 import { 
-  FaChurch, FaUsers, FaCalendarAlt, FaChartLine, FaBook, FaBell, FaEnvelope, 
-  FaPrayingHands, FaMoneyBillWave, FaUserFriends, 
-  FaPlus, FaSearch, FaFilter, FaDownload, FaEye, FaEdit, FaTrash
+  FaUsers, FaCalendarAlt, FaChartLine, FaBook,
+  FaPrayingHands, FaMoneyBillWave, 
+  FaPlus,  FaDownload
 } from 'react-icons/fa';
 import { GiCrossedChains } from 'react-icons/gi';
-import { MdOutlineDashboard, MdOutlineNotificationsActive } from 'react-icons/md';
-import { BsGraphUp, BsPeopleFill, BsThreeDotsVertical } from 'react-icons/bs';
+import { BsGraphUp, BsThreeDotsVertical } from 'react-icons/bs';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useQuery, useMutation } from '@apollo/client';
-import CombinedNav from '../../components/CombinedNav';
 import { 
   GET_DASHBOARD_STATS,
   GET_RECENT_MEMBERS,
@@ -53,13 +51,6 @@ interface Event {
   description: string;
 }
 
-interface PrayerRequest {
-  id: string;
-  member: string;
-  request: string;
-  date: string;
-  status: string;
-}
 
 interface OfferingStats {
   thisWeek: number;
@@ -70,35 +61,30 @@ interface OfferingStats {
 }
 
 const PastorDashboard = () => {
-  const [activeTab, setActiveTab] = useState('overview');
-  const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [notificationsOpen, setNotificationsOpen] = useState(false);
-  const [messagesOpen, setMessagesOpen] = useState(false);
+  const [activeTab] = useState('overview');
   const [showEventModal, setShowEventModal] = useState(false);
-  const [showPrayerModal, setShowPrayerModal] = useState(false);
-  const [selectedPrayerRequest, setSelectedPrayerRequest] = useState<PrayerRequest | null>(null);
 
   // GraphQL Queries
-  const { data: statsData, loading: statsLoading } = useQuery(GET_DASHBOARD_STATS);
-  const { data: membersData, loading: membersLoading } = useQuery(GET_RECENT_MEMBERS);
-  const { data: eventsData, loading: eventsLoading } = useQuery(GET_UPCOMING_EVENTS);
-  const { data: prayersData, loading: prayersLoading } = useQuery(GET_PRAYER_REQUESTS);
-  const { data: offeringsData, loading: offeringsLoading } = useQuery(GET_OFFERING_STATS);
+  const { data: statsData } = useQuery(GET_DASHBOARD_STATS);
+  const { data: membersData } = useQuery(GET_RECENT_MEMBERS);
+  const { data: eventsData } = useQuery(GET_UPCOMING_EVENTS);
+  useQuery(GET_PRAYER_REQUESTS);
+  const { data: offeringsData} = useQuery(GET_OFFERING_STATS);
 
   // GraphQL Mutations
-  const [createPrayerRequest] = useMutation(CREATE_PRAYER_REQUEST, {
+  const [] = useMutation(CREATE_PRAYER_REQUEST, {
     refetchQueries: [{ query: GET_PRAYER_REQUESTS }],
   });
   
-  const [updatePrayerRequestStatus] = useMutation(UPDATE_PRAYER_REQUEST_STATUS, {
+  const [] = useMutation(UPDATE_PRAYER_REQUEST_STATUS, {
     refetchQueries: [{ query: GET_PRAYER_REQUESTS }],
   });
   
-  const [createEvent] = useMutation(CREATE_EVENT, {
+  const [] = useMutation(CREATE_EVENT, {
     refetchQueries: [{ query: GET_UPCOMING_EVENTS }],
   });
   
-  const [deleteEvent] = useMutation(DELETE_EVENT, {
+  const [] = useMutation(DELETE_EVENT, {
     refetchQueries: [{ query: GET_UPCOMING_EVENTS }],
   });
 
@@ -116,7 +102,6 @@ const PastorDashboard = () => {
 
   const recentMembers: Member[] = membersData?.recentMembers || [];
   const upcomingEvents: Event[] = eventsData?.upcomingEvents || [];
-  const prayerRequests: PrayerRequest[] = prayersData?.prayerRequests || [];
   const offeringStats: OfferingStats = offeringsData?.offeringStats || {
     thisWeek: 0,
     lastWeek: 0,
@@ -125,10 +110,7 @@ const PastorDashboard = () => {
     trend: 'up'
   };
 
-  // Toggle sidebar on mobile
-  const toggleSidebar = () => {
-    setSidebarOpen(!sidebarOpen);
-  };
+  
 
   // Format currency (Tanzanian Shillings)
   const formatCurrency = (amount: number) => {
@@ -145,28 +127,10 @@ const PastorDashboard = () => {
   };
 
   // Handle prayer request status update
-  const handlePrayerStatusUpdate = (id: string, status: string) => {
-    updatePrayerRequestStatus({
-      variables: { id, status }
-    });
-  };
 
   // Handle event creation
-  const handleEventCreate = (eventData: any) => {
-    createEvent({
-      variables: eventData
-    });
-    setShowEventModal(false);
-  };
 
   // Handle event deletion
-  const handleEventDelete = (id: string) => {
-    if (window.confirm('Are you sure you want to delete this event?')) {
-      deleteEvent({
-        variables: { id }
-      });
-    }
-  };
 
   return (
     <div className="flex h-screen bg-[#E8FFD7] overflow-hidden">

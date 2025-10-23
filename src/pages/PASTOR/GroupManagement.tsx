@@ -1,13 +1,11 @@
 import React, { useState } from 'react';
 import { 
-  FaUsers, FaUserPlus, FaSearch, FaFilter, FaEdit, FaTrash, 
+  FaUsers, FaUserPlus,FaClock, FaMapMarkerAlt, FaSearch,  FaEdit, FaTrash, 
   FaEye, FaCalendarAlt, FaMusic, FaPray, FaUserFriends, 
-  FaChalkboardTeacher, FaChild, FaPlus, FaChartLine, FaBell,
-  FaEnvelope, FaChurch
+   FaChild, FaPlus, FaBell,
 } from 'react-icons/fa';
-import { GiCrossedChains } from 'react-icons/gi';
-import { MdOutlineDashboard, MdGroupWork } from 'react-icons/md';
-import { BsGraphUp, BsPeopleFill, BsThreeDotsVertical } from 'react-icons/bs';
+import { MdGroupWork } from 'react-icons/md';
+import { BsGraphUp} from 'react-icons/bs';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useQuery } from '@apollo/client';
 import { GET_STREETS_AND_GROUPS } from '../../api/queries';
@@ -46,9 +44,6 @@ interface Member {
 const GroupsManagement = () => {
   const [activeView, setActiveView] = useState<'overview' | 'details' | 'create' | 'members'>('overview');
   const [selectedGroup, setSelectedGroup] = useState<Group | null>(null);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [notificationsOpen, setNotificationsOpen] = useState(false);
-  const [messagesOpen, setMessagesOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const { data, loading, error } = useQuery(GET_STREETS_AND_GROUPS, { fetchPolicy: 'network-only' });
@@ -259,10 +254,10 @@ const GroupsManagement = () => {
     }
   };
 
-  // Toggle sidebar on mobile
-  const toggleSidebar = () => {
-    setSidebarOpen(!sidebarOpen);
-  };
+  // // Toggle sidebar on mobile
+  // const toggleSidebar = () => {
+  //   setSidebarOpen(!sidebarOpen);
+  // };
 
   return (
     <div className="flex h-screen bg-[#E8FFD7] overflow-hidden">

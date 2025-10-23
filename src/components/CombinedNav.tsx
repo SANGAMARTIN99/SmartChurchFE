@@ -74,7 +74,6 @@ const CombinedNav = ({ children }: CombinedNavProps) => {
   const { t, i18n } = useTranslation();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
-  const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [languageOpen, setLanguageOpen] = useState(false);
   const { data, error } = useQuery(ME_QUERY, {
     fetchPolicy: 'network-only',
@@ -142,7 +141,7 @@ const CombinedNav = ({ children }: CombinedNavProps) => {
   const userRole = data.me.role;
   const allowedItems = sidebarItems.filter(item => item.roles.includes(userRole));
   // const allowedItems = sidebarItems
-  const notifications = []; 
+  // const notifications = []; 
 
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col md:flex-row pt-16">
@@ -173,7 +172,7 @@ const CombinedNav = ({ children }: CombinedNavProps) => {
           {/* Right Side Actions */}
           <div className="flex items-center space-x-4">
             {/* Notifications */}
-            <div className="relative">
+            {/* <div className="relative">
               <button
                 onClick={() => setNotificationsOpen(!notificationsOpen)}
                 className="relative flex items-center"
@@ -205,7 +204,7 @@ const CombinedNav = ({ children }: CombinedNavProps) => {
                   </div>
                 </motion.div>
               )}
-            </div>
+            </div> */}
 
             {/* Language Switcher */}
             <div className="relative">

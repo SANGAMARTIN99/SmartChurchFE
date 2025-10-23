@@ -1,12 +1,58 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { 
   FaPrayingHands, FaCalendarAlt, FaMoneyBillWave, 
-  FaUsers, FaChartLine, FaClock, FaArrowUp
+  FaUsers, FaChartLine, FaArrowUp
 } from 'react-icons/fa';
 import { motion, AnimatePresence } from 'framer-motion';
 import { format, parseISO } from 'date-fns';
 import { useQuery } from '@apollo/client';
 import { ME_QUERY, GET_RECENT_OFFERINGS, GET_UPCOMING_EVENTS } from '../../api/queries';
+
+// Type definitions
+// GraphQL response type for offerings
+interface GraphQLOffering {
+  id: string;
+  date: string;
+  amount: number;
+  type?: string;
+  offeringType?: string;
+  massType: string;
+  attendant?: string;
+}
+
+// Local component type
+interface Offering extends Omit<GraphQLOffering, 'offeringType'> {
+  type: string; // Make type required in the component
+  attendant: string; // Make attendant required with a default value
+}
+
+type RsvpStatus = 'pending' | 'accepted' | 'declined' | 'going' | 'maybe';
+
+interface Event {
+  id: string;
+  title: string;
+  date: string;
+  time: string;
+  location: string;
+  description: string;
+  rsvpStatus: RsvpStatus;
+}
+
+interface Group {
+  id: string;
+  name: string;
+  role?: string;
+}
+
+interface MeData {
+  me: {
+    fullName: string;
+    street?: {
+      name: string;
+    };
+    groups: Group[];
+  };
+}
 
 // Using backend GraphQL types via simple view models
 
@@ -15,61 +61,72 @@ const MemberDashboard = () => {
   // Removed unused sidebar/notifications/messages/profile edit states
   const [newPrayerRequestOpen, setNewPrayerRequestOpen] = useState(false);
 
-  // Live data
-  const { data: meData, loading: meLoading, error: meError } = useQuery(ME_QUERY);
-  const { data: offeringsData } = useQuery(GET_RECENT_OFFERINGS, { variables: { limit: 10 } });
-  const { data: eventsData } = useQuery(GET_UPCOMING_EVENTS);
+  // Live data with proper typing
+  const { data: meData, loading: meLoading, error: meError } = useQuery<{ me: MeData['me'] }>(ME_QUERY);
+  
+  const { data: offeringsData } = useQuery<{ recentOfferings: GraphQLOffering[] }>(GET_RECENT_OFFERINGS, { 
+    variables: { limit: 10 } 
+  });
+  
+  const { data: eventsData } = useQuery<{ upcomingEvents: Omit<Event, 'rsvpStatus'>[] }>(GET_UPCOMING_EVENTS);
 
-  // Removed sample data (profile, offerings, groups, events, prayer requests)
-
-  // Map live data to view models
+  // Map live data to view models with proper typing
   const memberFirstName = meData?.me?.fullName?.split(' ')[0] || (meLoading ? 'Loading' : (meError ? 'Error' : 'Member'));
   const memberStreet = meData?.me?.street?.name || '';
-  const myGroups = meData?.me?.groups || [];
-  const recentOfferings = (offeringsData?.recentOfferings || []).slice(0, 5).map((o: any) => ({
-    id: o.id,
-    date: o.date,
-    amount: o.amount,
-    type: (o.offeringType || '').toLowerCase(),
-    massType: o.massType,
-    attendant: o.attendant,
+  const myGroups: Group[] = meData?.me?.groups || [];
+  
+  const recentOfferings: Offering[] = (offeringsData?.recentOfferings || []).slice(0, 5).map((o): Offering => ({
+    ...o,
+    type: (o.offeringType || o.type || 'other').toLowerCase(),
+    attendant: o.attendant || 'Unknown',
   }));
-  const upcomingEvents = (eventsData?.upcomingEvents || []).slice(0, 3).map((e: any) => ({
-    id: e.id,
-    title: e.title,
-    date: e.date,
-    time: e.time,
-    location: e.location,
-    description: e.description,
+  
+  const upcomingEvents: Event[] = (eventsData?.upcomingEvents || []).slice(0, 3).map((e) => ({
+    ...e,
     rsvpStatus: 'pending' as const,
   }));
 
   // Stats calculations from live data
-  const totalOfferings = recentOfferings.reduce((sum: number, o: any) => sum + (o.amount || 0), 0);
-  const averageOffering = recentOfferings.length > 0 ? totalOfferings / recentOfferings.length : 0;
+  const totalOfferings = recentOfferings.reduce((sum, o) => sum + (o.amount || 0), 0);
   const pledgeProgress = 0; // No pledge data yet in schema
 
   // Format currency (Tanzanian Shillings)
-  const formatCurrency = (amount: number) => {
+  const formatCurrency = (amount: number): string => {
     return new Intl.NumberFormat('en-TZ', {
       style: 'currency',
-      currency: 'TZS'
+      currency: 'TZS',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0
     }).format(amount);
   };
 
   // Format date
-  const formatDate = (dateString: string) => {
-    return format(parseISO(dateString), 'MMM dd, yyyy');
+  const formatDate = (dateString: string): string => {
+    try {
+      return format(parseISO(dateString), 'MMM dd, yyyy');
+    } catch (error) {
+      console.error('Error formatting date:', error);
+      return 'Invalid date';
+    }
   };
 
-  // Removed unused sidebar toggler and RSVP handler
-
   // Handle prayer request submission
-  const handlePrayerRequestSubmit = (request: string, isPublic: boolean) => {
+  interface PrayerRequest {
+    request: string;
+    isPublic: boolean;
+  }
+
+  const handlePrayerRequestSubmit = ({ request, isPublic }: PrayerRequest): void => {
     console.log('New prayer request:', { request, isPublic });
     setNewPrayerRequestOpen(false);
     // Here you would typically submit the prayer request via API
   };
+
+  
+  // const totalGroups = myGroups.length;
+
+
+  // const nextEvent = upcomingEvents.length > 0 ? upcomingEvents[0] : null;
 
   return (
     <div className="flex h-[calc(100vh-3rem)] bg-gradient-to-br from-[#E8FFD7] to-[#93DA97] overflow-hidden ">
@@ -409,10 +466,10 @@ const MemberDashboard = () => {
                 <form onSubmit={(e) => {
                   e.preventDefault();
                   const formData = new FormData(e.target as HTMLFormElement);
-                  handlePrayerRequestSubmit(
-                    formData.get('request') as string,
-                    formData.get('isPublic') === 'on'
-                  );
+                  handlePrayerRequestSubmit({
+                    request: formData.get('request') as string,
+                    isPublic: formData.get('isPublic') === 'on'
+                  });
                 }}>
                   <div className="mb-4">
                     <label className="block text-gray-700 mb-2">Your Prayer Request</label>

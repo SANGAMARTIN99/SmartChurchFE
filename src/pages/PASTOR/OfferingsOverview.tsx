@@ -1,14 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { 
   FaMoneyBillWave, FaChartLine, FaCalendarAlt, FaUsers, 
-  FaStreetView, FaDownload, FaFilter, FaSearch, 
+  FaStreetView, FaDownload,
   FaArrowUp, FaArrowDown, FaChurch, FaPrayingHands,
-  FaBell, FaEnvelope, FaEye, FaEdit, FaUserFriends, FaTrash,
-  FaPlus, FaHistory, FaChartBar, FaReceipt
+  FaPlus, FaChartBar, FaReceipt
 } from 'react-icons/fa';
 import { GiCrossedChains, GiMoneyStack } from 'react-icons/gi';
-import { MdOutlineDashboard, MdTrendingUp, MdTrendingDown } from 'react-icons/md';
-import { BsGraphUp, BsPeopleFill, BsThreeDotsVertical } from 'react-icons/bs';
+import { BsGraphUp } from 'react-icons/bs';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useQuery } from '@apollo/client';
 import { 
@@ -19,6 +17,7 @@ import {
   GET_OFFERINGS_BY_TYPE,
   GET_OFFERINGS_BY_STREET,
 } from '../../api/queries';
+import type { JSX } from 'react/jsx-runtime';
 
 // Types
 interface Offering {
@@ -59,11 +58,17 @@ interface MassTypeStats {
   icon: JSX.Element;
 }
 
+interface OfferingType {
+  type: string;
+  amount: number;
+  percentage: number;
+  color: string;
+  icon: JSX.Element;
+}
+
 const OfferingsOverview = () => {
   const [activeView, setActiveView] = useState<'overview' | 'details' | 'trends' | 'reports'>('overview');
-  const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [notificationsOpen, setNotificationsOpen] = useState(false);
-  const [messagesOpen, setMessagesOpen] = useState(false);
+  const [] = useState(true);
   const [timeRange, setTimeRange] = useState<'week' | 'month' | 'quarter' | 'year'>('month');
   const [selectedStreet, setSelectedStreet] = useState<string>('all');
   // Default to current month
@@ -76,7 +81,7 @@ const OfferingsOverview = () => {
 
   // Backend data
   const { data: statsData, loading: statsLoading, error: statsError } = useQuery(GET_OFFERING_STATS);
-  const { data: streetsGroupsData } = useQuery(GET_STREETS_AND_GROUPS);
+  useQuery(GET_STREETS_AND_GROUPS);
   const { data: recentOfferingsData, loading: recentLoading, error: recentError } = useQuery(
     GET_RECENT_OFFERINGS,
     { variables: { limit: 10 } }
@@ -250,7 +255,6 @@ const OfferingsOverview = () => {
   });
 
   // TODO: Replace with backend-provided monthly trend when available
-  const monthlyTrend: { month: string; amount: number }[] = [];
 
   // Filter offerings based on selected filters
   const filteredOfferings = offerings.filter(offering => {
@@ -263,12 +267,6 @@ const OfferingsOverview = () => {
   });
 
   // Calculate filtered stats
-  const filteredStats = {
-    total: filteredOfferings.reduce((sum, offering) => sum + offering.amount, 0),
-    count: filteredOfferings.length,
-    average: filteredOfferings.length > 0 ? 
-      filteredOfferings.reduce((sum, offering) => sum + offering.amount, 0) / filteredOfferings.length : 0
-  };
 
   // Format currency (Tanzanian Shillings)
   const formatCurrency = (amount: number) => {
@@ -279,14 +277,8 @@ const OfferingsOverview = () => {
   };
 
   // Format number with commas
-  const formatNumber = (num: number) => {
-    return new Intl.NumberFormat('en-TZ').format(num);
-  };
 
   // Toggle sidebar on mobile
-  const toggleSidebar = () => {
-    setSidebarOpen(!sidebarOpen);
-  };
 
   // Export to PDF/Excel
   const handleExport = (format: 'pdf' | 'excel') => {
@@ -456,7 +448,7 @@ const OfferingsOverview = () => {
                       Offerings by Mass Type
                     </h3>
                     <div className="space-y-4">
-                      {massTypeStats.map((mass, index) => (
+                      {massTypeStats.map((mass) => (
                         <div key={mass.type} className="flex items-center justify-between">
                           <div className="flex items-center">
                             <div className="p-2 rounded-full mr-3" style={{ backgroundColor: mass.color + '20' }}>
@@ -488,7 +480,7 @@ const OfferingsOverview = () => {
                       Offerings by Type
                     </h3>
                     <div className="space-y-4">
-                      {offeringTypes.map((type, index) => (
+                      {offeringTypes?.map((type:OfferingType) => (
                         <div key={type.type} className="flex items-center justify-between">
                           <div className="flex items-center">
                             <div className="p-2 rounded-full mr-3" style={{ backgroundColor: type.color + '20' }}>

@@ -52,7 +52,6 @@ const MemberContributions: React.FC = () => {
   });
   const rows = Array.from(rowsMap.values()).sort((a, b) => b.total - a.total);
   const totalContributions = rows.reduce((s, r) => s + r.total, 0);
-  const totalMembers = rows.length;
   const totalTransactions = filtered.length;
 
   if (loading) return (<div className="min-h-screen bg-[#E8FFD7] flex items-center justify-center"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#5E936C]"></div></div>);

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useMutation, useQuery } from '@apollo/client';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { FaUser, FaLock, FaEnvelope, FaPhone, FaMapMarkerAlt, FaSignInAlt, FaUserPlus, FaEye, FaEyeSlash, FaUsers } from 'react-icons/fa';
+import { FaUser, FaLock, FaEnvelope, FaPhone, FaMapMarkerAlt, FaSignInAlt, FaUserPlus, FaEye, FaEyeSlash } from 'react-icons/fa';
 import { LOGIN_USER, REGISTER_USER } from '../api/mutations';
 import { GET_STREETS_AND_GROUPS } from '../api/queries';
 import Navbar from '../components/NavBar';
@@ -19,7 +19,18 @@ const AuthPage = () => {
 
   // Form states
   const [loginData, setLoginData] = useState({ email: '', password: '' });
-  const [registerData, setRegisterData] = useState({
+  
+  interface RegisterData {
+    fullName: string;
+    email: string;
+    phoneNumber: string;
+    streetId: string;
+    password: string;
+    confirmPassword: string;
+    groupIds: number[];
+  }
+  
+  const [registerData, setRegisterData] = useState<RegisterData>({
     fullName: '',
     email: '',
     phoneNumber: '',
@@ -97,10 +108,6 @@ const AuthPage = () => {
     setRegisterData({ ...registerData, [name]: value });
   };
 
-  const handleGroupChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const selected = Array.from(e.target.selectedOptions, (option) => parseInt(option.value));
-    setRegisterData({ ...registerData, groupIds: selected });
-  };
 
   const handleLoginSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -144,7 +151,6 @@ const AuthPage = () => {
 
   // Extract streets and groups from query data
   const streets = data?.streets || [];
-  const groups = data?.groups || [];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#5E936C] to-[#93DA97] flex flex-col">

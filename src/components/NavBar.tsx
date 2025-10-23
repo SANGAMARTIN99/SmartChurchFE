@@ -4,6 +4,25 @@ import { GiCrossedChains } from 'react-icons/gi';
 import { motion } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 
+// Define interfaces for navigation items
+interface NavItemBase {
+  name: string;
+  icon: React.ReactNode;
+  href: string;
+}
+
+interface NavItemWithDropdown extends NavItemBase {
+  dropdown: NavDropdownItem[];
+}
+
+interface NavDropdownItem {
+  name: string;
+  href: string;
+  action?: () => void; // Optional action property
+}
+
+type NavItem = NavItemBase | NavItemWithDropdown;
+
 const Navbar = () => {
   const { i18n } = useTranslation();
   const [isScrolled, setIsScrolled] = useState(false);
@@ -18,17 +37,17 @@ const Navbar = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  const toggleDropdown = (item: string) => {
+  const toggleDropdown = (item: string | null) => {
     setActiveDropdown(activeDropdown === item ? null : item);
   };
 
   const changeLanguage = (lng: string) => {
     i18n.changeLanguage(lng);
-    setActiveDropdown(null); // Close dropdown after selection
-    setMobileMenuOpen(false); // Close mobile menu after selection
+    setActiveDropdown(null);
+    setMobileMenuOpen(false);
   };
 
-  const navItems = [
+  const navItems: NavItem[] = [
     { name: 'Home', icon: <FaChurch />, href: '#home' },
     { 
       name: 'Services', 
@@ -86,48 +105,64 @@ const Navbar = () => {
 
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center space-x-6">
-            {navItems.map((item) => (
-              <div key={item.name} className="relative group">
-                <motion.a
-                  whileHover={{ scale: 1.05 }}
-                  href={item.href}
-                  className="flex items-center px-3 py-2 text-[#E8FFD7] hover:text-white transition-colors"
-                  onMouseEnter={() => item.dropdown && toggleDropdown(item.name)}
-                  onMouseLeave={() => item.dropdown && toggleDropdown(null)}
-                  onClick={item.dropdown && item.dropdown[0].action ? item.dropdown[0].action : undefined}
-                >
-                  <span className="mr-2">{item.icon}</span>
-                  {item.name}
-                  {item.dropdown && (
-                    <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path>
-                    </svg>
-                  )}
-                </motion.a>
-
-                {item.dropdown && activeDropdown === item.name && (
-                  <motion.div 
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: 20 }}
-                    className="absolute left-0 mt-2 w-48 bg-[#93DA97] rounded-md shadow-lg z-50"
-                    onMouseEnter={() => toggleDropdown(item.name)}
-                    onMouseLeave={() => toggleDropdown(null)}
+            {navItems.map((item) => {
+              const isDropdownItem = 'dropdown' in item;
+              return (
+                <div key={item.name} className="relative group">
+                  <motion.a
+                    whileHover={{ scale: 1.05 }}
+                    href={item.href}
+                    className="flex items-center px-3 py-2 text-[#E8FFD7] hover:text-white transition-colors"
+                    onMouseEnter={() => isDropdownItem && toggleDropdown(item.name)}
+                    onMouseLeave={() => isDropdownItem && toggleDropdown(null)}
+                    onClick={(e) => {
+                      if (isDropdownItem) {
+                        const dropdownItem = (item as NavItemWithDropdown).dropdown[0];
+                        if (dropdownItem?.action) {
+                          e.preventDefault();
+                          dropdownItem.action();
+                        }
+                      }
+                    }}
                   >
-                    {item.dropdown.map((subItem) => (
-                      <a
-                        key={subItem.name}
-                        href={subItem.href}
-                        onClick={subItem.action ? subItem.action : undefined}
-                        className="block px-4 py-2 text-[#2D3748] hover:bg-[#5E936C] hover:text-[#E8FFD7] transition-colors"
-                      >
-                        {subItem.name}
-                      </a>
-                    ))}
-                  </motion.div>
-                )}
-              </div>
-            ))}
+                    <span className="mr-2">{item.icon}</span>
+                    {item.name}
+                    {isDropdownItem && (
+                      <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path>
+                      </svg>
+                    )}
+                  </motion.a>
+
+                  {isDropdownItem && activeDropdown === item.name && (
+                    <motion.div 
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 20 }}
+                      className="absolute left-0 mt-2 w-48 bg-[#93DA97] rounded-md shadow-lg z-50"
+                      onMouseEnter={() => toggleDropdown(item.name)}
+                      onMouseLeave={() => toggleDropdown(null)}
+                    >
+                      {(item as NavItemWithDropdown).dropdown.map((subItem) => (
+                        <a
+                          key={subItem.name}
+                          href={subItem.href}
+                          onClick={(e) => {
+                            if (subItem.action) {
+                              e.preventDefault();
+                              subItem.action();
+                            }
+                          }}
+                          className="block px-4 py-2 text-[#2D3748] hover:bg-[#5E936C] hover:text-[#E8FFD7] transition-colors"
+                        >
+                          {subItem.name}
+                        </a>
+                      ))}
+                    </motion.div>
+                  )}
+                </div>
+              );
+            })}
           </div>
 
           {/* Mobile menu button */}
@@ -157,56 +192,59 @@ const Navbar = () => {
           className="md:hidden bg-[#5E936C] shadow-lg"
         >
           <div className="px-2 pt-2 pb-4 space-y-1">
-            {navItems.map((item) => (
-              <div key={item.name}>
-                <a
-                  href={item.href}
-                  className="flex items-center px-3 py-2 text-[#E8FFD7] hover:bg-[#93DA97] hover:text-[#2D3748] rounded-md transition-colors"
-                  onClick={(e) => {
-                    if (item.dropdown) {
-                      e.preventDefault();
-                      toggleDropdown(item.name);
-                    } else {
-                      setMobileMenuOpen(false);
-                    }
-                  }}
-                >
-                  <span className="mr-2">{item.icon}</span>
-                  {item.name}
-                  {item.dropdown && (
-                    <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path>
-                    </svg>
-                  )}
-                </a>
-                {item.dropdown && activeDropdown === item.name && (
-                  <motion.div 
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
-                    exit={{ opacity: 0, height: 0 }}
-                    className="ml-6 mt-1 space-y-1"
+            {navItems.map((item) => {
+              const isDropdownItem = 'dropdown' in item;
+              return (
+                <div key={item.name}>
+                  <a
+                    href={item.href}
+                    className="flex items-center px-3 py-2 text-[#E8FFD7] hover:bg-[#93DA97] hover:text-[#2D3748] rounded-md transition-colors"
+                    onClick={(e) => {
+                      if (isDropdownItem) {
+                        e.preventDefault();
+                        toggleDropdown(item.name);
+                      } else {
+                        setMobileMenuOpen(false);
+                      }
+                    }}
                   >
-                    {item.dropdown.map((subItem) => (
-                      <a
-                        key={subItem.name}
-                        href={subItem.href}
-                        onClick={(e) => {
-                          if (subItem.action) {
-                            e.preventDefault();
-                            subItem.action();
-                          } else {
-                            setMobileMenuOpen(false);
-                          }
-                        }}
-                        className="block px-3 py-2 text-[#E8FFD7] hover:bg-[#93DA97] hover:text-[#2D3748] rounded-md transition-colors"
-                      >
-                        {subItem.name}
-                      </a>
-                    ))}
-                  </motion.div>
-                )}
-              </div>
-            ))}
+                    <span className="mr-2">{item.icon}</span>
+                    {item.name}
+                    {isDropdownItem && (
+                      <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path>
+                      </svg>
+                    )}
+                  </a>
+                  {isDropdownItem && activeDropdown === item.name && (
+                    <motion.div 
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      exit={{ opacity: 0, height: 0 }}
+                      className="ml-6 mt-1 space-y-1"
+                    >
+                      {(item as NavItemWithDropdown).dropdown.map((subItem) => (
+                        <a
+                          key={subItem.name}
+                          href={subItem.href}
+                          onClick={(e) => {
+                            if (subItem.action) {
+                              e.preventDefault();
+                              subItem.action();
+                            } else {
+                              setMobileMenuOpen(false);
+                            }
+                          }}
+                          className="block px-3 py-2 text-[#E8FFD7] hover:bg-[#93DA97] hover:text-[#2D3748] rounded-md transition-colors"
+                        >
+                          {subItem.name}
+                        </a>
+                      ))}
+                    </motion.div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </motion.div>
       )}

@@ -30,7 +30,7 @@ const PrayerRequests = () => {
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState<PrayerRequestItem | null>(null);
   const [replyText, setReplyText] = useState('');
-  const [windowWidth, setWindowWidth] = useState(window.innerWidth);
+  const [, setWindowWidth] = useState(window.innerWidth);
 
   // Update window width on resize
   useEffect(() => {
@@ -441,8 +441,6 @@ const PrayerRequests = () => {
                         setReplyText('');
                         await refetch();
                         // update selectedRequest with fresh data
-                        const refreshed = (refetch as any)?.last?
-                          null : null; // noop; the modal will re-render from query cache
                       } catch {}
                     }}
                     className="mt-2 w-full bg-[#5E936C] text-[#E8FFD7] px-4 py-2 rounded-md hover:bg-[#4A7557] transition-colors disabled:opacity-60"

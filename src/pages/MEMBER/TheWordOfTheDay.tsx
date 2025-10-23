@@ -52,7 +52,7 @@ const TheWordOfTheDay: React.FC = () => {
   const related: Devotional[] = relatedQuery?.data?.devotionals || [];
 
   const devotionalId = devotional?.id;
-  const { data: interactionData, refetch: refetchInteraction } = useQuery(
+  const { data: interactionData } = useQuery(
     GET_MY_DEVOTIONAL_INTERACTION,
     { variables: { devotionalId: devotionalId as string }, skip: !devotionalId }
   );
