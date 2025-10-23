@@ -13,10 +13,13 @@ const httpLink = createHttpLink({
 // Add the JWT token to the headers
 const authLink = setContext((_, { headers }) => {
   const token = getAccessToken();
-  const authHeaders = {
-    ...headers,
-    authorization: token ? `Bearer ${token}` : '',
-  };
+  const authHeaders = { ...headers };
+  
+  // Only add authorization header if token exists
+  if (token) {
+    authHeaders.authorization = `Bearer ${token}`;
+  }
+  
   console.log('Auth Headers being sent:', authHeaders);
   return {
     headers: authHeaders,
