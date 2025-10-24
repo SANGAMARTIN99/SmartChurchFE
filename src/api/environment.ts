@@ -7,3 +7,5 @@ export const ENDPOINT = {
     ? "https://smartchurchbe.onrender.com/graphql/"  // production backend
     : "http://localhost:8000/graphql/",             // local backend
 };
+
+
