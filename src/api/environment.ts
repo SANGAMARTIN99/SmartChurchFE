@@ -4,8 +4,8 @@ const isProduction = import.meta.env.MODE === "production";
 
 export const ENDPOINT = {
   apiUrl: isProduction
-    ? "https://smartchurchbe.onrender.com/graphql/"  // production backend
-    : "http://localhost:8000/graphql/",             // local backend
+    ? "https://smartchurch.tarxemo.com/graphql/"  // production backend
+    : "http://smartchurch.tarxemo.com/graphql/",             // local backend
 };
 
 
