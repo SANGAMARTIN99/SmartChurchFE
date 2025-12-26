@@ -1,19 +1,25 @@
-import  { useState} from 'react';
-import { 
+import { useState } from 'react';
+import {
   FaUsers, FaCalendarAlt, FaChartLine, FaBook,
-  FaPrayingHands, FaMoneyBillWave, 
-  FaPlus,  FaDownload
+  FaPrayingHands, FaMoneyBillWave,
+  FaPlus, FaDownload
 } from 'react-icons/fa';
 import { GiCrossedChains } from 'react-icons/gi';
 import { BsGraphUp, BsThreeDotsVertical } from 'react-icons/bs';
 import { motion, AnimatePresence } from 'framer-motion';
+import {
+  LineChart, Line, AreaChart, Area, XAxis, YAxis,
+  CartesianGrid, Tooltip, ResponsiveContainer,
+} from 'recharts';
 import { useQuery, useMutation } from '@apollo/client';
-import { 
+import {
   GET_DASHBOARD_STATS,
   GET_RECENT_MEMBERS,
   GET_UPCOMING_EVENTS,
   GET_PRAYER_REQUESTS,
-  GET_OFFERING_STATS 
+  GET_OFFERING_STATS,
+  GET_OFFERINGS_TREND,
+  GET_MEMBERSHIP_GROWTH
 } from '../../api/queries';
 import {
   CREATE_PRAYER_REQUEST,
@@ -21,6 +27,7 @@ import {
   CREATE_EVENT,
   DELETE_EVENT
 } from '../../api/mutations';
+import { handleExportDownload } from '../../utils/export';
 
 // Types
 interface DashboardStats {
@@ -68,22 +75,24 @@ const PastorDashboard = () => {
   const { data: statsData } = useQuery(GET_DASHBOARD_STATS);
   const { data: membersData } = useQuery(GET_RECENT_MEMBERS);
   const { data: eventsData } = useQuery(GET_UPCOMING_EVENTS);
-  useQuery(GET_PRAYER_REQUESTS);
-  const { data: offeringsData} = useQuery(GET_OFFERING_STATS);
+  const { data: prayersData } = useQuery(GET_PRAYER_REQUESTS);
+  const { data: offeringsData } = useQuery(GET_OFFERING_STATS);
+  const { data: trendData } = useQuery(GET_OFFERINGS_TREND, { variables: { months: 6 } });
+  const { data: growthData } = useQuery(GET_MEMBERSHIP_GROWTH, { variables: { months: 6 } });
 
   // GraphQL Mutations
   const [] = useMutation(CREATE_PRAYER_REQUEST, {
     refetchQueries: [{ query: GET_PRAYER_REQUESTS }],
   });
-  
+
   const [] = useMutation(UPDATE_PRAYER_REQUEST_STATUS, {
     refetchQueries: [{ query: GET_PRAYER_REQUESTS }],
   });
-  
+
   const [] = useMutation(CREATE_EVENT, {
     refetchQueries: [{ query: GET_UPCOMING_EVENTS }],
   });
-  
+
   const [] = useMutation(DELETE_EVENT, {
     refetchQueries: [{ query: GET_UPCOMING_EVENTS }],
   });
@@ -110,7 +119,7 @@ const PastorDashboard = () => {
     trend: 'up'
   };
 
-  
+
 
   // Format currency (Tanzanian Shillings)
   const formatCurrency = (amount: number) => {
@@ -134,11 +143,11 @@ const PastorDashboard = () => {
 
   return (
     <div className="flex h-screen bg-[#E8FFD7] overflow-hidden">
-      
+
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col overflow-hidden ">
-        
+
 
         {/* Dashboard Content */}
         <main className="flex-1 overflow-y-auto p-4 md:p-6 bg-[#F7FCF5]">
@@ -148,16 +157,19 @@ const PastorDashboard = () => {
               <div className="flex justify-between items-center">
                 <h2 className="text-2xl font-bold text-[#5E936C]">Church Overview</h2>
                 <div className="flex space-x-2">
-                  <button className="bg-[#5E936C] text-white px-4 py-2 rounded-lg flex items-center">
+                  <button
+                    onClick={() => handleExportDownload('/api/export/contributions/', 'church_report.csv')}
+                    className="bg-[#5E936C] text-white px-4 py-2 rounded-lg flex items-center hover:bg-[#4a7a58] transition-colors"
+                  >
                     <FaDownload className="mr-2" />
                     Export Report
                   </button>
                 </div>
               </div>
-              
+
               {/* Stats Cards */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <motion.div 
+                <motion.div
                   whileHover={{ y: -5 }}
                   className="bg-white rounded-xl shadow-md p-6 border-l-4 border-[#5E936C] relative overflow-hidden"
                 >
@@ -176,8 +188,8 @@ const PastorDashboard = () => {
                     <span>{dashboardStats.newMembersThisMonth} new this month</span>
                   </div>
                 </motion.div>
-                
-                <motion.div 
+
+                <motion.div
                   whileHover={{ y: -5 }}
                   className="bg-white rounded-xl shadow-md p-6 border-l-4 border-[#93DA97] relative overflow-hidden"
                 >
@@ -205,8 +217,8 @@ const PastorDashboard = () => {
                     )}
                   </div>
                 </motion.div>
-                
-                <motion.div 
+
+                <motion.div
                   whileHover={{ y: -5 }}
                   className="bg-white rounded-xl shadow-md p-6 border-l-4 border-[#5E936C] relative overflow-hidden"
                 >
@@ -228,8 +240,8 @@ const PastorDashboard = () => {
                     </div>
                   </div>
                 </motion.div>
-                
-                <motion.div 
+
+                <motion.div
                   whileHover={{ y: -5 }}
                   className="bg-white rounded-xl shadow-md p-6 border-l-4 border-[#93DA97] relative overflow-hidden"
                 >
@@ -248,24 +260,51 @@ const PastorDashboard = () => {
                   </div>
                 </motion.div>
               </div>
-              
+
               {/* Charts and Detailed Stats */}
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="lg:col-span-2 bg-white rounded-xl shadow-md p-6">
                   <h3 className="text-lg font-medium text-[#5E936C] mb-4">Offerings Trend</h3>
-                  <div className="h-64 bg-gray-100 rounded-lg flex items-center justify-center">
-                    <p className="text-gray-500">Offerings chart will be displayed here</p>
+                  <div className="h-64 rounded-lg">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={trendData?.offeringsTrend || []}>
+                        <defs>
+                          <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#5E936C" stopOpacity={0.8} />
+                            <stop offset="95%" stopColor="#5E936C" stopOpacity={0} />
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                        <XAxis dataKey="label" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
+                        <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `${value / 1000}k`} />
+                        <Tooltip
+                          contentStyle={{ backgroundColor: '#fff', border: 'none', borderRadius: '8px', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                          formatter={(value: number) => [formatCurrency(value), 'Offerings']}
+                        />
+                        <Area type="monotone" dataKey="value" stroke="#5E936C" fillOpacity={1} fill="url(#colorValue)" />
+                      </AreaChart>
+                    </ResponsiveContainer>
                   </div>
                 </div>
-                
+
                 <div className="bg-white rounded-xl shadow-md p-6">
                   <h3 className="text-lg font-medium text-[#5E936C] mb-4">Membership Growth</h3>
-                  <div className="h-64 bg-gray-100 rounded-lg flex items-center justify-center">
-                    <p className="text-gray-500">Membership growth chart will be displayed here</p>
+                  <div className="h-64 rounded-lg">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={growthData?.membershipGrowth || []}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                        <XAxis dataKey="label" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
+                        <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
+                        <Tooltip
+                          contentStyle={{ backgroundColor: '#fff', border: 'none', borderRadius: '8px', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                        />
+                        <Line type="monotone" dataKey="value" stroke="#93DA97" strokeWidth={3} dot={{ fill: '#93DA97', strokeWidth: 2, r: 4 }} activeDot={{ r: 6 }} />
+                      </LineChart>
+                    </ResponsiveContainer>
                   </div>
                 </div>
               </div>
-              
+
               {/* Recent Activity Section */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Recent Members */}
@@ -290,12 +329,12 @@ const PastorDashboard = () => {
                     ))}
                   </div>
                 </div>
-                
+
                 {/* Upcoming Events */}
                 <div className="bg-white rounded-xl shadow-md overflow-hidden">
                   <div className="bg-[#5E936C] text-white px-6 py-4 flex items-center justify-between">
                     <h3 className="text-lg font-medium">Upcoming Events</h3>
-                    <button 
+                    <button
                       onClick={() => setShowEventModal(true)}
                       className="text-sm bg-white text-[#5E936C] px-3 py-1 rounded-md hover:bg-gray-100"
                     >
@@ -324,7 +363,7 @@ const PastorDashboard = () => {
                   </div>
                 </div>
               </div>
-              
+
               {/* Quick Actions */}
               <div className="bg-white rounded-xl shadow-md p-6">
                 <h3 className="text-lg font-medium text-[#5E936C] mb-4">Quick Actions</h3>
@@ -366,22 +405,22 @@ const PastorDashboard = () => {
               </div>
             </div>
           )}
-          
+
           {/* Other tabs would follow the same pattern with real data from backend */}
-          
+
         </main>
       </div>
 
       {/* Event Modal */}
       <AnimatePresence>
         {showEventModal && (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
           >
-            <motion.div 
+            <motion.div
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
@@ -406,14 +445,14 @@ const PastorDashboard = () => {
                     <textarea className="w-full p-2 border rounded-lg" rows={3}></textarea>
                   </div>
                   <div className="flex justify-end space-x-3">
-                    <button 
-                      type="button" 
+                    <button
+                      type="button"
                       onClick={() => setShowEventModal(false)}
                       className="px-4 py-2 text-gray-600 hover:text-gray-800"
                     >
                       Cancel
                     </button>
-                    <button 
+                    <button
                       type="submit"
                       className="bg-[#5E936C] text-white px-4 py-2 rounded-lg hover:bg-[#4a7a58]"
                     >

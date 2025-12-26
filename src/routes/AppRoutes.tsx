@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { Routes, Route } from 'react-router-dom';
 import LandingPage from '../pages/LandingPage';
 import AuthPage from '../pages/Login';
 import ForgotPassword from '../pages/ForgotPassword';
@@ -23,7 +23,7 @@ import OfferingEntryPage from '../pages/SECRETARY/OfferingEntry';
 
 const AppRoutes = () => {
   return (
-    <Router>
+    <>
       <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<AuthPage />} />
@@ -51,9 +51,9 @@ const AppRoutes = () => {
           <Route path="/offering-cards" element={<OfferingCards />} />
           <Route path="/offering-entry" element={<OfferingEntryPage />} />
         </Route>
-        
+
       </Routes>
-    </Router>
+    </>
   );
 };
 

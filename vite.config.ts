@@ -4,12 +4,11 @@ import react from '@vitejs/plugin-react'
 // https://vite.dev/config/
 export default defineConfig({
   base: '/',
-  plugins: [react()],
   server: {
-    headers: {
-      'Content-Type': 'text/javascript',
-    },
+    port: 5175,
+    strictPort: false,
   },
+
   build: {
     assetsInlineLimit: 0, // Ensure all assets are inlined
     rollupOptions: {

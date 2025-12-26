@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { 
-  FaMoneyBillWave, FaChartLine, FaCalendarAlt, FaUsers, 
+import {
+  FaMoneyBillWave, FaChartLine, FaCalendarAlt, FaUsers,
   FaStreetView, FaDownload,
   FaArrowUp, FaArrowDown, FaChurch, FaPrayingHands,
   FaPlus, FaChartBar, FaReceipt
@@ -8,15 +8,21 @@ import {
 import { GiCrossedChains, GiMoneyStack } from 'react-icons/gi';
 import { BsGraphUp } from 'react-icons/bs';
 import { motion, AnimatePresence } from 'framer-motion';
+import {
+  BarChart, Bar, LineChart, Line, AreaChart, Area, XAxis, YAxis,
+  CartesianGrid, Tooltip, ResponsiveContainer, Legend
+} from 'recharts';
 import { useQuery } from '@apollo/client';
-import { 
-  GET_OFFERING_STATS, 
+import {
+  GET_OFFERING_STATS,
   GET_STREETS_AND_GROUPS,
   GET_RECENT_OFFERINGS,
   GET_OFFERINGS_BY_MASS,
   GET_OFFERINGS_BY_TYPE,
   GET_OFFERINGS_BY_STREET,
+  GET_OFFERINGS_TREND,
 } from '../../api/queries';
+import { handleExportDownload } from '../../utils/export';
 import type { JSX } from 'react/jsx-runtime';
 
 // Types
@@ -72,8 +78,8 @@ const OfferingsOverview = () => {
   const [timeRange, setTimeRange] = useState<'week' | 'month' | 'quarter' | 'year'>('month');
   const [selectedStreet, setSelectedStreet] = useState<string>('all');
   // Default to current month
-  const todayIso = new Date().toISOString().slice(0,10);
-  const monthStartIso = (() => { const d = new Date(); d.setDate(1); return d.toISOString().slice(0,10); })();
+  const todayIso = new Date().toISOString().slice(0, 10);
+  const monthStartIso = (() => { const d = new Date(); d.setDate(1); return d.toISOString().slice(0, 10); })();
   const [dateFilter, setDateFilter] = useState({
     start: monthStartIso,
     end: todayIso,
@@ -94,7 +100,7 @@ const OfferingsOverview = () => {
     GET_OFFERINGS_BY_TYPE,
     { variables: { start: dateFilter.start, end: dateFilter.end } }
   );
-  
+
   // Offerings from backend
   const offerings: Offering[] = (recentOfferingsData?.recentOfferings || []).map((o: any) => {
     const normalizeType = (val: string): Offering['type'] => {
@@ -140,15 +146,16 @@ const OfferingsOverview = () => {
     GET_OFFERINGS_BY_STREET,
     { variables: { start: dateFilter.start, end: dateFilter.end } }
   );
+  const { data: trendData, loading: trendLoading } = useQuery(GET_OFFERINGS_TREND, { variables: { months: 12 } });
   const streets: StreetStats[] = (streetAggData?.offeringsByStreet || []).map((s: any) => ({
     name: s.name,
     total: Number(s.total) || 0,
     memberCount: Number(s.memberCount) || 0,
     average: Number(s.average) || 0,
-    trend: (s.trend || 'up') as 'up'|'down',
+    trend: (s.trend || 'up') as 'up' | 'down',
   }));
 
-  if (statsLoading || recentLoading || massLoading || typeLoading || streetAggLoading) {
+  if (statsLoading || recentLoading || massLoading || typeLoading || streetAggLoading || trendLoading) {
     return (
       <div className="min-h-screen bg-[#E8FFD7] flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#5E936C]"></div>
@@ -262,7 +269,7 @@ const OfferingsOverview = () => {
     const offeringDate = new Date(offering.date);
     const startDate = new Date(dateFilter.start);
     const endDate = new Date(dateFilter.end);
-    
+
     return matchesStreet && offeringDate >= startDate && offeringDate <= endDate;
   });
 
@@ -282,17 +289,26 @@ const OfferingsOverview = () => {
 
   // Export to PDF/Excel
   const handleExport = (format: 'pdf' | 'excel') => {
-    console.log(`Exporting to ${format}`);
-    alert(`Exporting offerings data to ${format.toUpperCase()}`);
+    const params = {
+      start_date: dateFilter.start,
+      end_date: dateFilter.end,
+      street: selectedStreet,
+    };
+
+    if (format === 'excel') {
+      handleExportDownload('/api/export/contributions/', 'offerings_export.csv', params);
+    } else {
+      handleExportDownload('/api/export/contributions/pdf/', 'offerings_report.pdf', params);
+    }
   };
 
   return (
     <div className="flex h-screen bg-[#E8FFD7] overflow-hidden">
-      
+
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        
+
 
         {/* Main Content */}
         <main className="flex-1 overflow-y-auto p-4  md:p-6 bg-[#F7FCF5]">
@@ -312,7 +328,7 @@ const OfferingsOverview = () => {
                       <h2 className="text-2xl font-bold text-[#5E936C]">Offerings Dashboard</h2>
                       <p className="text-gray-600">Comprehensive overview of church offerings and financial health</p>
                     </div>
-                    
+
                     <div className="flex flex-wrap gap-3">
                       <select
                         value={timeRange}
@@ -324,7 +340,7 @@ const OfferingsOverview = () => {
                         <option value="quarter">This Quarter</option>
                         <option value="year">This Year</option>
                       </select>
-                      
+
                       <select
                         value={selectedStreet}
                         onChange={(e) => setSelectedStreet(e.target.value)}
@@ -335,7 +351,7 @@ const OfferingsOverview = () => {
                           <option key={street.name} value={street.name}>{street.name}</option>
                         ))}
                       </select>
-                      
+
                       <div className="flex gap-2">
                         <input
                           type="date"
@@ -351,7 +367,7 @@ const OfferingsOverview = () => {
                           className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#5E936C] focus:border-transparent"
                         />
                       </div>
-                      
+
                       <button
                         onClick={() => handleExport('pdf')}
                         className="bg-[#5E936C] text-white px-4 py-2 rounded-lg flex items-center"
@@ -365,7 +381,7 @@ const OfferingsOverview = () => {
 
                 {/* Key Metrics */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                  <motion.div 
+                  <motion.div
                     whileHover={{ y: -5 }}
                     className="bg-white rounded-xl shadow-md p-6 border-l-4 border-[#5E936C]"
                   >
@@ -383,8 +399,8 @@ const OfferingsOverview = () => {
                       <span>{offeringStats.growthRate}% from last month</span>
                     </div>
                   </motion.div>
-                  
-                  <motion.div 
+
+                  <motion.div
                     whileHover={{ y: -5 }}
                     className="bg-white rounded-xl shadow-md p-6 border-l-4 border-[#93DA97]"
                   >
@@ -401,8 +417,8 @@ const OfferingsOverview = () => {
                       <span>{filteredOfferings.length} transactions</span>
                     </div>
                   </motion.div>
-                  
-                  <motion.div 
+
+                  <motion.div
                     whileHover={{ y: -5 }}
                     className="bg-white rounded-xl shadow-md p-6 border-l-4 border-[#5E936C]"
                   >
@@ -419,8 +435,8 @@ const OfferingsOverview = () => {
                       <span>Based on 600 members</span>
                     </div>
                   </motion.div>
-                  
-                  <motion.div 
+
+                  <motion.div
                     whileHover={{ y: -5 }}
                     className="bg-white rounded-xl shadow-md p-6 border-l-4 border-[#93DA97]"
                   >
@@ -458,9 +474,9 @@ const OfferingsOverview = () => {
                           </div>
                           <div className="flex items-center space-x-4">
                             <div className="w-32 bg-gray-200 rounded-full h-3">
-                              <div 
-                                className="h-3 rounded-full" 
-                                style={{ 
+                              <div
+                                className="h-3 rounded-full"
+                                style={{
                                   width: `${mass.percentage}%`,
                                   backgroundColor: mass.color
                                 }}
@@ -480,7 +496,7 @@ const OfferingsOverview = () => {
                       Offerings by Type
                     </h3>
                     <div className="space-y-4">
-                      {offeringTypes?.map((type:OfferingType) => (
+                      {offeringTypes?.map((type: OfferingType) => (
                         <div key={type.type} className="flex items-center justify-between">
                           <div className="flex items-center">
                             <div className="p-2 rounded-full mr-3" style={{ backgroundColor: type.color + '20' }}>
@@ -490,9 +506,9 @@ const OfferingsOverview = () => {
                           </div>
                           <div className="flex items-center space-x-4">
                             <div className="w-32 bg-gray-200 rounded-full h-3">
-                              <div 
-                                className="h-3 rounded-full" 
-                                style={{ 
+                              <div
+                                className="h-3 rounded-full"
+                                style={{
                                   width: `${type.percentage}%`,
                                   backgroundColor: type.color
                                 }}
@@ -578,12 +594,11 @@ const OfferingsOverview = () => {
                               </span>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
-                              <span className={`px-2 py-1 text-xs rounded-full capitalize ${
-                                offering.type === 'tithe' ? 'bg-blue-100 text-blue-800' :
+                              <span className={`px-2 py-1 text-xs rounded-full capitalize ${offering.type === 'tithe' ? 'bg-blue-100 text-blue-800' :
                                 offering.type === 'special' ? 'bg-green-100 text-green-800' :
-                                offering.type === 'general' ? 'bg-yellow-100 text-yellow-800' :
-                                'bg-purple-100 text-purple-800'
-                              }`}>
+                                  offering.type === 'general' ? 'bg-yellow-100 text-yellow-800' :
+                                    'bg-purple-100 text-purple-800'
+                                }`}>
                                 {offering.type}
                               </span>
                             </td>
@@ -612,7 +627,7 @@ const OfferingsOverview = () => {
                     <h4 className="font-semibold text-gray-800 mb-2">View Trends</h4>
                     <p className="text-gray-600 text-sm">Analyze offering patterns over time</p>
                   </motion.button>
-                  
+
                   <motion.button
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
@@ -623,7 +638,7 @@ const OfferingsOverview = () => {
                     <h4 className="font-semibold text-gray-800 mb-2">Generate Reports</h4>
                     <p className="text-gray-600 text-sm">Create detailed offering reports</p>
                   </motion.button>
-                  
+
                   <motion.button
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
@@ -678,7 +693,51 @@ const OfferingsOverview = () => {
                   </button>
                 </div>
                 <p className="text-gray-600 mb-6">Visual analysis of offering patterns and growth trends over time.</p>
-                {/* Trends visualization would go here */}
+
+                <div className="grid grid-cols-1 gap-8">
+                  <div className="bg-gray-50 p-6 rounded-xl">
+                    <h3 className="text-lg font-semibold text-[#5E936C] mb-6">Monthly Revenue Trend</h3>
+                    <div className="h-80">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <AreaChart data={trendData?.offeringsTrend || []}>
+                          <defs>
+                            <linearGradient id="colorTrend" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="5%" stopColor="#5E936C" stopOpacity={0.8} />
+                              <stop offset="95%" stopColor="#5E936C" stopOpacity={0} />
+                            </linearGradient>
+                          </defs>
+                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e0e0e0" />
+                          <XAxis dataKey="label" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
+                          <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `${value / 1000}k`} />
+                          <Tooltip
+                            contentStyle={{ backgroundColor: '#fff', border: 'none', borderRadius: '8px', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                            formatter={(value: number) => [formatCurrency(value), 'Amount']}
+                          />
+                          <Area type="monotone" dataKey="value" stroke="#5E936C" fillOpacity={1} fill="url(#colorTrend)" />
+                        </AreaChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </div>
+
+                  <div className="bg-gray-50 p-6 rounded-xl">
+                    <h3 className="text-lg font-semibold text-[#5E936C] mb-6">Monthly Volume Comparison</h3>
+                    <div className="h-80">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={trendData?.offeringsTrend || []}>
+                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e0e0e0" />
+                          <XAxis dataKey="label" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
+                          <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `${value / 1000}k`} />
+                          <Tooltip
+                            cursor={{ fill: '#E8FFD7', opacity: 0.4 }}
+                            contentStyle={{ backgroundColor: '#fff', border: 'none', borderRadius: '8px', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                            formatter={(value: number) => [formatCurrency(value), 'Amount']}
+                          />
+                          <Bar dataKey="value" fill="#5E936C" radius={[4, 4, 0, 0]} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </div>
+                </div>
               </motion.div>
             )}
 

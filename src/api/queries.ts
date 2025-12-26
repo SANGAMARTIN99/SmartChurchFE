@@ -161,8 +161,8 @@ export const GET_UPCOMING_EVENTS = gql`
 `;
 
 export const GET_PRAYER_REQUESTS = gql`
-  query PrayerRequests {
-    prayerRequests {
+  query PrayerRequests($limit: Int, $offset: Int, $status: String, $search: String) {
+    prayerRequests(limit: $limit, offset: $offset, status: $status, search: $search) {
       id
       member
       request
@@ -174,6 +174,7 @@ export const GET_PRAYER_REQUESTS = gql`
         date
       }
     }
+    totalPrayerRequests(status: $status, search: $search)
   }
 `;
 
@@ -185,6 +186,24 @@ export const GET_OFFERING_STATS = gql`
       thisMonth
       lastMonth
       trend
+    }
+  }
+`;
+
+export const GET_OFFERINGS_TREND = gql`
+  query OfferingsTrend($months: Int) {
+    offeringsTrend(months: $months) {
+      label
+      value
+    }
+  }
+`;
+
+export const GET_MEMBERSHIP_GROWTH = gql`
+  query MembershipGrowth($months: Int) {
+    membershipGrowth(months: $months) {
+      label
+      value
     }
   }
 `;
@@ -245,8 +264,8 @@ export const SAVE_JOURNAL = gql`
 
 
 export const GET_ANNOUNCEMENTS = gql`
-  query Announcements {
-    announcements {
+  query Announcements($limit: Int, $offset: Int, $category: String, $search: String) {
+    announcements(limit: $limit, offset: $offset, category: $category, search: $search) {
       id
       title
       content
@@ -265,6 +284,7 @@ export const GET_ANNOUNCEMENTS = gql`
       }
       createdAt
     }
+    totalAnnouncements(category: $category, search: $search)
   }
 `;
 

@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useQuery } from '@apollo/client';
-import { FaUsers, FaSearch, FaDownload } from 'react-icons/fa';
+import { FaUsers, FaSearch, FaDownload, FaFilePdf } from 'react-icons/fa';
 import { GET_RECENT_OFFERINGS, GET_STREETS_AND_GROUPS } from '../../api/queries';
+import { handleExportDownload } from '../../utils/export';
 
 const MemberContributions: React.FC = () => {
   // Defaults: current month
@@ -63,15 +64,35 @@ const MemberContributions: React.FC = () => {
         <main className="flex-1 overflow-y-auto p-4 md:p-6 bg-[#F7FCF5] mt-16">
           <div className="bg-white rounded-2xl shadow-lg p-6 mb-6 flex flex-col md:flex-row items-center justify-between">
             <div className="flex items-center mb-4 md:mb-0">
-              <div className="bg-[#5E936C] p-3 rounded-full mr-4"><FaUsers className="text-2xl text-white"/></div>
+              <div className="bg-[#5E936C] p-3 rounded-full mr-4"><FaUsers className="text-2xl text-white" /></div>
               <div>
                 <h1 className="text-2xl font-bold text-[#5E936C]">Member Contributions</h1>
                 <p className="text-gray-600">Individual giving analytics and breakdown</p>
               </div>
             </div>
             <div className="flex space-x-2">
-              <button onClick={() => alert('CSV export coming soon')} className="px-4 py-2 rounded-lg bg-[#E8FFD7] text-[#5E936C] flex items-center"><FaDownload className="mr-2"/> CSV</button>
-              <button onClick={() => alert('PDF export coming soon')} className="px-4 py-2 rounded-lg bg-[#5E936C] text-white flex items-center"><FaDownload className="mr-2"/> PDF</button>
+              <button
+                onClick={() => handleExportDownload('/api/export/contributions/', 'contributions.csv', {
+                  start_date: dateRange.start,
+                  end_date: dateRange.end,
+                  street: streetFilter,
+                  type: typeFilter
+                })}
+                className="px-4 py-2 rounded-lg bg-[#E8FFD7] text-[#5E936C] flex items-center hover:bg-[#d4f5bc] transition-colors"
+              >
+                <FaDownload className="mr-2" /> CSV
+              </button>
+              <button
+                onClick={() => handleExportDownload('/api/export/contributions/pdf/', 'contributions_report.pdf', {
+                  start_date: dateRange.start,
+                  end_date: dateRange.end,
+                  street: streetFilter,
+                  type: typeFilter
+                })}
+                className="px-4 py-2 rounded-lg bg-[#5E936C] text-white flex items-center hover:bg-[#4a7a58] transition-colors"
+              >
+                <FaFilePdf className="mr-2" /> PDF
+              </button>
             </div>
           </div>
 

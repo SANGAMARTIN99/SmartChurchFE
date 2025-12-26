@@ -3,6 +3,7 @@ import { FaChurch, FaCalendarAlt, FaUsers, FaPhone, FaGlobe, FaDoorOpen } from '
 import { GiCrossedChains } from 'react-icons/gi';
 import { motion } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
 
 // Define interfaces for navigation items
 interface NavItemBase {
@@ -49,8 +50,8 @@ const Navbar = () => {
 
   const navItems: NavItem[] = [
     { name: 'Home', icon: <FaChurch />, href: '#home' },
-    { 
-      name: 'Services', 
+    {
+      name: 'Services',
       icon: <FaCalendarAlt />,
       href: '#services',
       dropdown: [
@@ -59,8 +60,8 @@ const Navbar = () => {
         { name: 'Weekly Fellowships', href: '#fellowships' }
       ]
     },
-    { 
-      name: 'Groups', 
+    {
+      name: 'Groups',
       icon: <FaUsers />,
       href: '#groups',
       dropdown: [
@@ -71,9 +72,9 @@ const Navbar = () => {
     { name: 'Ministries', icon: <GiCrossedChains />, href: '#ministries' },
     { name: 'Leaders', icon: <FaUsers />, href: '#leaders' },
     { name: 'Contact', icon: <FaPhone />, href: '#contact' },
-    { 
-      name: 'Language', 
-      icon: <FaGlobe />, 
+    {
+      name: 'Language',
+      icon: <FaGlobe />,
       href: '#language',
       dropdown: [
         { name: 'English', href: '#', action: () => changeLanguage('en') },
@@ -84,7 +85,7 @@ const Navbar = () => {
   ];
 
   return (
-    <motion.nav 
+    <motion.nav
       initial={{ y: -100 }}
       animate={{ y: 0 }}
       transition={{ duration: 0.5 }}
@@ -93,7 +94,7 @@ const Navbar = () => {
       <div className="container mx-auto px-4">
         <div className="flex justify-between items-center">
           {/* Logo */}
-          <motion.div 
+          <motion.div
             whileHover={{ scale: 1.05 }}
             className="flex items-center space-x-2"
           >
@@ -109,9 +110,8 @@ const Navbar = () => {
               const isDropdownItem = 'dropdown' in item;
               return (
                 <div key={item.name} className="relative group">
-                  <motion.a
-                    whileHover={{ scale: 1.05 }}
-                    href={item.href}
+                  <Link
+                    to={item.href}
                     className="flex items-center px-3 py-2 text-[#E8FFD7] hover:text-white transition-colors"
                     onMouseEnter={() => isDropdownItem && toggleDropdown(item.name)}
                     onMouseLeave={() => isDropdownItem && toggleDropdown(null)}
@@ -132,10 +132,10 @@ const Navbar = () => {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path>
                       </svg>
                     )}
-                  </motion.a>
+                  </Link>
 
                   {isDropdownItem && activeDropdown === item.name && (
-                    <motion.div 
+                    <motion.div
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: 20 }}
@@ -144,9 +144,9 @@ const Navbar = () => {
                       onMouseLeave={() => toggleDropdown(null)}
                     >
                       {(item as NavItemWithDropdown).dropdown.map((subItem) => (
-                        <a
+                        <Link
                           key={subItem.name}
-                          href={subItem.href}
+                          to={subItem.href}
                           onClick={(e) => {
                             if (subItem.action) {
                               e.preventDefault();
@@ -156,7 +156,7 @@ const Navbar = () => {
                           className="block px-4 py-2 text-[#2D3748] hover:bg-[#5E936C] hover:text-[#E8FFD7] transition-colors"
                         >
                           {subItem.name}
-                        </a>
+                        </Link>
                       ))}
                     </motion.div>
                   )}
@@ -185,7 +185,7 @@ const Navbar = () => {
 
       {/* Mobile Navigation */}
       {mobileMenuOpen && (
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, height: 0 }}
           animate={{ opacity: 1, height: 'auto' }}
           exit={{ opacity: 0, height: 0 }}
@@ -217,7 +217,7 @@ const Navbar = () => {
                     )}
                   </a>
                   {isDropdownItem && activeDropdown === item.name && (
-                    <motion.div 
+                    <motion.div
                       initial={{ opacity: 0, height: 0 }}
                       animate={{ opacity: 1, height: 'auto' }}
                       exit={{ opacity: 0, height: 0 }}

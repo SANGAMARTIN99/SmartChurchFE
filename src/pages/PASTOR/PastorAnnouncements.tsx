@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
-import { 
-  FaBullhorn, FaCalendarAlt, FaPlus, FaEdit, FaTrash, FaEye, 
+import React, { useState, useEffect } from 'react';
+import {
+  FaBullhorn, FaCalendarAlt, FaPlus, FaEdit, FaTrash, FaEye,
   FaSearch, FaFilter, FaClock, FaMapMarkerAlt, FaUsers, FaShare,
-  FaBell, FaExclamationCircle, FaInfoCircle, FaNewspaper
+  FaBell, FaExclamationCircle, FaInfoCircle, FaChevronLeft, FaChevronRight,
+  FaCheckCircle, FaTimes
 } from 'react-icons/fa';
 import { motion, AnimatePresence } from 'framer-motion';
 import { format, isToday, isTomorrow, isThisWeek, parseISO } from 'date-fns';
@@ -29,6 +30,8 @@ interface Category {
   name: string;
   color: string;
   icon: React.ReactElement;
+  bgColor: string;
+  borderColor: string;
 }
 
 const AnnouncementsPage = () => {
@@ -36,30 +39,38 @@ const AnnouncementsPage = () => {
   const [selectedAnnouncement, setSelectedAnnouncement] = useState<Announcement | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
-  const [showPinnedOnly, setShowPinnedOnly] = useState(false);
+
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 12;
 
   const categories: Category[] = [
-    { id: 'events', name: 'Events', color: '#5E936C', icon: <FaCalendarAlt /> },
-    { id: 'services', name: 'Service Changes', color: '#93DA97', icon: <FaBell /> },
-    { id: 'community', name: 'Community News', color: '#4A8C5F', icon: <FaUsers /> },
-    { id: 'urgent', name: 'Urgent Updates', color: '#E53E3E', icon: <FaExclamationCircle /> },
-    { id: 'general', name: 'General', color: '#6B7280', icon: <FaInfoCircle /> }
+    { id: 'events', name: 'Events', color: '#5E936C', bgColor: '#F0F9F1', borderColor: '#E1F2E4', icon: <FaCalendarAlt /> },
+    { id: 'services', name: 'Service', color: '#4A90E2', bgColor: '#F0F7FF', borderColor: '#E1EFFF', icon: <FaBell /> },
+    { id: 'community', name: 'Community', color: '#F5A623', bgColor: '#FFF9F0', borderColor: '#FFF1E1', icon: <FaUsers /> },
+    { id: 'urgent', name: 'Urgent', color: '#E53E3E', bgColor: '#FFF5F5', borderColor: '#FED7D7', icon: <FaExclamationCircle /> },
+    { id: 'general', name: 'General', color: '#6B7280', bgColor: '#F9FAFB', borderColor: '#F3F4F6', icon: <FaInfoCircle /> }
   ];
 
-  const { data, loading, error} = useQuery(GET_ANNOUNCEMENTS, {
+  const { data, loading, error, refetch } = useQuery(GET_ANNOUNCEMENTS, {
+    variables: {
+      limit: pageSize,
+      offset: (currentPage - 1) * pageSize,
+      category: selectedCategory === 'all' ? null : selectedCategory,
+      search: searchQuery || null
+    },
     fetchPolicy: 'network-only',
   });
-  const [createAnnouncement] = useMutation(CREATE_ANNOUNCEMENT, {
+
+  const [createAnnouncement, { loading: creating }] = useMutation(CREATE_ANNOUNCEMENT, {
     refetchQueries: [{ query: GET_ANNOUNCEMENTS }],
   });
-  const [updateAnnouncement] = useMutation(UPDATE_ANNOUNCEMENT, {
+  const [updateAnnouncement, { loading: updating }] = useMutation(UPDATE_ANNOUNCEMENT, {
     refetchQueries: [{ query: GET_ANNOUNCEMENTS }],
   });
   const [deleteAnnouncement] = useMutation(DELETE_ANNOUNCEMENT, {
     refetchQueries: [{ query: GET_ANNOUNCEMENTS }],
   });
 
-  // Normalize API shape (objects) to UI shape (strings) for createdBy/targetGroup
   const announcements: Announcement[] = (data?.announcements || []).map((a: any) => ({
     id: a.id,
     title: a.title,
@@ -74,48 +85,29 @@ const AnnouncementsPage = () => {
     createdAt: a.createdAt,
   }));
 
+  const totalCount = data?.totalAnnouncements || 0;
+  const totalPages = Math.ceil(totalCount / pageSize);
+
   const [formData, setFormData] = useState({
     title: '',
     content: '',
     category: 'general',
     isPinned: false,
-    targetGroup: '',
+    targetGroupId: '',
     eventDate: '',
     eventTime: '',
     location: ''
   });
 
-  // Filter announcements based on search and category (case-insensitive, robust)
-  const normalizedSelectedCategory = (selectedCategory || '').toLowerCase();
-  const normalizedSearch = (searchQuery || '').toLowerCase().trim();
-
-  const filteredAnnouncements = announcements.filter((a) => {
-    const title = (a.title || '').toLowerCase();
-    const content = (a.content || '').toLowerCase();
-    const category = (a.category || '').toLowerCase();
-
-    // Search matches title or content
-    const matchesSearch = normalizedSearch
-      ? title.includes(normalizedSearch) || content.includes(normalizedSearch)
-      : true;
-
-    // Category matches exact id (case-insensitive) or 'all'
-    const matchesCategory =
-      normalizedSelectedCategory === 'all' || category === normalizedSelectedCategory;
-
-    // Pinned filter
-    const matchesPinned = showPinnedOnly ? !!a.isPinned : true;
-
-    return matchesSearch && matchesCategory && matchesPinned;
-  });
-
-  const pinnedAnnouncements = filteredAnnouncements.filter(a => a.isPinned);
-  const regularAnnouncements = filteredAnnouncements.filter(a => !a.isPinned);
+  // Reset pagination on filter change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedCategory, searchQuery]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
     const checked = type === 'checkbox' ? (e.target as HTMLInputElement).checked : undefined;
-    
+
     setFormData(prev => ({
       ...prev,
       [name]: type === 'checkbox' ? checked : value
@@ -124,63 +116,46 @@ const AnnouncementsPage = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Build common input payload
     const inputPayload = {
       title: formData.title,
       content: formData.content,
       category: formData.category,
       isPinned: formData.isPinned,
-      // NOTE: Provide a real group ID when available; using label will fail. Send null if not an ID.
-      targetGroupId: formData.targetGroup && /^\d+$/.test(formData.targetGroup) ? formData.targetGroup : null,
-      eventDate: formData.eventDate ? formData.eventDate : null,
-      eventTime: formData.eventTime ? formData.eventTime : null,
-      location: formData.location ? formData.location : null,
-    } as const;
+      targetGroupId: formData.targetGroupId || null,
+      eventDate: formData.eventDate || null,
+      eventTime: formData.eventTime || null,
+      location: formData.location || null,
+    };
 
     try {
       if (selectedAnnouncement) {
-        // Update existing announcement
-        const { data } = await updateAnnouncement({
+        await updateAnnouncement({
           variables: { input: { id: selectedAnnouncement.id, input: inputPayload } },
         });
-        const resp = data?.updateAnnouncement;
-        if (!resp?.success) {
-          console.error('UpdateAnnouncement failed:', resp?.message);
-          alert(`Failed to update announcement: ${resp?.message || 'Unknown error'}`);
-          return;
-        }
-        alert('Announcement updated successfully!');
       } else {
-        // Create new announcement
-        const { data } = await createAnnouncement({
+        await createAnnouncement({
           variables: { input: inputPayload },
         });
-        const resp = data?.createAnnouncement;
-        if (!resp?.success) {
-          console.error('CreateAnnouncement failed:', resp?.message);
-          alert(`Failed to create announcement: ${resp?.message || 'Unknown error'}`);
-          return;
-        }
-        alert('Announcement created successfully!');
       }
-
-      // Reset form and go back to list
-      setFormData({
-        title: '',
-        content: '',
-        category: 'general',
-        isPinned: false,
-        targetGroup: '',
-        eventDate: '',
-        eventTime: '',
-        location: ''
-      });
       setActiveView('list');
-      setSelectedAnnouncement(null);
+      resetForm();
     } catch (err) {
-      console.error('GraphQL Error:', err);
-      alert('Error saving announcement. Please try again.');
+      console.error(err);
     }
+  };
+
+  const resetForm = () => {
+    setFormData({
+      title: '',
+      content: '',
+      category: 'general',
+      isPinned: false,
+      targetGroupId: '',
+      eventDate: '',
+      eventTime: '',
+      location: ''
+    });
+    setSelectedAnnouncement(null);
   };
 
   const handleEdit = (announcement: Announcement) => {
@@ -190,7 +165,7 @@ const AnnouncementsPage = () => {
       content: announcement.content,
       category: announcement.category,
       isPinned: announcement.isPinned,
-      targetGroup: announcement.targetGroup || '',
+      targetGroupId: '', // IDs are harder to prefill without more data
       eventDate: announcement.eventDate || '',
       eventTime: announcement.eventTime || '',
       location: announcement.location || ''
@@ -199,591 +174,440 @@ const AnnouncementsPage = () => {
   };
 
   const handleDelete = async (id: string) => {
-    if (window.confirm('Are you sure you want to delete this announcement?')) {
+    if (window.confirm('Delete this announcement permanently?')) {
       try {
-        const { data } = await deleteAnnouncement({ variables: { input: { id } } });
-        const resp = data?.deleteAnnouncement;
-        if (!resp?.success) {
-          console.error('DeleteAnnouncement failed:', resp?.message);
-          alert(`Failed to delete announcement: ${resp?.message || 'Unknown error'}`);
-          return;
-        }
-        alert('Announcement deleted successfully!');
+        await deleteAnnouncement({ variables: { input: { id } } });
       } catch (err) {
-        console.error('Error deleting announcement:', err);
-        alert('Error deleting announcement. Please try again.');
+        console.error(err);
       }
     }
   };
 
-  const handlePreview = (announcement: Announcement) => {
-    setSelectedAnnouncement(announcement);
-    setActiveView('preview');
-  };
-
   const formatDate = (dateString: string | null) => {
     if (!dateString) return null;
-    
     const date = parseISO(dateString);
     if (isToday(date)) return 'Today';
     if (isTomorrow(date)) return 'Tomorrow';
-    if (isThisWeek(date)) return format(date, 'EEEE');
-    
     return format(date, 'MMM dd, yyyy');
   };
 
   const getCategoryInfo = (categoryId: string) => {
-    return categories.find(cat => cat.id === categoryId) || categories[categories.length - 1];
+    return categories.find(cat => cat.id === categoryId.toLowerCase()) || categories[4];
   };
 
-  
-
-  if (loading) return <div className="min-h-screen bg-gradient-to-b from-[#E8FFD7] to-[#93DA97] p-4 md:p-6 text-center">Loading...</div>;
-  if (error) return <div className="min-h-screen bg-gradient-to-b from-[#E8FFD7] to-[#93DA97] p-4 md:p-6 text-center">Error loading announcements: {error.message}</div>;
-
   return (
-    <div className="flex h-screen bg-[#E8FFD7] overflow-hidden">
-      {/* Combined Navigation - Extended with Dashboard Items */}
-      
+    <div className="min-h-screen bg-[#F7FCF5] pt-20 pb-12 px-4 md:px-8">
+      <div className="max-w-7xl mx-auto">
 
-      {/* Main Content Area */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Main Content */}
-        <main className="flex-1 overflow-y-auto p-4 md:p-6 bg-[#F7FCF5] ">
-          <div className="max-w-6xl mx-auto">
-            {/* Header */}
-            <motion.div 
-              initial={{ opacity: 0, y: -20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="bg-white rounded-2xl shadow-lg p-6 mb-6 flex flex-col md:flex-row items-center justify-between"
+        {/* Header */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between mb-10 gap-6">
+          <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}>
+            <h1 className="text-4xl font-black text-[#1A2E1F] flex items-center gap-4">
+              <div className="p-3 bg-white rounded-2xl shadow-sm border border-gray-100">
+                <FaBullhorn className="text-[#5E936C]" />
+              </div>
+              Church Announcements
+            </h1>
+            <p className="text-gray-500 mt-2 font-medium">Keeping the congregation informed and engaged.</p>
+          </motion.div>
+
+          <div className="flex gap-4">
+            <button
+              onClick={() => { resetForm(); setActiveView('create'); }}
+              className="bg-[#5E936C] text-white px-8 py-4 rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-[#1A2E1F] transition-all flex items-center gap-3 shadow-lg shadow-[#5E936C]/20"
             >
-              <div className="flex items-center mb-4 md:mb-0">
-                <div className="bg-[#5E936C] p-3 rounded-full mr-4">
-                  <FaBullhorn className="text-2xl text-white" />
-                </div>
-                <div>
-                  <h1 className="text-2xl font-bold text-[#5E936C]">Church Announcements</h1>
-                  <p className="text-gray-600">Share important updates with the congregation</p>
-                </div>
-              </div>
-              
-              <div className="flex space-x-2">
-                <button
-                  onClick={() => setActiveView('list')}
-                  className={`px-4 py-2 rounded-lg flex items-center ${activeView === 'list' ? 'bg-[#5E936C] text-white' : 'bg-[#E8FFD7] text-[#5E936C]'}`}
-                >
-                  <FaNewspaper className="mr-2" />
-                  View All
-                </button>
-                <button
-                  onClick={() => {
-                    setSelectedAnnouncement(null);
-                    setActiveView('create');
-                  }}
-                  className={`px-4 py-2 rounded-lg flex items-center ${activeView === 'create' ? 'bg-[#5E936C] text-white' : 'bg-[#E8FFD7] text-[#5E936C]'}`}
-                >
-                  <FaPlus className="mr-2" />
-                  New Announcement
-                </button>
-              </div>
-            </motion.div>
+              <FaPlus /> New Update
+            </button>
+          </div>
+        </div>
 
-            <AnimatePresence mode="wait">
-              {activeView === 'list' && (
-                <motion.div
-                  key="list"
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: 20 }}
-                  className="space-y-6"
-                >
-                  {/* Search and Filter Section */}
-                  <div className="bg-white rounded-2xl shadow-lg p-6">
-                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                      <div className="relative flex-1">
-                        <FaSearch className="absolute left-3 top-3 text-gray-400" />
-                        <input
-                          type="text"
-                          placeholder="Search announcements..."
-                          value={searchQuery}
-                          onChange={(e) => setSearchQuery(e.target.value)}
-                          className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#5E936C] focus:border-transparent"
-                        />
-                      </div>
-                      
-                      <div className="flex flex-wrap gap-3">
-                        <select
-                          value={selectedCategory}
-                          onChange={(e) => setSelectedCategory(e.target.value)}
-                          className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#5E936C] focus:border-transparent"
+        {activeView === 'list' && (
+          <div className="space-y-8">
+            {/* Controls */}
+            <div className="bg-white rounded-3xl shadow-sm p-4 flex flex-col lg:flex-row gap-4 items-center border border-gray-100">
+              <div className="relative flex-1 w-full">
+                <FaSearch className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Search announcements..."
+                  className="w-full pl-14 pr-6 py-4 bg-gray-50 rounded-2xl focus:ring-4 focus:ring-[#E8FFD7] border-none text-gray-700 font-medium"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+              </div>
+
+              <div className="flex gap-2 w-full lg:w-auto overflow-x-auto pb-2 lg:pb-0 scrollbar-hide">
+                <div className="flex bg-gray-50 p-1.5 rounded-2xl border border-gray-100 whitespace-nowrap">
+                  <button
+                    onClick={() => setSelectedCategory('all')}
+                    className={`px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${selectedCategory === 'all'
+                        ? 'bg-white text-[#5E936C] shadow-sm'
+                        : 'text-gray-400 hover:text-gray-600'
+                      }`}
+                  >
+                    All
+                  </button>
+                  {categories.map((cat) => (
+                    <button
+                      key={cat.id}
+                      onClick={() => setSelectedCategory(cat.id)}
+                      className={`px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all flex items-center gap-2 ${selectedCategory === cat.id
+                          ? 'bg-white shadow-sm'
+                          : 'text-gray-400 hover:text-gray-600'
+                        }`}
+                      style={{ color: selectedCategory === cat.id ? cat.color : undefined }}
+                    >
+                      {cat.icon} {cat.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Content Feed */}
+            {loading ? (
+              <div className="flex flex-col items-center justify-center py-32">
+                <div className="animate-spin rounded-full h-16 w-16 border-4 border-[#5E936C] border-t-transparent"></div>
+              </div>
+            ) : announcements.length === 0 ? (
+              <div className="text-center py-32 bg-white rounded-[3rem] border-2 border-dashed border-gray-100">
+                <FaBullhorn className="text-7xl text-gray-100 mx-auto mb-6" />
+                <p className="text-gray-400 text-xl font-medium">No announcements found in this category.</p>
+              </div>
+            ) : (
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                  <AnimatePresence mode='popLayout'>
+                    {announcements.map((ann, idx) => {
+                      const cat = getCategoryInfo(ann.category);
+                      return (
+                        <motion.div
+                          key={ann.id}
+                          layout
+                          initial={{ opacity: 0, y: 30 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: (idx % 6) * 0.05 }}
+                          className={`bg-white rounded-[2.5rem] p-8 shadow-sm border border-gray-100 group relative overflow-hidden flex flex-col transition-all hover:shadow-2xl hover:border-${cat.color}/20`}
                         >
-                          <option value="all">All Categories</option>
-                          {categories.map(category => (
-                            <option key={category.id} value={category.id}>{category.name}</option>
-                          ))}
-                        </select>
-                        
+                          {ann.isPinned && (
+                            <div className="absolute top-0 right-0 p-4">
+                              <div className="bg-amber-100 text-amber-600 p-2 rounded-xl shadow-sm">
+                                <FaExclamationCircle className="text-lg" />
+                              </div>
+                            </div>
+                          )}
+
+                          <div className="flex items-center gap-3 mb-6">
+                            <div
+                              className="w-12 h-12 rounded-2xl flex items-center justify-center text-xl shadow-sm"
+                              style={{ backgroundColor: cat.bgColor, color: cat.color, border: `1px solid ${cat.borderColor}` }}
+                            >
+                              {cat.icon}
+                            </div>
+                            <div>
+                              <span className="text-[10px] font-black uppercase tracking-[0.2em]" style={{ color: cat.color }}>
+                                {cat.name}
+                              </span>
+                              <div className="text-xs text-gray-400 font-bold mt-0.5">
+                                {formatDate(ann.createdAt)}
+                              </div>
+                            </div>
+                          </div>
+
+                          <h3 className="text-xl font-black text-[#1A2E1F] mb-4 group-hover:text-[#5E936C] transition-colors leading-tight">
+                            {ann.title}
+                          </h3>
+
+                          <p className="text-gray-500 text-sm leading-relaxed mb-8 flex-1 line-clamp-4">
+                            {ann.content}
+                          </p>
+
+                          {(ann.eventDate || ann.location) && (
+                            <div className="space-y-3 mb-8 p-4 bg-gray-50 rounded-2xl border border-gray-100/50">
+                              {ann.eventDate && (
+                                <div className="flex items-center gap-3 text-xs font-bold text-gray-600">
+                                  <FaCalendarAlt className="text-[#5E936C]" />
+                                  {formatDate(ann.eventDate)} {ann.eventTime && `• ${ann.eventTime}`}
+                                </div>
+                              )}
+                              {ann.location && (
+                                <div className="flex items-center gap-3 text-xs font-bold text-gray-600">
+                                  <FaMapMarkerAlt className="text-[#5E936C]" />
+                                  {ann.location}
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                          <div className="flex items-center justify-between pt-6 border-t border-gray-50">
+                            <div className="flex items-center gap-2">
+                              <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center text-[10px] font-black text-gray-400 uppercase">
+                                {ann.createdBy.charAt(0)}
+                              </div>
+                              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{ann.createdBy}</span>
+                            </div>
+
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => handleEdit(ann)}
+                                className="p-3 bg-gray-50 text-gray-400 rounded-xl hover:bg-[#E8FFD7] hover:text-[#5E936C] transition-all"
+                              >
+                                <FaEdit className="text-sm" />
+                              </button>
+                              <button
+                                onClick={() => handleDelete(ann.id)}
+                                className="p-3 bg-gray-50 text-gray-400 rounded-xl hover:bg-red-50 hover:text-red-500 transition-all"
+                              >
+                                <FaTrash className="text-sm" />
+                              </button>
+                              <button
+                                onClick={() => { setSelectedAnnouncement(ann); setActiveView('preview'); }}
+                                className="p-3 bg-[#5E936C] text-white rounded-xl shadow-lg shadow-[#5E936C]/20 hover:bg-[#1A2E1F] transition-all"
+                              >
+                                <FaEye className="text-sm" />
+                              </button>
+                            </div>
+                          </div>
+                        </motion.div>
+                      );
+                    })}
+                  </AnimatePresence>
+                </div>
+
+                {/* Pagination */}
+                {totalPages > 1 && (
+                  <div className="mt-16 flex items-center justify-center gap-4">
+                    <button
+                      onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                      disabled={currentPage === 1}
+                      className="p-5 bg-white rounded-2xl shadow-sm border border-gray-100 text-[#5E936C] disabled:opacity-30 hover:bg-[#E8FFD7] transition-all"
+                    >
+                      <FaChevronLeft />
+                    </button>
+
+                    <div className="flex gap-3">
+                      {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
                         <button
-                          onClick={() => setShowPinnedOnly(!showPinnedOnly)}
-                          className={`px-4 py-2 rounded-lg flex items-center ${showPinnedOnly ? 'bg-[#5E936C] text-white' : 'bg-gray-100 text-gray-700'}`}
+                          key={p}
+                          onClick={() => setCurrentPage(p)}
+                          className={`w-14 h-14 rounded-2xl font-black text-sm transition-all ${currentPage === p
+                              ? 'bg-[#5E936C] text-white shadow-xl scale-110'
+                              : 'bg-white text-gray-400 hover:text-gray-600 border border-gray-100'
+                            }`}
                         >
-                          <FaFilter className="mr-2" />
-                          {showPinnedOnly ? 'Showing Pinned Only' : 'Show All'}
-                        </button>
-                      </div>
-                    </div>
-                    
-                    <div className="flex flex-wrap gap-2 mt-4">
-                      {categories.map(category => (
-                        <button
-                          key={category.id}
-                          onClick={() => setSelectedCategory(category.id)}
-                          className={`px-3 py-1 rounded-full flex items-center text-sm ${selectedCategory === category.id ? 'text-white' : 'text-gray-700'}`}
-                          style={{ backgroundColor: selectedCategory === category.id ? category.color : '#E8FFD7' }}
-                        >
-                          <span className="mr-1">{category.icon}</span>
-                          {category.name}
+                          {p}
                         </button>
                       ))}
                     </div>
+
+                    <button
+                      onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                      disabled={currentPage === totalPages}
+                      className="p-5 bg-white rounded-2xl shadow-sm border border-gray-100 text-[#5E936C] disabled:opacity-30 hover:bg-[#E8FFD7] transition-all"
+                    >
+                      <FaChevronRight />
+                    </button>
                   </div>
-                  
-                  {/* Pinned Announcements */}
-                  {pinnedAnnouncements.length > 0 && (
-                    <div>
-                      <h2 className="text-xl font-bold text-[#5E936C] mb-4 flex items-center">
-                        <FaExclamationCircle className="mr-2" />
-                        Pinned Announcements
-                      </h2>
-                      
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {pinnedAnnouncements.map(announcement => {
-                          const categoryInfo = getCategoryInfo(announcement.category);
-                          return (
-                            <motion.div
-                              key={announcement.id}
-                              whileHover={{ y: -5 }}
-                              className="bg-white rounded-2xl shadow-lg overflow-hidden border-l-4"
-                              style={{ borderLeftColor: categoryInfo.color }}
-                            >
-                              <div className="p-6">
-                                <div className="flex justify-between items-start mb-3">
-                                  <div className="flex items-center">
-                                    <div className="p-2 rounded-full mr-3" style={{ backgroundColor: categoryInfo.color + '20' }}>
-                                      <span className="text-lg" style={{ color: categoryInfo.color }}>{categoryInfo.icon}</span>
-                                    </div>
-                                    <span className="font-medium" style={{ color: categoryInfo.color }}>
-                                      {categoryInfo.name}
-                                    </span>
-                                  </div>
-                                  <div className="flex space-x-2">
-                                    <button
-                                      onClick={() => handlePreview(announcement)}
-                                      className="p-1 text-gray-400 hover:text-[#5E936C]"
-                                      title="Preview"
-                                    >
-                                      <FaEye />
-                                    </button>
-                                    <button
-                                      onClick={() => handleEdit(announcement)}
-                                      className="p-1 text-gray-400 hover:text-[#5E936C]"
-                                      title="Edit"
-                                    >
-                                      <FaEdit />
-                                    </button>
-                                    <button
-                                      onClick={() => handleDelete(announcement.id)}
-                                      className="p-1 text-gray-400 hover:text-red-500"
-                                      title="Delete"
-                                    >
-                                      <FaTrash />
-                                    </button>
-                                  </div>
-                                </div>
-                                
-                                <h3 className="text-xl font-bold text-gray-800 mb-2">{announcement.title}</h3>
-                                <p className="text-gray-600 mb-4 line-clamp-2">{announcement.content}</p>
-                                
-                                {(announcement.eventDate || announcement.location) && (
-                                  <div className="border-t border-gray-100 pt-3 mt-3">
-                                    {announcement.eventDate && (
-                                      <div className="flex items-center text-sm text-gray-500 mb-1">
-                                        <FaCalendarAlt className="mr-2" />
-                                        <span>{formatDate(announcement.eventDate)}</span>
-                                        {announcement.eventTime && <span className="ml-2">at {announcement.eventTime}</span>}
-                                      </div>
-                                    )}
-                                    {announcement.location && (
-                                      <div className="flex items-center text-sm text-gray-500">
-                                        <FaMapMarkerAlt className="mr-2" />
-                                        <span>{announcement.location}</span>
-                                      </div>
-                                    )}
-                                  </div>
-                                )}
-                                
-                                <div className="flex justify-between items-center mt-4">
-                                  <div className="text-sm text-gray-500">
-                                    By {announcement.createdBy} • {format(parseISO(announcement.createdAt), 'MMM dd, yyyy')}
-                                  </div>
-                                  {announcement.targetGroup && (
-                                    <span className="px-2 py-1 bg-[#E8FFD7] text-[#5E936C] text-xs rounded-full">
-                                      {announcement.targetGroup}
-                                    </span>
-                                  )}
-                                </div>
-                              </div>
-                            </motion.div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
-                  
-                  {/* Regular Announcements */}
-                  <div>
-                    <h2 className="text-xl font-bold text-[#5E936C] mb-4">Recent Announcements</h2>
-                    
-                    {regularAnnouncements.length > 0 ? (
-                      <div className="grid grid-cols-1 gap-4">
-                        {regularAnnouncements.map(announcement => {
-                          const categoryInfo = getCategoryInfo(announcement.category);
-                          return (
-                            <motion.div
-                              key={announcement.id}
-                              whileHover={{ x: 5 }}
-                              className="bg-white rounded-xl shadow-md p-5 border-l-4"
-                              style={{ borderLeftColor: categoryInfo.color }}
-                            >
-                              <div className="flex justify-between items-start">
-                                <div className="flex-1">
-                                  <div className="flex items-center mb-2">
-                                    <div className="p-1 rounded-full mr-2" style={{ backgroundColor: categoryInfo.color + '20' }}>
-                                      <span className="text-sm" style={{ color: categoryInfo.color }}>{categoryInfo.icon}</span>
-                                    </div>
-                                    <span className="text-sm font-medium" style={{ color: categoryInfo.color }}>
-                                      {categoryInfo.name}
-                                    </span>
-                                    {announcement.targetGroup && (
-                                      <span className="ml-3 px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded-full">
-                                        {announcement.targetGroup}
-                                      </span>
-                                    )}
-                                  </div>
-                                  
-                                  <h3 className="text-lg font-semibold text-gray-800 mb-1">{announcement.title}</h3>
-                                  <p className="text-gray-600 mb-3">{announcement.content}</p>
-                                  
-                                  <div className="flex items-center text-sm text-gray-500">
-                                    <FaClock className="mr-1" />
-                                    <span>{format(parseISO(announcement.createdAt), 'MMM dd, yyyy • h:mm a')}</span>
-                                    <span className="mx-2">•</span>
-                                    <span>By {announcement.createdBy}</span>
-                                  </div>
-                                </div>
-                                
-                                <div className="flex space-x-2 ml-4">
-                                  <button
-                                    onClick={() => handlePreview(announcement)}
-                                    className="p-1 text-gray-400 hover:text-[#5E936C]"
-                                    title="Preview"
-                                  >
-                                    <FaEye />
-                                  </button>
-                                  <button
-                                    onClick={() => handleEdit(announcement)}
-                                    className="p-1 text-gray-400 hover:text-[#5E936C]"
-                                    title="Edit"
-                                  >
-                                    <FaEdit />
-                                  </button>
-                                  <button
-                                    onClick={() => handleDelete(announcement.id)}
-                                    className="p-1 text-gray-400 hover:text-red-500"
-                                    title="Delete"
-                                  >
-                                    <FaTrash />
-                                  </button>
-                                </div>
-                              </div>
-                            </motion.div>
-                          );
-                        })}
-                      </div>
-                    ) : (
-                      <div className="bg-white rounded-2xl shadow-lg p-8 text-center">
-                        <FaBullhorn className="text-4xl text-gray-300 mx-auto mb-4" />
-                        <h3 className="text-xl font-semibold text-gray-700 mb-2">No announcements found</h3>
-                        <p className="text-gray-500 mb-4">Try changing your search or filter criteria</p>
-                        <button
-                          onClick={() => {
-                            setSearchQuery('');
-                            setSelectedCategory('all');
-                            setShowPinnedOnly(false);
-                          }}
-                          className="bg-[#5E936C] text-white px-4 py-2 rounded-lg"
-                        >
-                          Clear Filters
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </motion.div>
-              )}
-              
-              {activeView === 'create' && (
-                <motion.div
-                  key="create"
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: 20 }}
-                  className="bg-white rounded-2xl shadow-lg p-6"
-                >
-                  <h2 className="text-xl font-bold text-[#5E936C] mb-6">
-                    {selectedAnnouncement ? 'Edit Announcement' : 'Create New Announcement'}
+                )}
+              </>
+            )}
+          </div>
+        )}
+
+        {/* Create/Edit View */}
+        {activeView === 'create' && (
+          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="max-w-3xl mx-auto">
+            <div className="bg-white rounded-[3rem] shadow-2xl overflow-hidden border border-gray-100">
+              <div className="p-10 border-b border-gray-50 flex items-center justify-between bg-gray-50/50">
+                <div>
+                  <h2 className="text-3xl font-black text-[#1A2E1F]">
+                    {selectedAnnouncement ? 'Refine Update' : 'New Announcement'}
                   </h2>
-                  
-                  <form onSubmit={handleSubmit}>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                      <div>
-                        <label className="block text-gray-700 mb-2">Title</label>
-                        <input
-                          type="text"
-                          name="title"
-                          value={formData.title}
-                          onChange={handleInputChange}
-                          className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#5E936C] focus:border-transparent"
-                          placeholder="Enter announcement title"
-                          required
-                        />
-                      </div>
-                      
-                      <div>
-                        <label className="block text-gray-700 mb-2">Category</label>
-                        <select
-                          name="category"
-                          value={formData.category}
-                          onChange={handleInputChange}
-                          className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#5E936C] focus:border-transparent"
-                        >
-                          {categories.map(category => (
-                            <option key={category.id} value={category.id}>{category.name}</option>
-                          ))}
-                        </select>
-                      </div>
-                    </div>
-                    
-                    <div className="mb-6">
-                      <label className="block text-gray-700 mb-2">Content</label>
-                      <textarea
-                        name="content"
-                        value={formData.content}
+                  <p className="text-gray-400 font-bold text-xs uppercase tracking-widest mt-1">
+                    {selectedAnnouncement ? 'Updating existing information' : 'Broadcast to the congregation'}
+                  </p>
+                </div>
+                <button onClick={() => { setActiveView('list'); resetForm(); }} className="text-gray-400 p-2 hover:bg-white hover:text-red-500 rounded-xl transition-all"><FaTimes /></button>
+              </div>
+
+              <form onSubmit={handleSubmit} className="p-10 space-y-8">
+                <div className="space-y-6">
+                  <div className="relative group">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-[#5E936C] ml-4 absolute -top-2 bg-white px-2 z-10 transition-all group-focus-within:text-black">Update Title</label>
+                    <input
+                      type="text"
+                      name="title"
+                      value={formData.title}
+                      onChange={handleInputChange}
+                      className="w-full px-8 py-5 bg-gray-50 rounded-3xl border-none focus:ring-4 focus:ring-[#E8FFD7] font-bold text-lg text-gray-700 transition-all"
+                      placeholder="e.g., Annual Feast of Weeks"
+                      required
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="relative group">
+                      <label className="text-[10px] font-black uppercase tracking-widest text-[#5E936C] ml-4 absolute -top-2 bg-white px-2 z-10">Category</label>
+                      <select
+                        name="category"
+                        value={formData.category}
                         onChange={handleInputChange}
-                        rows={5}
-                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#5E936C] focus:border-transparent"
-                        placeholder="Write your announcement content here..."
-                        required
-                      />
+                        className="w-full px-8 py-5 bg-gray-50 rounded-3xl border-none focus:ring-4 focus:ring-[#E8FFD7] font-bold text-gray-700 appearance-none"
+                      >
+                        {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                      </select>
                     </div>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                      <div>
-                        <label className="block text-gray-700 mb-2">Target Group (Optional)</label>
-                        <select
-                          name="targetGroup"
-                          value={formData.targetGroup}
-                          onChange={handleInputChange}
-                          className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#5E936C] focus:border-transparent"
-                        >
-                          <option value="">All Members</option>
-                          <option value="Youth Group">Youth Group</option>
-                          <option value="Women's Group">Women's Group</option>
-                          <option value="Elders Council">Elders Council</option>
-                          <option value="Choir Members">Choir Members</option>
-                          <option value="Sunday School">Sunday School</option>
-                        </select>
-                      </div>
-                      
-                      <div>
-                        <label className="block text-gray-700 mb-2">Location (Optional)</label>
-                        <input
-                          type="text"
-                          name="location"
-                          value={formData.location}
-                          onChange={handleInputChange}
-                          className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#5E936C] focus:border-transparent"
-                          placeholder="e.g., Main Sanctuary, Parish Hall"
-                        />
-                      </div>
+                    <div className="relative group">
+                      <label className="text-[10px] font-black uppercase tracking-widest text-[#5E936C] ml-4 absolute -top-2 bg-white px-2 z-10">Target Group</label>
+                      <select
+                        name="targetGroupId"
+                        value={formData.targetGroupId}
+                        onChange={handleInputChange}
+                        className="w-full px-8 py-5 bg-gray-50 rounded-3xl border-none focus:ring-4 focus:ring-[#E8FFD7] font-bold text-gray-700 appearance-none"
+                      >
+                        <option value="">All Members</option>
+                      </select>
                     </div>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                      <div>
-                        <label className="block text-gray-700 mb-2">Event Date (Optional)</label>
-                        <input
-                          type="date"
-                          name="eventDate"
-                          value={formData.eventDate}
-                          onChange={handleInputChange}
-                          className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#5E936C] focus:border-transparent"
-                        />
-                      </div>
-                      
-                      <div>
-                        <label className="block text-gray-700 mb-2">Event Time (Optional)</label>
-                        <input
-                          type="time"
-                          name="eventTime"
-                          value={formData.eventTime}
-                          onChange={handleInputChange}
-                          className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#5E936C] focus:border-transparent"
-                        />
-                      </div>
+                  </div>
+
+                  <div className="relative group">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-[#5E936C] ml-4 absolute -top-2 bg-white px-2 z-10">Broadcase Message</label>
+                    <textarea
+                      name="content"
+                      value={formData.content}
+                      onChange={handleInputChange}
+                      rows={6}
+                      className="w-full px-8 py-5 bg-gray-50 rounded-[2rem] border-none focus:ring-4 focus:ring-[#E8FFD7] font-medium text-gray-700 resize-none transition-all"
+                      placeholder="Write the full content of your announcement here..."
+                      required
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-4">
+                    <div className="relative group">
+                      <label className="text-[10px] font-black uppercase tracking-widest text-[#5E936C] ml-4 absolute -top-2 bg-white px-2 z-10">Date</label>
+                      <input type="date" name="eventDate" value={formData.eventDate} onChange={handleInputChange} className="w-full px-6 py-5 bg-gray-50 rounded-3xl border-none focus:ring-4 focus:ring-[#E8FFD7] font-bold text-gray-700" />
                     </div>
-                    
-                    <div className="flex items-center mb-6">
+                    <div className="relative group">
+                      <label className="text-[10px] font-black uppercase tracking-widest text-[#5E936C] ml-4 absolute -top-2 bg-white px-2 z-10">Time</label>
+                      <input type="time" name="eventTime" value={formData.eventTime} onChange={handleInputChange} className="w-full px-6 py-5 bg-gray-50 rounded-3xl border-none focus:ring-4 focus:ring-[#E8FFD7] font-bold text-gray-700" />
+                    </div>
+                    <div className="relative group">
+                      <label className="text-[10px] font-black uppercase tracking-widest text-[#5E936C] ml-4 absolute -top-2 bg-white px-2 z-10">Location</label>
+                      <input type="text" name="location" value={formData.location} onChange={handleInputChange} placeholder="Parish Hall" className="w-full px-6 py-5 bg-gray-50 rounded-3xl border-none focus:ring-4 focus:ring-[#E8FFD7] font-bold text-gray-700" />
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-4 bg-[#F7FCF5] p-6 rounded-[2rem] border border-[#E8FFD7]">
+                    <div className="relative inline-block w-12 h-6 transition duration-200 ease-in-out bg-gray-200 rounded-full shadow-inner">
                       <input
                         type="checkbox"
-                        id="isPinned"
                         name="isPinned"
                         checked={formData.isPinned}
                         onChange={handleInputChange}
-                        className="h-4 w-4 text-[#5E936C] focus:ring-[#5E936C] border-gray-300 rounded"
+                        className="absolute block w-6 h-6 bg-white border-4 border-gray-200 rounded-full appearance-none cursor-pointer checked:right-0 checked:bg-[#5E936C] checked:border-[#5E936C] transition-all"
                       />
-                      <label htmlFor="isPinned" className="ml-2 block text-gray-700">
-                        Pin this announcement to the top
-                      </label>
                     </div>
-                    
-                    <div className="flex justify-end space-x-4">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setActiveView('list');
-                          setSelectedAnnouncement(null);
-                        }}
-                        className="px-6 py-3 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100"
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        type="submit"
-                        className="bg-[#5E936C] text-white px-6 py-3 rounded-lg hover:bg-[#4a7a58] flex items-center"
-                      >
-                        {selectedAnnouncement ? 'Update Announcement' : 'Publish Announcement'}
-                      </button>
+                    <div>
+                      <span className="block font-black text-[#1A2E1F] text-sm">Pin Announcement</span>
+                      <span className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Always visible at the top of the feed</span>
                     </div>
-                  </form>
-                </motion.div>
-              )}
-              
-              {activeView === 'preview' && selectedAnnouncement && (
-                <motion.div
-                  key="preview"
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: 20 }}
-                  className="bg-white rounded-2xl shadow-lg overflow-hidden"
-                >
-                  <div className="p-6 border-b border-gray-200 flex justify-between items-center">
-                    <h2 className="text-xl font-bold text-[#5E936C]">Announcement Preview</h2>
-                    <button
-                      onClick={() => setActiveView('list')}
-                      className="text-gray-500 hover:text-gray-700"
-                    >
-                      Close
-                    </button>
                   </div>
-                  
-                  <div className="p-6">
-                    <div className="max-w-2xl mx-auto">
-                      <div className="flex items-center justify-between mb-6">
-                        <div className="flex items-center">
-                          {(() => {
-                            const categoryInfo = getCategoryInfo(selectedAnnouncement.category);
-                            return (
-                              <>
-                                <div className="p-2 rounded-full mr-3" style={{ backgroundColor: categoryInfo.color + '20' }}>
-                                {React.cloneElement(categoryInfo.icon as React.ReactElement<{ className?: string; style?: React.CSSProperties }>, {
-                                    className: "text-xl",
-                                    style: { 
-                                      ...(categoryInfo.icon.props as any)?.style,
-                                      color: categoryInfo.color 
-                                    }
-                                  })}
-                                </div>
-                                <span className="font-medium" style={{ color: categoryInfo.color }}>
-                                  {categoryInfo.name}
-                                </span>
-                              </>
-                            );
-                          })()}
-                        </div>
-                        <div className="text-sm text-gray-500">
-                          {format(parseISO(selectedAnnouncement.createdAt), 'MMM dd, yyyy • h:mm a')}
-                        </div>
-                      </div>
-                      
-                      <h1 className="text-3xl font-bold text-gray-800 mb-4">{selectedAnnouncement.title}</h1>
-                      
-                      {(selectedAnnouncement.eventDate || selectedAnnouncement.location) && (
-                        <div className="bg-gray-50 p-4 rounded-lg mb-6">
-                          {selectedAnnouncement.eventDate && (
-                            <div className="flex items-center text-gray-700 mb-2">
-                              <FaCalendarAlt className="mr-3 text-[#5E936C]" />
-                              <span className="font-medium">{formatDate(selectedAnnouncement.eventDate)}</span>
-                              {selectedAnnouncement.eventTime && <span className="ml-2">at {selectedAnnouncement.eventTime}</span>}
-                            </div>
-                          )}
-                          {selectedAnnouncement.location && (
-                            <div className="flex items-center text-gray-700">
-                              <FaMapMarkerAlt className="mr-3 text-[#5E936C]" />
-                              <span className="font-medium">{selectedAnnouncement.location}</span>
-                            </div>
-                          )}
+                </div>
+
+                <div className="flex gap-4 pt-10 border-t border-gray-50">
+                  <button type="button" onClick={() => { setActiveView('list'); resetForm(); }} className="flex-1 py-5 bg-gray-100 text-gray-400 rounded-3xl font-black text-xs uppercase tracking-widest hover:bg-gray-200 transition-all">Discard</button>
+                  <button type="submit" disabled={creating || updating} className="flex-[2] py-5 bg-[#5E936C] text-white rounded-3xl font-black text-xs uppercase tracking-widest hover:bg-[#1A2E1F] transition-all shadow-xl shadow-[#5E936C]/20 flex items-center justify-center gap-3">
+                    {creating || updating ? <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full" /> : <><FaCheckCircle /> {selectedAnnouncement ? 'Update Content' : 'Publish Broadcast'}</>}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </motion.div>
+        )}
+
+        {/* Preview View */}
+        {activeView === 'preview' && selectedAnnouncement && (
+          <motion.div initial={{ opacity: 0, y: 50 }} animate={{ opacity: 1, y: 0 }} className="max-w-4xl mx-auto">
+            <div className="bg-white rounded-[3.5rem] shadow-2xl overflow-hidden border border-gray-100">
+              {/* Cover/Action Header */}
+              <div className="h-4 p-8 flex justify-end">
+                <button onClick={() => setActiveView('list')} className="w-12 h-12 bg-gray-50 text-gray-400 rounded-2xl flex items-center justify-center hover:bg-red-50 hover:text-red-400 transition-all"><FaTimes /></button>
+              </div>
+
+              <div className="p-16 pt-8 space-y-12">
+                <div className="text-center space-y-4">
+                  <div className="flex justify-center flex-wrap gap-3">
+                    <span className="px-5 py-2 bg-[#E8FFD7] text-[#5E936C] rounded-full text-[10px] font-black uppercase tracking-[0.2em] border border-[#d4f5bc]">
+                      {getCategoryInfo(selectedAnnouncement.category).name}
+                    </span>
+                    {selectedAnnouncement.isPinned && (
+                      <span className="px-5 py-2 bg-amber-50 text-amber-600 rounded-full text-[10px] font-black uppercase tracking-[0.2em] border border-amber-100">
+                        Pinned Update
+                      </span>
+                    )}
+                  </div>
+                  <h1 className="text-5xl font-black text-[#1A2E1F] leading-tight max-w-2xl mx-auto">{selectedAnnouncement.title}</h1>
+                  <div className="flex items-center justify-center gap-6 text-gray-400 text-xs font-bold uppercase tracking-widest">
+                    <span className="flex items-center gap-2"><FaClock className="text-[#5E936C]" /> {format(parseISO(selectedAnnouncement.createdAt), 'MMM dd, yyyy')}</span>
+                    <span className="flex items-center gap-2"><FaUserCircle className="text-[#5E936C]" /> {selectedAnnouncement.createdBy}</span>
+                  </div>
+                </div>
+
+                <div className="p-10 bg-[#F7FCF5] rounded-[3rem] border border-[#E8FFD7] space-y-8">
+                  {(selectedAnnouncement.eventDate || selectedAnnouncement.location) && (
+                    <div className="grid grid-cols-2 gap-8 border-b border-[#E8FFD7] pb-8">
+                      {selectedAnnouncement.eventDate && (
+                        <div className="space-y-1">
+                          <span className="text-[10px] font-black text-[#5E936C] uppercase tracking-[0.2em]">Scheduled Date</span>
+                          <div className="text-xl font-bold text-[#1A2E1F]">{formatDate(selectedAnnouncement.eventDate)} at {selectedAnnouncement.eventTime || 'TBA'}</div>
                         </div>
                       )}
-                      
-                      <div className="prose max-w-none mb-8">
-                        <p className="text-gray-700 text-lg leading-relaxed whitespace-pre-line">
-                          {selectedAnnouncement.content}
-                        </p>
-                      </div>
-                      
-                      <div className="border-t border-gray-200 pt-6 flex justify-between items-center">
-                        <div className="text-gray-600">
-                          Published by <span className="font-medium">{selectedAnnouncement.createdBy}</span>
-                          {selectedAnnouncement.targetGroup && (
-                            <span className="ml-3 px-2 py-1 bg-[#E8FFD7] text-[#5E936C] text-xs rounded-full">
-                              For: {selectedAnnouncement.targetGroup}
-                            </span>
-                          )}
+                      {selectedAnnouncement.location && (
+                        <div className="space-y-1">
+                          <span className="text-[10px] font-black text-[#5E936C] uppercase tracking-[0.2em]">Venue Location</span>
+                          <div className="text-xl font-bold text-[#1A2E1F]">{selectedAnnouncement.location}</div>
                         </div>
-                        
-                        <div className="flex space-x-3">
-                          <button className="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg flex items-center">
-                            <FaShare className="mr-2" />
-                            Share
-                          </button>
-                          <button 
-                            onClick={() => handleEdit(selectedAnnouncement)}
-                            className="bg-[#5E936C] text-white px-4 py-2 rounded-lg flex items-center"
-                          >
-                            <FaEdit className="mr-2" />
-                            Edit
-                          </button>
-                        </div>
-                      </div>
+                      )}
+                    </div>
+                  )}
+
+                  <div className="prose prose-lg max-w-none">
+                    <p className="text-[#1A2E1F]/80 text-xl leading-relaxed font-medium whitespace-pre-line underline-offset-8">
+                      {selectedAnnouncement.content}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between pt-12">
+                  <div className="flex items-center gap-4">
+                    <div className="w-16 h-16 bg-gray-50 rounded-[1.5rem] flex items-center justify-center text-2xl font-black text-[#5E936C] shadow-inner">
+                      {selectedAnnouncement.createdBy.charAt(0)}
+                    </div>
+                    <div>
+                      <span className="block text-[10px] font-black text-gray-400 uppercase tracking-widest">Verified Publisher</span>
+                      <span className="text-lg font-black text-[#1A2E1F]">{selectedAnnouncement.createdBy}</span>
                     </div>
                   </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-        </main>
+
+                  <div className="flex gap-4">
+                    <button className="px-8 py-4 bg-gray-50 text-gray-500 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-gray-100 transition-all flex items-center gap-2"><FaShare /> Share</button>
+                    <button onClick={() => handleEdit(selectedAnnouncement)} className="px-8 py-4 bg-[#5E936C] text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-[#1A2E1F] transition-all shadow-xl shadow-[#5E936C]/20 flex items-center gap-2"><FaEdit /> Refine Content</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        )}
       </div>
     </div>
   );
 };
+
+const FaUserCircle = ({ className }: { className?: string }) => (
+  <svg stroke="currentColor" fill="currentColor" strokeWidth="0" viewBox="0 0 496 512" className={className} height="1em" width="1em" xmlns="http://www.w3.org/2000/svg">
+    <path d="M248 8C111 8 0 119 0 256s111 248 248 248 248-111 248-248S385 8 248 8zm0 96c48.6 0 88 39.4 88 88s-39.4 88-88 88-88-39.4-88-88 39.4-88 88-88zm0 344c-58.7 0-111.3-26.6-146.5-68.2 18.8-35.4 55.6-59.8 98.5-59.8 2.4 0 4.8.4 7.1 1.1 13 4.2 26.6 6.9 40.9 6.9 14.3 0 28-2.7 40.9-6.9 2.3-.7 4.7-1.1 7.1-1.1 42.9 0 79.7 24.4 98.5 59.8C359.3 421.4 306.7 448 248 448z"></path>
+  </svg>
+);
 
 export default AnnouncementsPage;

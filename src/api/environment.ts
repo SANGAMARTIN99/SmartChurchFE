@@ -2,10 +2,8 @@
 
 const isProduction = import.meta.env.MODE === "production";
 
-export const ENDPOINT = {
-  apiUrl: isProduction
-    ? "https://smartchurch.tarxemo.com/graphql/"  // production backend
-    : "http://smartchurch.tarxemo.com/graphql/",             // local backend
-};
+export const ENDPOINT = isProduction
+  ? "https://smartchurch.tarxemo.com/graphql/"  // production backend
+  : "http://localhost:8000/graphql/";             // local backend
 
 
