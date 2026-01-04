@@ -2,7 +2,7 @@ import { useState } from 'react';
 import {
   FaUsers, FaCalendarAlt, FaChartLine, FaBook,
   FaPrayingHands, FaMoneyBillWave,
-  FaPlus, FaDownload
+  FaPlus, FaDownload, FaFilePdf
 } from 'react-icons/fa';
 import { GiCrossedChains } from 'react-icons/gi';
 import { BsGraphUp, BsThreeDotsVertical } from 'react-icons/bs';
@@ -158,11 +158,11 @@ const PastorDashboard = () => {
                 <h2 className="text-2xl font-bold text-[#5E936C]">Church Overview</h2>
                 <div className="flex space-x-2">
                   <button
-                    onClick={() => handleExportDownload('/api/export/contributions/', 'church_report.csv')}
+                    onClick={() => handleExportDownload('/api/export/dashboard/pdf/', 'annual_church_report.pdf', { year: new Date().getFullYear() })}
                     className="bg-[#5E936C] text-white px-4 py-2 rounded-lg flex items-center hover:bg-[#4a7a58] transition-colors"
                   >
-                    <FaDownload className="mr-2" />
-                    Export Report
+                    <FaFilePdf className="mr-2" />
+                    Annual Report (PDF)
                   </button>
                 </div>
               </div>

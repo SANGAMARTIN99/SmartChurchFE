@@ -278,6 +278,8 @@ export const GET_ANNOUNCEMENTS = gql`
       eventDate
       eventTime
       location
+      expiresAt
+      attachmentUrl
       createdBy {
         id
         fullName

@@ -19,6 +19,9 @@ import MyOfferingsOverview from '../pages/MEMBER/My-Offerings-Overview';
 import SecretaryDashboard from '../pages/SECRETARY/secretaryDashboard';
 import OfferingCards from '../pages/SECRETARY/OfferingCards';
 import OfferingEntryPage from '../pages/SECRETARY/OfferingEntry';
+import BlogFeed from '../pages/BLOG/BlogFeed';
+import BlogPostDetail from '../pages/BLOG/BlogPostDetail';
+import GetCard from '../pages/MEMBER/GetCard';
 
 
 const AppRoutes = () => {
@@ -31,7 +34,7 @@ const AppRoutes = () => {
         <Route path="/reset-password/:token" element={<ResetPassword />} />
         {/* Authenticated section with persistent CombinedNav layout */}
         <Route element={<CombinedNav />}>
-          <Route path="/dashboard" element={<PastorDashboard />} />
+          <Route path="/pastor-dashboard" element={<PastorDashboard />} />
           <Route path="/word-of-the-day" element={<WordOfTheDay />} />
           <Route path="/prayer-requests" element={<PrayerRequests />} />
           <Route path="/announcements" element={<AnnouncementsPage />} />
@@ -45,11 +48,16 @@ const AppRoutes = () => {
           <Route path="/member-prayer-requests" element={<MyPrayerRequests />} />
           <Route path="/my-announcements" element={<TodayAnnouncements />} />
           <Route path="/my-offerings-overview" element={<MyOfferingsOverview />} />
+          <Route path="/get-card" element={<GetCard />} />
 
 
           <Route path="/secretaryDashboard" element={<SecretaryDashboard />} />
           <Route path="/offering-cards" element={<OfferingCards />} />
           <Route path="/offering-entry" element={<OfferingEntryPage />} />
+
+          {/* Blog Routes */}
+          <Route path="/blog" element={<BlogFeed />} />
+          <Route path="/blog/:id" element={<BlogPostDetail />} />
         </Route>
 
       </Routes>

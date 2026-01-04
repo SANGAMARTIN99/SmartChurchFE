@@ -1,15 +1,22 @@
-import { useState } from 'react';
-import { 
-  FaPrayingHands, FaCalendarAlt, FaMoneyBillWave, 
-  FaUsers, FaChartLine, FaArrowUp
+import { useState, useMemo } from 'react';
+import {
+  FaPrayingHands, FaCalendarAlt, FaMoneyBillWave,
+  FaUsers, FaChartLine, FaBookOpen, FaMapMarkerAlt,
+  FaChevronRight, FaPlay, FaChurch, FaHeart, FaArrowLeft
 } from 'react-icons/fa';
 import { motion, AnimatePresence } from 'framer-motion';
 import { format, parseISO } from 'date-fns';
 import { useQuery } from '@apollo/client';
-import { ME_QUERY, GET_RECENT_OFFERINGS, GET_UPCOMING_EVENTS } from '../../api/queries';
+import {
+  ME_QUERY,
+  GET_RECENT_OFFERINGS,
+  GET_UPCOMING_EVENTS,
+  GET_OFFERINGS_TREND,
+  GET_DEVOTIONALS
+} from '../../api/queries';
+import { XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
 
-// Type definitions
-// GraphQL response type for offerings
+// --- Types ---
 interface GraphQLOffering {
   id: string;
   date: string;
@@ -20,10 +27,9 @@ interface GraphQLOffering {
   attendant?: string;
 }
 
-// Local component type
 interface Offering extends Omit<GraphQLOffering, 'offeringType'> {
-  type: string; // Make type required in the component
-  attendant: string; // Make attendant required with a default value
+  type: string;
+  attendant: string;
 }
 
 type RsvpStatus = 'pending' | 'accepted' | 'declined' | 'going' | 'maybe';
@@ -54,467 +60,397 @@ interface MeData {
   };
 }
 
-// Using backend GraphQL types via simple view models
+// --- Components ---
+
+const LoadingSkeleton = ({ className }: { className?: string }) => (
+  <div className={`animate-pulse bg-gray-200 rounded-xl ${className}`}></div>
+);
+
+const EmptyState = ({ icon: Icon, title, message }: { icon: any, title: string, message: string }) => (
+  <div className="flex flex-col items-center justify-center p-8 text-center text-gray-500 bg-white/50 rounded-2xl border border-dashed border-gray-300 h-full">
+    <div className="bg-gray-100 p-4 rounded-full mb-3">
+      <Icon className="text-2xl text-gray-400" />
+    </div>
+    <h4 className="font-semibold text-gray-700">{title}</h4>
+    <p className="text-sm mt-1 max-w-xs">{message}</p>
+  </div>
+);
 
 const MemberDashboard = () => {
   const [activeTab, setActiveTab] = useState<'overview' | 'offerings' | 'groups' | 'events' | 'prayers'>('overview');
-  // Removed unused sidebar/notifications/messages/profile edit states
   const [newPrayerRequestOpen, setNewPrayerRequestOpen] = useState(false);
 
-  // Live data with proper typing
-  const { data: meData, loading: meLoading, error: meError } = useQuery<{ me: MeData['me'] }>(ME_QUERY);
-  
-  const { data: offeringsData } = useQuery<{ recentOfferings: GraphQLOffering[] }>(GET_RECENT_OFFERINGS, { 
-    variables: { limit: 10 } 
-  });
-  
-  const { data: eventsData } = useQuery<{ upcomingEvents: Omit<Event, 'rsvpStatus'>[] }>(GET_UPCOMING_EVENTS);
+  // --- Queries ---
+  const { data: meData, loading: meLoading } = useQuery<{ me: MeData['me'] }>(ME_QUERY);
 
-  // Map live data to view models with proper typing
-  const memberFirstName = meData?.me?.fullName?.split(' ')[0] || (meLoading ? 'Loading' : (meError ? 'Error' : 'Member'));
+  const { data: offeringsData, loading: offeringsLoading } = useQuery<{ recentOfferings: GraphQLOffering[] }>(GET_RECENT_OFFERINGS, {
+    variables: { limit: 50 }
+  });
+
+  const { data: eventsData, loading: eventsLoading } = useQuery<{ upcomingEvents: Omit<Event, 'rsvpStatus'>[] }>(GET_UPCOMING_EVENTS);
+
+  const { data: trendData, loading: trendLoading } = useQuery(GET_OFFERINGS_TREND, {
+    variables: { months: 1 }
+  });
+
+  const { data: devotionalData, loading: devotionalLoading } = useQuery(GET_DEVOTIONALS, {
+    variables: { limit: 1, offset: 0 }
+  });
+
+  // --- Data Transformation ---
+  const memberFirstName = meData?.me?.fullName?.split(' ')[0] || (meLoading ? '...' : 'Member');
   const memberStreet = meData?.me?.street?.name || '';
   const myGroups: Group[] = meData?.me?.groups || [];
-  
-  const recentOfferings: Offering[] = (offeringsData?.recentOfferings || []).slice(0, 5).map((o): Offering => ({
+
+  const allRecentOfferings: Offering[] = (offeringsData?.recentOfferings || []).map((o): Offering => ({
     ...o,
     type: (o.offeringType || o.type || 'other').toLowerCase(),
     attendant: o.attendant || 'Unknown',
   }));
-  
+
+  const recentOfferings = allRecentOfferings.slice(0, 5);
+
   const upcomingEvents: Event[] = (eventsData?.upcomingEvents || []).slice(0, 3).map((e) => ({
     ...e,
     rsvpStatus: 'pending' as const,
   }));
 
-  // Stats calculations from live data
-  const totalOfferings = recentOfferings.reduce((sum, o) => sum + (o.amount || 0), 0);
-  const pledgeProgress = 0; // No pledge data yet in schema
+  const totalOfferings = allRecentOfferings.reduce((sum, o) => sum + (o.amount || 0), 0);
+  const pledgedAmount = 1000000;
+  const offeredAmount = totalOfferings;
+  const pledgeProgress = Math.min(100, Math.max(0, (offeredAmount / pledgedAmount) * 100));
 
-  // Format currency (Tanzanian Shillings)
-  const formatCurrency = (amount: number): string => {
-    return new Intl.NumberFormat('en-TZ', {
-      style: 'currency',
-      currency: 'TZS',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0
-    }).format(amount);
-  };
+  const chartData = useMemo(() => {
+    if (allRecentOfferings.length > 0) {
+      const grouped = allRecentOfferings.reduce((acc, curr) => {
+        try {
+          const d = parseISO(curr.date);
+          const dateKey = format(d, 'yyyy-MM-dd');
+          acc[dateKey] = (acc[dateKey] || 0) + curr.amount;
+        } catch (e) { console.warn('Invalid date', curr.date); }
+        return acc;
+      }, {} as Record<string, number>);
 
-  // Format date
-  const formatDate = (dateString: string): string => {
-    try {
-      return format(parseISO(dateString), 'MMM dd, yyyy');
-    } catch (error) {
-      console.error('Error formatting date:', error);
-      return 'Invalid date';
+      const points = [];
+      const today = new Date();
+      const startDate = new Date(today);
+      startDate.setDate(today.getDate() - 60);
+
+      for (let d = new Date(startDate); d <= today; d.setDate(d.getDate() + 1)) {
+        const dateKey = format(d, 'yyyy-MM-dd');
+        const amount = grouped[dateKey] || 0;
+        const isSunday = d.getDay() === 0;
+        const hasData = amount > 0;
+
+        if (isSunday || hasData) {
+          points.push({ label: format(d, 'MMM dd'), date: dateKey, value: amount });
+        }
+      }
+      return points;
     }
-  };
+    return [];
+  }, [trendData, allRecentOfferings]);
 
-  // Handle prayer request submission
-  interface PrayerRequest {
-    request: string;
-    isPublic: boolean;
-  }
+  const todayDevotional = devotionalData?.devotionals?.[0];
+  const hasDevotional = !devotionalLoading && !!todayDevotional; // Condition for layout swap
 
-  const handlePrayerRequestSubmit = ({ request, isPublic }: PrayerRequest): void => {
-    console.log('New prayer request:', { request, isPublic });
-    setNewPrayerRequestOpen(false);
-    // Here you would typically submit the prayer request via API
-  };
+  // --- Helper Components ---
 
-  
-  // const totalGroups = myGroups.length;
+  const DevotionalContent = () => (
+    <>
+      {devotionalLoading ? (
+        <LoadingSkeleton className="h-[400px] w-full rounded-3xl" />
+      ) : todayDevotional ? (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="relative h-[420px] rounded-3xl overflow-hidden shadow-2xl group cursor-pointer"
+          onClick={() => window.location.href = '/member-word-of-the-day'}
+        >
+          {todayDevotional.imageUrl ? (
+            <img src={todayDevotional.imageUrl} alt="Devotional" className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
+          ) : (
+            <div className="absolute inset-0 bg-gradient-to-br from-[#1a3c2b] to-[#406851]" />
+          )}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
+          <div className="absolute bottom-0 left-0 right-0 p-8 md:p-10 text-white">
+            <div className="flex items-center gap-2 mb-3">
+              <span className="bg-white/20 backdrop-blur-md px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider border border-white/10">Word of the Day</span>
+              <span className="bg-[#5E936C] text-white px-2 py-1 rounded-full text-xs font-bold">Today</span>
+            </div>
+            <h2 className="text-3xl md:text-4xl font-extrabold mb-3 leading-tight text-shadow-sm">{todayDevotional.title}</h2>
+            {todayDevotional.scripture && (
+              <p className="text-white/90 text-lg italic font-serif border-l-4 border-[#5E936C] pl-4 mb-4 max-w-2xl">"{todayDevotional.scripture}"</p>
+            )}
+            <div className="flex items-center gap-4 mt-6">
+              <button className="bg-white text-[#1a3c2b] px-6 py-3 rounded-full font-bold flex items-center gap-2 hover:bg-gray-100 transition shadow-lg"><FaBookOpen /> Read Devotional</button>
+              {todayDevotional.audioUrl && (
+                <button className="bg-white/20 backdrop-blur-md text-white px-4 py-3 rounded-full hover:bg-white/30 transition border border-white/20"><FaPlay className="text-sm" /></button>
+              )}
+            </div>
+          </div>
+          <div className="absolute top-6 right-6">
+            <FaHeart className="text-white/50 text-3xl hover:text-[#5E936C] transition hover:scale-110" />
+          </div>
+        </motion.div>
+      ) : (
+        <EmptyState icon={FaBookOpen} title="No Devotional Today" message="Check back later for today's word." />
+      )}
+    </>
+  );
 
+  const ChartContent = ({ height = "h-[300px]" }: { height?: string }) => (
+    <div className="bg-white rounded-3xl p-6 md:p-8 shadow-xl border border-gray-50 h-full flex flex-col">
+      <div className="flex items-center justify-between mb-8">
+        <div>
+          <h3 className="text-xl font-bold text-[#1a3c2b]">Financial Overview</h3>
+          <p className="text-gray-500 text-sm">Offerings trend over the last 60 days</p>
+        </div>
+        <div className="bg-[#E8FFD7] p-3 rounded-full text-[#5E936C]">
+          <FaChartLine className="text-xl" />
+        </div>
+      </div>
+      <div className={`${height} w-full flex-1`}>
+        {trendLoading && (!chartData || chartData.length === 0) ? (
+          <div className="flex items-center justify-center h-full bg-gray-50 rounded-2xl border border-dashed">
+            <div className="flex flex-col items-center">
+              <div className="w-10 h-10 border-4 border-[#5E936C] border-t-transparent rounded-full animate-spin mb-3"></div>
+              <p className="text-gray-500 font-medium">Loading chart data...</p>
+            </div>
+          </div>
+        ) : chartData.length > 0 ? (
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+              <defs>
+                <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#5E936C" stopOpacity={0.3} />
+                  <stop offset="95%" stopColor="#5E936C" stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+              <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fill: '#9CA3AF', fontSize: 12 }} dy={10} />
+              <YAxis axisLine={false} tickLine={false} tick={{ fill: '#9CA3AF', fontSize: 12 }} tickFormatter={(value) => `${value / 1000}k`} />
+              <Tooltip contentStyle={{ backgroundColor: '#1a3c2b', border: 'none', borderRadius: '12px', color: '#fff', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)' }} itemStyle={{ color: '#fff' }} formatter={(value: number) => [formatCurrency(value), '']} labelStyle={{ color: '#ffffff80', marginBottom: '4px' }} />
+              <Area type="monotone" dataKey="value" stroke="#5E936C" strokeWidth={3} fillOpacity={1} fill="url(#colorValue)" />
+            </AreaChart>
+          </ResponsiveContainer>
+        ) : (
+          <EmptyState icon={FaChartLine} title="No Data" message="No offering data available." />
+        )}
+      </div>
+    </div>
+  );
 
-  // const nextEvent = upcomingEvents.length > 0 ? upcomingEvents[0] : null;
+  // --- Render Helpers ---
+  const getGreeting = useMemo(() => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good Morning';
+    if (hour < 17) return 'Good Afternoon';
+    return 'Good Evening';
+  }, []);
+
+  const formatCurrency = (amount: number) => new Intl.NumberFormat('en-TZ', { style: 'currency', currency: 'TZS', minimumFractionDigits: 0 }).format(amount);
+  const formatDate = (dateString: string) => { try { return format(parseISO(dateString), 'MMM dd'); } catch { return dateString; } };
+  const BackButton = () => <button onClick={() => setActiveTab('overview')} className="flex items-center gap-2 text-gray-500 hover:text-[#5E936C] transition mb-6 font-medium"><FaArrowLeft /> Back to Dashboard</button>;
 
   return (
-    <div className="flex h-[calc(100vh-3rem)] bg-gradient-to-br from-[#E8FFD7] to-[#93DA97] overflow-hidden ">
-      {/* Sidebar Navigation */}
-      
+    <div className="flex h-[calc(100vh-3rem)] bg-[#F2F5F8] overflow-hidden font-sans">
+      <main className="flex-1 overflow-y-auto w-full">
+        <div className="max-w-7xl mx-auto p-4 md:p-8">
 
-      {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-w-0">
-        
-
-        {/* Main Content */}
-        <main className="flex-1 overflow-y-auto scrollbar-hide p-4 md:p-6">
-          {meError && (
-            <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-red-700">
-              Failed to load your profile. Please re-login. Details: {meError.message}
-            </div>
-          )}
           <AnimatePresence mode="wait">
             {activeTab === 'overview' && (
-              <motion.div
-                key="overview"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                className="space-y-6"
-              >
-                {/* Welcome Section */}
-                <div className="bg-white rounded-2xl shadow-lg p-6">
-                  <div className="flex flex-col md:flex-row md:items-center justify-between">
-                    <div>
-                      <h2 className="text-2xl font-bold text-[#5E936C]">
-                        Welcome back, {memberFirstName}!
-                      </h2>
-                      <p className="text-gray-600 mt-1">
-                        Here's your overview of church activities and contributions
-                      </p>
+              <motion.div key="overview" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-8">
+                {/* --- Header Section --- */}
+                <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+                  <div>
+                    <h1 className="text-4xl md:text-5xl font-bold text-[#1a3c2b] tracking-tight">{getGreeting}, <span className="text-[#5E936C]">{memberFirstName}</span></h1>
+                    <p className="text-gray-500 mt-2 text-lg font-medium">{format(new Date(), 'EEEE, MMMM do, yyyy')}</p>
+                  </div>
+                  {memberStreet && (
+                    <div className="hidden md:flex items-center gap-2 bg-white px-4 py-2 rounded-full shadow-sm text-gray-600 border border-gray-100">
+                      <FaMapMarkerAlt className="text-[#5E936C]" />
+                      <span className="font-semibold">{memberStreet} Street</span>
                     </div>
-                    <div className="mt-4 md:mt-0">
-                      {memberStreet && (
-                        <span className="bg-[#E8FFD7] text-[#5E936C] px-3 py-1 rounded-full text-sm font-medium">
-                          {memberStreet} Street
-                        </span>
-                      )}
+                  )}
+                </div>
+
+                {/* --- Row 1: Hero & Side Panel --- */}
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 md:gap-8">
+                  {/* DYNAMIC CONTENT Placement: If no devotional, Chart goes here */}
+                  <div className="lg:col-span-7 xl:col-span-8 flex flex-col gap-6">
+                    {hasDevotional ? <DevotionalContent /> : <ChartContent height="h-[350px]" />}
+                  </div>
+
+                  {/* Side Panel (Consistent) */}
+                  <div className="lg:col-span-5 xl:col-span-4 flex flex-col gap-6">
+                    <div className="bg-white rounded-3xl p-6 shadow-xl border border-gray-50 flex flex-col justify-between h-auto min-h-[180px] relative overflow-hidden group">
+                      <div className="absolute top-0 right-0 p-6 opacity-5 group-hover:opacity-10 transition-opacity"><FaChartLine className="text-9xl text-[#5E936C]" /></div>
+                      <div>
+                        <h3 className="text-gray-500 font-semibold mb-1">Annual Pledge Progress</h3>
+                        <div className="flex items-end gap-2 mb-2"><span className="text-4xl font-extrabold text-[#1a3c2b]">{pledgeProgress.toFixed(0)}%</span></div>
+                        <p className="text-sm text-gray-500 font-medium"><span className="text-[#5E936C] font-bold">{formatCurrency(offeredAmount)}</span> contributed<br />of <span className="text-gray-700">{formatCurrency(pledgedAmount)}</span> goal</p>
+                      </div>
+                      <div className="w-full bg-gray-100 rounded-full h-3 mt-4 overflow-hidden">
+                        <motion.div initial={{ width: 0 }} animate={{ width: `${pledgeProgress}%` }} transition={{ duration: 1, ease: 'easeOut' }} className="h-full bg-gradient-to-r from-[#5E936C] to-[#93DA97] relative">
+                          <div className="absolute inset-0 bg-white/20 animate-[shimmer_2s_infinite]" />
+                        </motion.div>
+                      </div>
+                    </div>
+                    <div className="bg-white rounded-3xl p-6 shadow-xl border border-gray-50 flex-1">
+                      <div className="flex items-center justify-between mb-4">
+                        <h3 className="font-bold text-[#1a3c2b] text-lg flex items-center gap-2"><FaCalendarAlt className="text-[#5E936C]" /> Upcoming</h3>
+                        <button onClick={() => setActiveTab('events')} className="text-xs font-bold text-[#5E936C] bg-[#E8FFD7] px-3 py-1 rounded-full hover:bg-[#d4f5c1] transition">View All</button>
+                      </div>
+                      <div className="space-y-4">
+                        {eventsLoading ? (
+                          <div className="space-y-3"><LoadingSkeleton className="h-16 w-full rounded-2xl" /><LoadingSkeleton className="h-16 w-full rounded-2xl" /></div>
+                        ) : upcomingEvents.length > 0 ? (
+                          upcomingEvents.map(event => (
+                            <div key={event.id} className="flex gap-4 items-start group">
+                              <div className="bg-gray-50 rounded-2xl w-14 h-14 flex flex-col items-center justify-center shrink-0 border border-gray-100 group-hover:border-[#5E936C] transition-colors">
+                                <span className="text-xs font-bold text-gray-500 uppercase">{format(parseISO(event.date), 'MMM')}</span>
+                                <span className="text-xl font-black text-[#1a3c2b]">{format(parseISO(event.date), 'dd')}</span>
+                              </div>
+                              <div className="min-w-0">
+                                <h4 className="font-bold text-gray-800 truncate">{event.title}</h4>
+                                <p className="text-xs text-gray-500 mt-0.5 flex items-center gap-1"><FaMapMarkerAlt className="text-[#5E936C]/60" /> {event.location || 'Church Main Hall'}</p>
+                                <span className="inline-block mt-1 text-[10px] font-bold px-2 py-0.5 bg-gray-100 text-gray-600 rounded-md">{event.time}</span>
+                              </div>
+                            </div>
+                          ))
+                        ) : (<EmptyState icon={FaCalendarAlt} title="No Events" message="No upcoming events." />)}
+                      </div>
                     </div>
                   </div>
                 </div>
 
-                {/* Quick Stats */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                  <motion.div 
-                    whileHover={{ y: -5 }}
-                    className="bg-white rounded-xl shadow-md p-6 border-l-4 border-[#5E936C]"
-                  >
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-gray-500">Total Offerings</p>
-                        <h3 className="text-2xl font-bold text-[#5E936C]">{formatCurrency(totalOfferings)}</h3>
-                      </div>
-                      <div className="bg-[#E8FFD7] p-3 rounded-full">
-                        <FaMoneyBillWave className="text-xl text-[#5E936C]" />
-                      </div>
-                    </div>
-                    <div className="mt-3 flex items-center text-sm text-green-500">
-                      <FaArrowUp className="mr-1" />
-                      <span>Consistent giver</span>
-                    </div>
-                  </motion.div>
-                  
-                  <motion.div 
-                    whileHover={{ y: -5 }}
-                    className="bg-white rounded-xl shadow-md p-6 border-l-4 border-[#93DA97]"
-                  >
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-gray-500">Pledge Progress</p>
-                        <h3 className="text-2xl font-bold text-[#5E936C]">{pledgeProgress.toFixed(1)}%</h3>
-                      </div>
-                      <div className="bg-[#E8FFD7] p-3 rounded-full">
-                        <FaChartLine className="text-xl text-[#5E936C]" />
-                      </div>
-                    </div>
-                    <div className="mt-3">
-                      <div className="w-full bg-gray-200 rounded-full h-2">
-                        <div 
-                          className="bg-[#5E936C] h-2 rounded-full" 
-                          style={{ width: `${Math.min(pledgeProgress, 100)}%` }}
-                        ></div>
-                      </div>
-                    </div>
-                  </motion.div>
-                  
-                  <motion.div 
-                    whileHover={{ y: -5 }}
-                    className="bg-white rounded-xl shadow-md p-6 border-l-4 border-[#5E936C]"
-                  >
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-gray-500">My Groups</p>
-                        <h3 className="text-2xl font-bold text-[#5E936C]">{myGroups.length}</h3>
-                      </div>
-                      <div className="bg-[#E8FFD7] p-3 rounded-full">
-                        <FaUsers className="text-xl text-[#5E936C]" />
-                      </div>
-                    </div>
-                    <div className="mt-3 text-sm text-gray-600">Joined groups</div>
-                  </motion.div>
-                  
-                  <motion.div 
-                    whileHover={{ y: -5 }}
-                    className="bg-white rounded-xl shadow-md p-6 border-l-4 border-[#93DA97]"
-                  >
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-gray-500">Upcoming Events</p>
-                        <h3 className="text-2xl font-bold text-[#5E936C]">{upcomingEvents.length}</h3>
-                      </div>
-                      <div className="bg-[#E8FFD7] p-3 rounded-full">
-                        <FaCalendarAlt className="text-xl text-[#5E936C]" />
-                      </div>
-                    </div>
-                    <div className="mt-3 text-sm text-gray-600">Next 3 upcoming</div>
-                  </motion.div>
-                </div>
+                {/* --- Row 2: Secondary & Recent Activity --- */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
+                  {/* DYNAMIC CONTENT Placement: If no devotional, Empty Devotional State goes here (Bottom), else Chart is here */}
+                  <div className="lg:col-span-2">
+                    {hasDevotional ? <ChartContent /> : <DevotionalContent />}
+                  </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  {/* Recent Offerings */}
-                  <div className="bg-white rounded-xl shadow-md overflow-hidden">
-                    <div className="p-6 border-b border-gray-200 flex justify-between items-center">
-                      <h3 className="text-lg font-semibold text-[#5E936C]">Recent Offerings</h3>
-                      <button 
-                        onClick={() => setActiveTab('offerings')}
-                        className="text-[#5E936C] hover:text-[#4a7a58] text-sm"
-                      >
-                        View All →
-                      </button>
-                    </div>
-                    <div className="divide-y divide-gray-100">
-                      {recentOfferings.map(offering => (
-                        <div key={offering.id} className="p-4 hover:bg-gray-50">
-                          <div className="flex justify-between items-center">
-                            <div>
-                              <p className="font-medium text-gray-800">{formatDate(offering.date)}</p>
-                              <p className="text-sm text-gray-600">{offering.massType}</p>
-                            </div>
-                            <div className="text-right">
-                              <p className="font-semibold text-[#5E936C]">{formatCurrency(offering.amount)}</p>
-                              <p className="text-sm text-gray-500 capitalize">{offering.type}</p>
-                            </div>
-                          </div>
-                        </div>
+                  <div className="flex flex-col gap-6">
+                    <div className="grid grid-cols-2 gap-4">
+                      {[{ icon: FaPrayingHands, label: 'Prayer', color: 'bg-blue-50 text-blue-600', onClick: () => setNewPrayerRequestOpen(true) }, { icon: FaMoneyBillWave, label: 'Giving', color: 'bg-green-50 text-green-600', onClick: () => setActiveTab('offerings') }, { icon: FaUsers, label: 'Groups', color: 'bg-purple-50 text-purple-600', onClick: () => setActiveTab('groups') }, { icon: FaCalendarAlt, label: 'Events', color: 'bg-orange-50 text-orange-600', onClick: () => setActiveTab('events') }].map((action, idx) => (
+                        <motion.button key={idx} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={action.onClick} className="bg-white p-4 rounded-2xl shadow-lg border border-gray-50 flex flex-col items-center justify-center gap-2 hover:shadow-xl transition-all">
+                          <div className={`p-3 rounded-full ${action.color}`}><action.icon className="text-xl" /></div>
+                          <span className="font-semibold text-gray-700 text-sm">{action.label}</span>
+                        </motion.button>
                       ))}
                     </div>
-                  </div>
-
-                  {/* Upcoming Events */}
-                  <div className="bg-white rounded-xl shadow-md overflow-hidden">
-                    <div className="p-6 border-b border-gray-200 flex justify-between items-center">
-                      <h3 className="text-lg font-semibold text-[#5E936C]">Upcoming Events</h3>
-                      <button 
-                        onClick={() => setActiveTab('events')}
-                        className="text-[#5E936C] hover:text-[#4a7a58] text-sm"
-                      >
-                        View All →
-                      </button>
-                    </div>
-                    <div className="divide-y divide-gray-100">
-                      {upcomingEvents.map(event => (
-                        <div key={event.id} className="p-4 hover:bg-gray-50">
-                          <div className="flex justify-between items-start">
-                            <div className="flex-1">
-                              <h4 className="font-semibold text-gray-800">{event.title}</h4>
-                              <p className="text-sm text-gray-600 mt-1">
-                                {formatDate(event.date)} at {event.time}
-                              </p>
-                              <p className="text-sm text-gray-500">{event.location}</p>
+                    <div className="bg-white rounded-3xl p-6 shadow-xl border border-gray-50 flex-1">
+                      <div className="flex items-center justify-between mb-4">
+                        <h3 className="font-bold text-[#1a3c2b]">Recent Activity</h3>
+                        <button onClick={() => setActiveTab('offerings')} className="text-gray-400 hover:text-[#5E936C] transition"><FaChevronRight /></button>
+                      </div>
+                      <div className="space-y-4 overflow-y-auto max-h-[300px] pr-2 scrollbar-thin scrollbar-thumb-gray-200">
+                        {offeringsLoading ? (
+                          <div className="space-y-3"><LoadingSkeleton className="h-12 w-full rounded-xl" /><LoadingSkeleton className="h-12 w-full rounded-xl" /></div>
+                        ) : recentOfferings.length > 0 ? (
+                          recentOfferings.map(offering => (
+                            <div key={offering.id} className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-xl transition-colors cursor-default">
+                              <div className="flex items-center gap-3">
+                                <div className="p-2 bg-[#E8FFD7] rounded-lg text-[#5E936C]"><FaChurch /></div>
+                                <div>
+                                  <p className="font-bold text-gray-800 text-sm">{offering.massType}</p>
+                                  <p className="text-xs text-gray-500">{formatDate(offering.date)}</p>
+                                </div>
+                              </div>
+                              <div className="text-right">
+                                <p className="font-bold text-[#1a3c2b] text-sm">{formatCurrency(offering.amount)}</p>
+                                <p className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full inline-block mt-1 capitalize">{offering.type}</p>
+                              </div>
                             </div>
-                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                              event.rsvpStatus === 'going' ? 'bg-green-100 text-green-800' :
-                              event.rsvpStatus === 'maybe' ? 'bg-yellow-100 text-yellow-800' :
-                              'bg-gray-100 text-gray-800'
-                            }`}>
-                              {event.rsvpStatus === 'going' ? 'Confirmed' :
-                               event.rsvpStatus === 'maybe' ? 'Maybe' : 'Pending'}
-                            </span>
-                          </div>
-                        </div>
-                      ))}
+                          ))
+                        ) : (<div className="py-8 text-center text-gray-400 text-sm">No recent transactions</div>)}
+                      </div>
                     </div>
-                  </div>
-                </div>
-
-                {/* My Groups */}
-                <div className="bg-white rounded-xl shadow-md overflow-hidden">
-                  <div className="p-6 border-b border-gray-200 flex justify-between items-center">
-                    <h3 className="text-lg font-semibold text-[#5E936C]">My Groups</h3>
-                    <button 
-                      onClick={() => setActiveTab('groups')}
-                      className="text-[#5E936C] hover:text-[#4a7a58] text-sm"
-                    >
-                      View All →
-                    </button>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-6">
-                    {myGroups.map((group: any) => (
-                      <motion.div
-                        key={group.id}
-                        whileHover={{ scale: 1.02 }}
-                        className="bg-gray-50 rounded-lg p-4 border border-gray-200"
-                      >
-                        <h4 className="font-semibold text-gray-800">{group.name}</h4>
-                      </motion.div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Quick Actions */}
-                <div className="bg-white rounded-xl shadow-md p-6">
-                  <h3 className="text-lg font-semibold text-[#5E936C] mb-4">Quick Actions</h3>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <motion.button
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                      className="bg-[#E8FFD7] hover:bg-[#d4f5c1] text-[#5E936C] p-4 rounded-lg flex flex-col items-center transition-all"
-                    >
-                      <FaPrayingHands className="text-2xl mb-2" />
-                      <span>Daily Devotional</span>
-                    </motion.button>
-                    <motion.button
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                      onClick={() => setActiveTab('events')}
-                      className="bg-[#E8FFD7] hover:bg-[#d4f5c1] text-[#5E936C] p-4 rounded-lg flex flex-col items-center transition-all"
-                    >
-                      <FaCalendarAlt className="text-2xl mb-2" />
-                      <span>View Events</span>
-                    </motion.button>
-                    <motion.button
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                      onClick={() => setNewPrayerRequestOpen(true)}
-                      className="bg-[#E8FFD7] hover:bg-[#d4f5c1] text-[#5E936C] p-4 rounded-lg flex flex-col items-center transition-all"
-                    >
-                      <FaPrayingHands className="text-2xl mb-2" />
-                      <span>Prayer Request</span>
-                    </motion.button>
-                    <motion.button
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                      onClick={() => setActiveTab('offerings')}
-                      className="bg-[#E8FFD7] hover:bg-[#d4f5c1] text-[#5E936C] p-4 rounded-lg flex flex-col items-center transition-all"
-                    >
-                      <FaMoneyBillWave className="text-2xl mb-2" />
-                      <span>My Offerings</span>
-                    </motion.button>
                   </div>
                 </div>
               </motion.div>
             )}
 
-            {/* Other tabs would follow similar structure */}
             {activeTab === 'offerings' && (
-              <motion.div
-                key="offerings"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                className="bg-white rounded-2xl shadow-lg p-6"
-              >
-                <h2 className="text-2xl font-bold text-[#5E936C] mb-6">My Offerings</h2>
-                <p className="text-gray-600">Detailed view of your offering history and patterns.</p>
-                {/* Offering details implementation would go here */}
+              <motion.div key="offerings" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="bg-white rounded-3xl shadow-xl p-8 min-h-[500px]">
+                <BackButton />
+                <h2 className="text-3xl font-bold text-[#1a3c2b] mb-4">My Offerings History</h2>
+                <div className="space-y-4 max-w-4xl">
+                  {allRecentOfferings.length > 0 ? (
+                    allRecentOfferings.map(offering => (
+                      <div key={offering.id} className="flex flex-col md:flex-row md:items-center justify-between p-4 border border-gray-100 rounded-2xl hover:bg-gray-50 transition cursor-default">
+                        <div className="flex items-start gap-4">
+                          <div className="hidden md:flex bg-[#E8FFD7] p-3 rounded-xl text-[#5E936C]"><FaMoneyBillWave size={20} /></div>
+                          <div>
+                            <p className="font-bold text-[#1a3c2b] text-lg">{formatDate(offering.date)}</p>
+                            <p className="text-gray-500 text-sm">{offering.massType} • <span className="capitalize">{offering.type}</span></p>
+                            {offering.attendant !== 'Unknown' && <p className="text-xs text-gray-400 mt-1">Recorded by: {offering.attendant}</p>}
+                          </div>
+                        </div>
+                        <div className="mt-4 md:mt-0 text-left md:text-right"><p className="text-2xl font-bold text-[#5E936C]">{formatCurrency(offering.amount)}</p></div>
+                      </div>
+                    ))
+                  ) : (<EmptyState icon={FaMoneyBillWave} title="No Offerings" message="You haven't made any offerings yet." />)}
+                </div>
               </motion.div>
             )}
 
             {activeTab === 'groups' && (
-              <motion.div
-                key="groups"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                className="bg-white rounded-2xl shadow-lg p-6"
-              >
-                <h2 className="text-2xl font-bold text-[#5E936C] mb-6">My Groups</h2>
-                <p className="text-gray-600">Manage your group memberships and activities.</p>
-                {/* Groups details implementation would go here */}
+              <motion.div key="groups" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="bg-white rounded-3xl shadow-xl p-8 min-h-[500px]">
+                <BackButton />
+                <h2 className="text-3xl font-bold text-[#1a3c2b] mb-4">My Groups</h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {myGroups.map((group: any) => (<div key={group.id} className="p-4 border rounded-xl hover:border-[#5E936C] transition cursor-pointer bg-gray-50"><h3 className="font-bold text-lg">{group.name}</h3><p className="text-gray-500">Member</p></div>))}
+                  {myGroups.length === 0 && <EmptyState icon={FaUsers} title="No Groups" message="You haven't joined any groups yet." />}
+                </div>
               </motion.div>
             )}
 
             {activeTab === 'events' && (
-              <motion.div
-                key="events"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                className="bg-white rounded-2xl shadow-lg p-6"
-              >
-                <h2 className="text-2xl font-bold text-[#5E936C] mb-6">Church Events</h2>
-                <p className="text-gray-600">View and RSVP to upcoming church events.</p>
-                {/* Events details implementation would go here */}
-              </motion.div>
-            )}
-
-            {activeTab === 'prayers' && (
-              <motion.div
-                key="prayers"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                className="bg-white rounded-2xl shadow-lg p-6"
-              >
-                <h2 className="text-2xl font-bold text-[#5E936C] mb-6">Prayer Requests</h2>
-                <p className="text-gray-600">Submit and track your prayer requests.</p>
-                {/* Prayer requests implementation would go here */}
+              <motion.div key="events" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="bg-white rounded-3xl shadow-xl p-8 min-h-[500px]">
+                <BackButton />
+                <h2 className="text-3xl font-bold text-[#1a3c2b] mb-4">All Upcoming Events</h2>
+                <div className="space-y-4">
+                  {eventsData?.upcomingEvents?.map((event: any) => (
+                    <div key={event.id} className="flex gap-4 p-4 border rounded-xl hover:shadow-md transition bg-white">
+                      <div className="bg-[#E8FFD7] text-[#5E936C] rounded-xl w-16 h-16 flex flex-col items-center justify-center shrink-0">
+                        <span className="text-xs font-bold uppercase">{format(parseISO(event.date), 'MMM')}</span>
+                        <span className="text-xl font-bold">{format(parseISO(event.date), 'dd')}</span>
+                      </div>
+                      <div>
+                        <h3 className="font-bold text-xl text-[#1a3c2b]">{event.title}</h3>
+                        <p className="text-gray-600 flex items-center gap-2 mt-1"><FaCalendarAlt size={14} /> {event.time} • {event.location}</p>
+                        <p className="text-gray-500 mt-2">{event.description}</p>
+                      </div>
+                    </div>
+                  ))}
+                  {(!eventsData?.upcomingEvents || eventsData.upcomingEvents.length === 0) && (<EmptyState icon={FaCalendarAlt} title="No Events" message="No upcoming events." />)}
+                </div>
               </motion.div>
             )}
           </AnimatePresence>
-        </main>
-      </div>
+        </div>
+      </main>
 
-      {/* Prayer Request Modal */}
+      {/* Prayer Request Modal (Preserved) */}
       <AnimatePresence>
         {newPrayerRequestOpen && (
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
-          >
-            <motion.div 
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-white rounded-xl shadow-xl w-full max-w-md"
-            >
-              <div className="p-6">
-                <h3 className="text-xl font-bold text-[#5E936C] mb-4">Submit Prayer Request</h3>
-                <form onSubmit={(e) => {
-                  e.preventDefault();
-                  const formData = new FormData(e.target as HTMLFormElement);
-                  handlePrayerRequestSubmit({
-                    request: formData.get('request') as string,
-                    isPublic: formData.get('isPublic') === 'on'
-                  });
-                }}>
-                  <div className="mb-4">
-                    <label className="block text-gray-700 mb-2">Your Prayer Request</label>
-                    <textarea 
-                      name="request"
-                      rows={4}
-                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#5E936C] focus:border-transparent"
-                      placeholder="Share your prayer request here..."
-                      required
-                    ></textarea>
-                  </div>
-                  <div className="flex items-center mb-6">
-                    <input
-                      type="checkbox"
-                      id="isPublic"
-                      name="isPublic"
-                      className="h-4 w-4 text-[#5E936C] focus:ring-[#5E936C] border-gray-300 rounded"
-                    />
-                    <label htmlFor="isPublic" className="ml-2 block text-gray-700">
-                      Share with church prayer team
-                    </label>
-                  </div>
-                  <div className="flex justify-end space-x-3">
-                    <button 
-                      type="button" 
-                      onClick={() => setNewPrayerRequestOpen(false)}
-                      className="px-4 py-2 text-gray-600 hover:text-gray-800"
-                    >
-                      Cancel
-                    </button>
-                    <button 
-                      type="submit"
-                      className="bg-[#5E936C] text-white px-4 py-2 rounded-lg hover:bg-[#4a7a58]"
-                    >
-                      Submit Request
-                    </button>
-                  </div>
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <motion.div initial={{ scale: 0.9, opacity: 0, y: 20 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.9, opacity: 0, y: 20 }} className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden">
+              <div className="bg-[#1a3c2b] p-6 text-white text-center"><FaPrayingHands className="text-4xl mx-auto mb-2 opacity-80" /><h3 className="text-2xl font-bold">Prayer Request</h3><p className="text-white/70 text-sm">How can we pray for you today?</p></div>
+              <div className="p-8">
+                <form onSubmit={(e) => { e.preventDefault(); /* submit logic */ setNewPrayerRequestOpen(false); }}>
+                  <div className="mb-6"><label className="block text-gray-700 font-semibold mb-2 ml-1">Your Request</label><textarea name="request" rows={5} className="w-full p-4 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-[#5E936C] resize-none text-gray-700" placeholder="Type your prayer request here..." required></textarea></div>
+                  <div className="flex items-center mb-8 bg-gray-50 p-4 rounded-xl"><input type="checkbox" id="isPublic" name="isPublic" className="h-5 w-5 text-[#5E936C] rounded" /><label htmlFor="isPublic" className="ml-3 block text-gray-700 text-sm font-medium">Share with prayer team</label></div>
+                  <div className="flex gap-4"><button type="button" onClick={() => setNewPrayerRequestOpen(false)} className="flex-1 py-3 text-gray-600 hover:bg-gray-100 rounded-xl font-semibold transition">Cancel</button><button type="submit" className="flex-1 bg-[#1a3c2b] text-white py-3 rounded-xl hover:bg-[#2d5c43] font-bold shadow-lg transition">Send Request</button></div>
                 </form>
               </div>
             </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
-
-      {/* Mobile Sidebar Overlay removed to prevent scroll blocking */}
     </div>
   );
 };

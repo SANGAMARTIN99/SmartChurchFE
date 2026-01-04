@@ -1,14 +1,27 @@
-import React, { useMemo, useState } from 'react';
+import React, { useState } from 'react';
 import { useQuery } from '@apollo/client';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaBullhorn, FaSearch, FaThumbtack, FaFilter, FaCalendarAlt, FaMapMarkerAlt, FaUserTie, FaTag, FaFilePdf, FaRedo } from 'react-icons/fa';
+import {
+  FaBullhorn, FaSearch, FaThumbtack, FaCalendarAlt,
+  FaMapMarkerAlt, FaFilePdf, FaClock, FaTimes, FaFilter,
+  FaChevronLeft, FaChevronRight, FaLock, FaEye
+} from 'react-icons/fa';
 import { GET_ANNOUNCEMENTS } from '../../api/queries';
+import { format, parseISO, isAfter } from 'date-fns';
+import { Document, Page, pdfjs } from 'react-pdf';
+// Essential styles for react-pdf
+import 'react-pdf/dist/Page/AnnotationLayer.css';
+import 'react-pdf/dist/Page/TextLayer.css';
 
+// Set up the worker for PDF.js
+pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
+
+// --- Types ---
 type Announcement = {
   id: string;
   title: string;
   content: string;
-  category: 'events' | 'services' | 'community' | 'urgent' | 'general';
+  category: string;
   isPinned: boolean;
   targetGroup?: { id: string; name: string } | null;
   eventDate?: string | null;
@@ -16,261 +29,350 @@ type Announcement = {
   location?: string | null;
   createdBy?: { id: string; fullName: string } | null;
   createdAt: string;
+  expiresAt?: string | null;
+  attachmentUrl?: string | null;
 };
 
-const categoryLabels: Record<Announcement['category'], string> = {
-  events: 'Events',
-  services: 'Service Changes',
-  community: 'Community',
-  urgent: 'Urgent',
-  general: 'General',
+type QueryData = {
+  announcements: Announcement[];
+  totalAnnouncements: number;
 };
 
-const categoryColors: Record<Announcement['category'], string> = {
-  events: 'bg-blue-100 text-blue-700',
-  services: 'bg-amber-100 text-amber-700',
-  community: 'bg-purple-100 text-purple-700',
-  urgent: 'bg-red-100 text-red-700',
-  general: 'bg-gray-100 text-gray-700',
+type QueryVars = {
+  limit: number;
+  offset: number;
+  category?: string | null;
+  search?: string | null;
 };
 
-const extractPdfLinks = (text: string): string[] => {
-  const urlRegex = /(https?:\/\/[^\s)]+\.pdf)/gi;
-  const matches = text.match(urlRegex) || [];
-  return Array.from(new Set(matches));
-};
+// --- Secure PDF Viewer ---
+const SecurePDFViewer = ({ url, title, onClose }: { url: string; title: string; onClose: () => void }) => {
+  const [numPages, setNumPages] = useState<number | null>(null);
 
-const TodayAnnouncements: React.FC = () => {
-  const [search, setSearch] = useState('');
-  const [activeTab, setActiveTab] = useState<'all' | 'pinned' | 'pdfs'>('all');
-  const [categoryFilter, setCategoryFilter] = useState<Announcement['category'] | 'all'>('all');
-  const [selectedPdf, setSelectedPdf] = useState<string | null>(null);
+  function onDocumentLoadSuccess({ numPages }: { numPages: number }) {
+    setNumPages(numPages);
+  }
 
-  const { data, loading, error, refetch } = useQuery<{ announcements: Announcement[] }>(GET_ANNOUNCEMENTS, {
-    fetchPolicy: 'cache-and-network',
-  });
-
-  const announcements = data?.announcements ?? [];
-
-  const pdfItems = useMemo(() => {
-    const items: { id: string; title: string; url: string; createdAt: string }[] = [];
-    for (const a of announcements) {
-      const links = extractPdfLinks(`${a.title} ${a.content}`);
-      for (const url of links) {
-        items.push({ id: `${a.id}-${url}`, title: a.title, url, createdAt: a.createdAt });
-      }
-    }
-    return items.sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
-  }, [announcements]);
-
-  const categoriesCount = useMemo(() => {
-    const counts: Record<string, number> = {};
-    announcements.forEach((a) => {
-      counts[a.category] = (counts[a.category] || 0) + 1;
-    });
-    return counts;
-  }, [announcements]);
-
-  const filtered = useMemo(() => {
-    let list = announcements.slice();
-    if (activeTab === 'pinned') list = list.filter((a) => a.isPinned);
-    if (categoryFilter !== 'all') list = list.filter((a) => a.category === categoryFilter);
-    if (search.trim()) {
-      const q = search.toLowerCase();
-      list = list.filter(
-        (a) => a.title.toLowerCase().includes(q) || a.content.toLowerCase().includes(q) || a.createdBy?.fullName.toLowerCase().includes(q)
-      );
-    }
-    return list.sort((a, b) => (a.isPinned === b.isPinned ? (a.createdAt < b.createdAt ? 1 : -1) : a.isPinned ? -1 : 1));
-  }, [announcements, search, categoryFilter, activeTab]);
-
-  const AnnouncementCard: React.FC<{ a: Announcement }> = ({ a }) => (
+  return (
     <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="group bg-white rounded-2xl shadow hover:shadow-xl transition overflow-hidden border border-gray-100"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-sm flex flex-col h-screen w-screen"
     >
-      <div className="p-5">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <div className="flex items-center gap-2 text-xs mb-2">
-              {a.isPinned && (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#E8FFD7] text-[#2f5c3a]">
-                  <FaThumbtack className="text-[#5E936C]" /> Pinned
-                </span>
-              )}
-              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full ${categoryColors[a.category]}`}>
-                <FaTag /> {categoryLabels[a.category]}
-              </span>
-            </div>
-            <h3 className="text-lg font-bold text-[#2f5c3a] truncate" title={a.title}>{a.title}</h3>
-            <p className="mt-2 text-gray-700 line-clamp-3 whitespace-pre-line">{a.content}</p>
-            <div className="mt-3 flex flex-wrap items-center gap-3 text-sm text-gray-600">
-              {a.eventDate && (
-                <span className="inline-flex items-center gap-1"><FaCalendarAlt />{a.eventDate}{a.eventTime ? ` • ${a.eventTime}` : ''}</span>
-              )}
-              {a.location && (
-                <span className="inline-flex items-center gap-1"><FaMapMarkerAlt />{a.location}</span>
-              )}
-              {a.createdBy && (
-                <span className="inline-flex items-center gap-1"><FaUserTie />{a.createdBy.fullName}</span>
-              )}
-            </div>
+      {/* Header */}
+      <div className="flex items-center justify-between px-6 py-4 bg-gray-900 border-b border-gray-800 text-white flex-shrink-0">
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-gray-800 rounded-lg"><FaLock className="text-amber-500 text-xs" /></div>
+          <div>
+            <h3 className="font-bold text-sm leading-none">{title}</h3>
+            <span className="text-[10px] text-gray-400">Secure Read-Only Mode • No Download</span>
           </div>
         </div>
-        <div className="mt-3 flex gap-2 flex-wrap">
-          {extractPdfLinks(`${a.title} ${a.content}`).map((url) => (
-            <button
-              key={url}
-              onClick={() => {
-                setActiveTab('pdfs');
-                setSelectedPdf(url);
-              }}
-              className="text-xs inline-flex items-center gap-1 px-2 py-1 rounded bg-red-50 text-red-700 hover:bg-red-100"
-              title="Open PDF"
-            >
-              <FaFilePdf /> View PDF
-            </button>
-          ))}
+        <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-full transition"><FaTimes /></button>
+      </div>
+
+      {/* Viewer Frame */}
+      <div className="flex-1 w-full h-full relative bg-gray-600 overflow-y-auto flex justify-center py-8" onContextMenu={(e) => e.preventDefault()}>
+        <div className="max-w-4xl w-full px-4">
+          <Document
+            file={url}
+            onLoadSuccess={onDocumentLoadSuccess}
+            loading={
+              <div className="flex flex-col items-center justify-center h-64 text-white gap-4">
+                <div className="w-8 h-8 border-4 border-white/30 border-t-white rounded-full animate-spin" />
+                <span className="font-bold text-sm tracking-widest uppercase opacity-70">Loading Document...</span>
+              </div>
+            }
+            error={
+              <div className="flex flex-col items-center justify-center h-64 text-red-400 gap-2">
+                <FaLock className="text-4xl opacity-50 mb-2" />
+                <p className="font-bold">Unable to load secure document.</p>
+                <p className="text-sm opacity-70">Please check your connection or contact admin.</p>
+              </div>
+            }
+            className="flex flex-col items-center gap-6"
+          >
+            {Array.from(new Array(numPages || 0), (el, index) => (
+              <Page
+                key={`page_${index + 1}`}
+                pageNumber={index + 1}
+                renderTextLayer={false}     // Disable text selection (Security)
+                renderAnnotationLayer={false} // Disable external links (Security)
+                scale={1.2}
+                className="shadow-2xl rounded-sm overflow-hidden"
+                width={Math.min(window.innerWidth * 0.9, 800)} // Responsive width
+              />
+            ))}
+          </Document>
         </div>
       </div>
     </motion.div>
   );
+};
+
+// --- Page Component ---
+const TodayAnnouncements: React.FC = () => {
+  const [page, setPage] = useState(1);
+  const pageSize = 9;
+
+  const [search, setSearch] = useState('');
+  const [filterCategory, setFilterCategory] = useState<string>('all');
+  const [selectedAnnouncement, setSelectedAnnouncement] = useState<Announcement | null>(null);
+  const [pdfToView, setPdfToView] = useState<{ url: string; title: string } | null>(null);
+
+  // Debounce search slightly in variables to avoid rapid firing
+  const filters = {
+    limit: pageSize,
+    offset: (page - 1) * pageSize,
+    category: filterCategory === 'all' ? null : filterCategory,
+    search: search || null
+  };
+
+  const { data, loading, error } = useQuery<QueryData, QueryVars>(GET_ANNOUNCEMENTS, {
+    variables: filters,
+    fetchPolicy: 'cache-and-network',
+  });
+
+  const announcements = data?.announcements || [];
+  const totalCount = data?.totalAnnouncements || 0;
+  const totalPages = Math.ceil(totalCount / pageSize);
+
+  const categories = [
+    { id: 'all', label: 'All', color: 'bg-gray-100 text-gray-600' },
+    { id: 'urgent', label: 'Urgent', color: 'bg-red-100 text-red-600' },
+    { id: 'events', label: 'Events', color: 'bg-green-100 text-green-600' },
+    { id: 'services', label: 'Services', color: 'bg-blue-100 text-blue-600' },
+    { id: 'community', label: 'Community', color: 'bg-purple-100 text-purple-600' },
+    { id: 'general', label: 'General', color: 'bg-gray-100 text-gray-500' },
+  ];
+
+  const getCategoryTheme = (cat: string) => categories.find(c => c.id === cat) || categories[5];
+
+  const handlePageChange = (newPage: number) => {
+    if (newPage >= 1 && newPage <= totalPages) {
+      setPage(newPage);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
 
   return (
-    <div className="min-h-full bg-gradient-to-br from-[#E8FFD7] to-[#93DA97]">
-      <main className="mx-auto max-w-7xl px-4 py-6 sm:py-8">
-        <div className="mb-6 flex items-center justify-between gap-3 flex-wrap">
+    <div className="min-h-screen bg-[#F8FAFC] font-sans pb-20">
+
+      {/* Secure PDF Viewer Overlay */}
+      <AnimatePresence>
+        {pdfToView && (
+          <SecurePDFViewer
+            url={pdfToView.url}
+            title={pdfToView.title}
+            onClose={() => setPdfToView(null)}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Hero Header */}
+      <div className="bg-white px-6 md:px-12 py-8 border-b border-gray-100 sticky top-0 z-20 shadow-sm/50 backdrop-blur-md bg-white/90">
+        <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div>
-            <h1 className="text-2xl md:text-3xl font-extrabold text-[#2f5c3a] tracking-tight flex items-center gap-2">
-              <FaBullhorn className="text-[#5E936C]" /> Today Announcements
+            <h1 className="text-2xl md:text-3xl font-black text-[#1a3c2b] flex items-center gap-2">
+              <FaBullhorn className="text-[#5E936C]" /> Announcements
             </h1>
-            <p className="text-gray-600 mt-1">All updates from pastors, leaders, and group heads in one place.</p>
+            <p className="text-sm font-bold text-gray-400 mt-1">Found {totalCount} updates for you</p>
           </div>
-          <div className="flex gap-2 flex-wrap w-full sm:w-auto">
-            <button onClick={() => setActiveTab('all')} className={`px-3 py-2 rounded-lg border transition ${activeTab==='all'?'bg-white':'bg-white hover:bg-white/70'}`}>All</button>
-            <button onClick={() => setActiveTab('pinned')} className={`px-3 py-2 rounded-lg border transition flex items-center gap-2 ${activeTab==='pinned'?'bg-white':'bg-white hover:bg-white/70'}`}><FaThumbtack/>Pinned</button>
-            <button onClick={() => setActiveTab('pdfs')} className={`px-3 py-2 rounded-lg border transition flex items-center gap-2 ${activeTab==='pdfs'?'bg-white':'bg-white hover:bg-white/70'}`}><FaFilePdf/>PDFs</button>
+
+          <div className="flex flex-col md:flex-row gap-3 w-full md:w-auto">
+            {/* Search */}
+            <div className="relative">
+              <FaSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search..."
+                value={search}
+                onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+                className="w-full md:w-64 pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#5E936C] outline-none font-bold text-gray-600 text-sm"
+              />
+            </div>
+
+            {/* Category Dropdown/Pills */}
+            <div className="flex gap-2 overflow-x-auto pb-1 md:pb-0 scrollbar-hide">
+              {categories.map(cat => (
+                <button
+                  key={cat.id}
+                  onClick={() => { setFilterCategory(cat.id); setPage(1); }}
+                  className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all whitespace-nowrap border ${filterCategory === cat.id
+                    ? 'bg-[#1a3c2b] text-white border-[#1a3c2b]'
+                    : 'bg-white text-gray-500 border-gray-200 hover:bg-gray-50'
+                    }`}
+                >
+                  {cat.label}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
+      </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2">
-            <div className="bg-white rounded-2xl shadow-lg p-4 sm:p-5 mb-4">
-              <div className="flex flex-col md:flex-row gap-3 md:items-center md:justify-between">
-                <div className="flex-1 flex items-center gap-2 bg-gray-50 rounded-lg px-3 py-2 border">
-                  <FaSearch className="text-gray-500" />
-                  <input
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    placeholder="Search announcements, content, authors..."
-                    className="bg-transparent outline-none w-full"
-                  />
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="text-sm text-gray-600 flex items-center gap-2"><FaFilter/>Filter</div>
-                  <div className="flex gap-2 flex-wrap">
-                    {(['all','events','services','community','urgent','general'] as const).map((c) => (
-                      <button
-                        key={c}
-                        onClick={() => setCategoryFilter(c as any)}
-                        className={`px-3 py-1.5 rounded-full text-sm border ${categoryFilter===c? 'bg-[#E8FFD7] text-[#2f5c3a] border-[#5E936C]':'bg-white hover:bg-gray-50'}`}
-                      >
-                        {c==='all' ? 'All' : categoryLabels[c as Announcement['category']]}
-                      </button>
-                    ))}
-                  </div>
-                  <button onClick={() => { setSearch(''); setCategoryFilter('all'); refetch(); }} className="ml-1 px-3 py-1.5 rounded-lg text-sm bg-gray-100 hover:bg-gray-200 flex items-center gap-2" title="Reset">
-                    <FaRedo/> Reset
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-4">
-              {loading && <div className="text-gray-600">Loading announcements...</div>}
-              {error && <div className="text-red-600">Failed to load announcements. Please try again.</div>}
-              {!loading && !error && filtered.length === 0 && (
-                <div className="bg-white rounded-2xl shadow p-6 text-center text-gray-600">No announcements found.</div>
-              )}
-              <AnimatePresence>
-                {!loading && !error && filtered.map((a) => (
-                  <AnnouncementCard key={a.id} a={a} />
-                ))}
-              </AnimatePresence>
-            </div>
+      {/* Grid Content */}
+      <div className="max-w-7xl mx-auto px-6 md:px-12 py-8">
+        {loading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-pulse">
+            {[1, 2, 3, 4, 5, 6].map(i => <div key={i} className="h-64 bg-gray-200 rounded-3xl" />)}
           </div>
+        ) : announcements.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-20 text-gray-400">
+            <FaFilter className="text-4xl mb-4 opacity-50" />
+            <p className="font-bold">No announcements found matching your criteria.</p>
+            <button onClick={() => { setSearch(''); setFilterCategory('all'); }} className="mt-4 text-[#5E936C] font-bold hover:underline">Clear Filters</button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {announcements.map((ann) => {
+              const theme = getCategoryTheme(ann.category);
+              const date = parseISO(ann.createdAt);
+              const isExpired = ann.expiresAt && !isAfter(parseISO(ann.expiresAt), new Date());
+              if (isExpired) return null; // Client-side fallback filter if backend returns expired ones
 
-          <div className="space-y-6">
-            <div className="bg-white rounded-2xl shadow-lg p-6">
-              <h2 className="text-xl font-bold text-[#2f5c3a] mb-3">Overview</h2>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="bg-[#E8FFD7] rounded-lg p-4 text-center">
-                  <div className="text-2xl font-bold text-[#2f5c3a]">{announcements.length}</div>
-                  <div className="text-xs text-gray-600">Total</div>
-                </div>
-                <div className="bg-white border rounded-lg p-4 text-center">
-                  <div className="text-2xl font-bold text-[#2f5c3a]">{announcements.filter(a=>a.isPinned).length}</div>
-                  <div className="text-xs text-gray-600">Pinned</div>
-                </div>
-              </div>
-              <div className="mt-4 grid grid-cols-2 gap-2">
-                {(Object.keys(categoriesCount) as Array<keyof typeof categoriesCount>).map((k) => (
-                  <div key={k} className="flex items-center justify-between text-sm bg-gray-50 rounded px-3 py-2">
-                    <span className="truncate">{categoryLabels[k as Announcement['category']] ?? (k as string)}</span>
-                    <span className="font-semibold text-[#2f5c3a]">{categoriesCount[k]}</span>
+              return (
+                <motion.div
+                  key={ann.id}
+                  layout
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="bg-white rounded-[2rem] p-6 shadow-sm border border-gray-100 flex flex-col h-full hover:shadow-xl transition-all group relative overflow-hidden"
+                >
+                  {/* Top Bar */}
+                  <div className="flex items-center justify-between mb-4">
+                    <span className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest ${theme.color}`}>
+                      {theme.label}
+                    </span>
+                    <span className="text-xs font-bold text-gray-400">{format(date, 'MMM dd')}</span>
                   </div>
-                ))}
-              </div>
+
+                  {/* Pinned Icon */}
+                  {ann.isPinned && <div className="absolute top-0 right-0 p-4"><FaThumbtack className="text-amber-400 rotate-45" /></div>}
+
+                  {/* Content */}
+                  <div className="flex-1">
+                    <h3 className="text-xl font-bold text-[#1a3c2b] mb-3 leading-tight line-clamp-2 md:group-hover:text-[#5E936C] transition-colors">
+                      {ann.title}
+                    </h3>
+                    <p className="text-gray-500 text-sm leading-relaxed line-clamp-3 mb-4">
+                      {ann.content}
+                    </p>
+
+                    {/* Metadata Badges */}
+                    <div className="flex flex-wrap gap-2 mb-4">
+                      {(ann.eventDate || ann.location) && (
+                        <div className="flex items-center gap-2 text-[10px] font-bold text-gray-500 bg-gray-50 px-2 py-1 rounded-md">
+                          <FaMapMarkerAlt /> {ann.location || 'Event'}
+                        </div>
+                      )}
+                      {ann.attachmentUrl && (
+                        <div className="flex items-center gap-2 text-[10px] font-bold text-red-500 bg-red-50 px-2 py-1 rounded-md">
+                          <FaFilePdf /> Document
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Footer Actions */}
+                  <div className="pt-4 border-t border-gray-50 flex gap-2">
+                    <button
+                      onClick={() => setSelectedAnnouncement(ann)}
+                      className="flex-1 py-3 bg-gray-50 rounded-xl text-xs font-black uppercase tracking-wider text-gray-600 hover:bg-[#1a3c2b] hover:text-white transition-colors"
+                    >
+                      Read More
+                    </button>
+                    {ann.attachmentUrl && (
+                      <button
+                        onClick={() => setPdfToView({ url: ann.attachmentUrl!, title: ann.title })}
+                        className="px-4 py-3 bg-red-50 rounded-xl text-red-600 hover:bg-red-500 hover:text-white transition-colors"
+                        title="View PDF"
+                      >
+                        <FaEye />
+                      </button>
+                    )}
+                  </div>
+                </motion.div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Pagination Controls */}
+        {totalPages > 1 && (
+          <div className="mt-12 flex justify-center items-center gap-4">
+            <button
+              onClick={() => handlePageChange(page - 1)}
+              disabled={page === 1}
+              className="w-10 h-10 rounded-full bg-white shadow-sm border border-gray-200 flex items-center justify-center text-gray-500 disabled:opacity-30 hover:bg-gray-100 transition"
+            >
+              <FaChevronLeft />
+            </button>
+
+            <div className="text-sm font-bold text-gray-400">
+              Page <span className="text-[#1a3c2b]">{page}</span> of {totalPages}
             </div>
 
-            <div className="bg-white rounded-2xl shadow-lg p-0 overflow-hidden">
-              <div className="p-6 border-b border-gray-100 flex items-center justify-between">
-                <h2 className="text-xl font-bold text-[#2f5c3a] flex items-center gap-2"><FaFilePdf className="text-red-600"/> Sunday Mass PDFs</h2>
-                <div className="text-sm text-gray-600">{pdfItems.length} file{pdfItems.length!==1?'s':''}</div>
+            <button
+              onClick={() => handlePageChange(page + 1)}
+              disabled={page === totalPages}
+              className="w-10 h-10 rounded-full bg-white shadow-sm border border-gray-200 flex items-center justify-center text-gray-500 disabled:opacity-30 hover:bg-gray-100 transition"
+            >
+              <FaChevronRight />
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Detail Modal */}
+      <AnimatePresence>
+        {selectedAnnouncement && (
+          <motion.div
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
+            onClick={() => setSelectedAnnouncement(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95, y: 20 }}
+              onClick={e => e.stopPropagation()}
+              className="bg-white w-full max-w-2xl rounded-[2.5rem] overflow-hidden shadow-2xl max-h-[85vh] flex flex-col"
+            >
+              <div className="p-8 pb-0 flex items-start justify-between">
+                <div>
+                  <span className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest bg-gray-100 text-gray-500`}>
+                    {selectedAnnouncement.category}
+                  </span>
+                  <h2 className="text-2xl md:text-3xl font-black text-[#1a3c2b] mt-4 mb-2">
+                    {selectedAnnouncement.title}
+                  </h2>
+                </div>
+                <button onClick={() => setSelectedAnnouncement(null)} className="w-10 h-10 rounded-full bg-gray-50 hover:bg-red-50 hover:text-red-500 flex items-center justify-center transition"><FaTimes /></button>
               </div>
-              <div className="max-h-64 overflow-auto divide-y">
-                {pdfItems.length === 0 ? (
-                  <div className="p-6 text-gray-600">No PDF links detected in announcements. If mass PDFs are shared as links, they will appear here.</div>
-                ) : (
-                  pdfItems.map((p) => (
+
+              <div className="overflow-y-auto p-8">
+                <div className="prose prose-green max-w-none text-gray-600 font-medium leading-relaxed">
+                  {selectedAnnouncement.content}
+                </div>
+
+                {selectedAnnouncement.attachmentUrl && (
+                  <div className="mt-8">
                     <button
-                      key={p.id}
-                      onClick={() => { setActiveTab('pdfs'); setSelectedPdf(p.url); }}
-                      className={`w-full text-left px-4 py-3 hover:bg-gray-50 transition ${selectedPdf === p.url ? 'bg-[#E8FFD7]' : ''}`}
+                      onClick={() => { setSelectedAnnouncement(null); setPdfToView({ url: selectedAnnouncement.attachmentUrl!, title: selectedAnnouncement.title }); }}
+                      className="w-full py-4 bg-red-50 border border-red-100 rounded-2xl flex items-center justify-center gap-3 text-red-600 font-bold hover:bg-red-500 hover:text-white transition-all group"
                     >
-                      <div className="flex items-center justify-between gap-3">
-                        <div className="truncate">
-                          <div className="font-medium text-gray-800 truncate">{p.title}</div>
-                          <div className="text-xs text-gray-500 truncate" title={p.url}>{p.url}</div>
-                        </div>
-                        <FaFilePdf className="text-red-600 flex-shrink-0"/>
-                      </div>
+                      <FaLock />
+                      <span>View Secure Document</span>
+                      <FaEye className="opacity-50 group-hover:opacity-100" />
                     </button>
-                  ))
+                    <p className="text-center text-[10px] text-gray-400 mt-2">Document is read-only protected</p>
+                  </div>
                 )}
               </div>
-              {selectedPdf && (
-                <div className="border-t border-gray-100">
-                  <div className="p-3 bg-gray-50 text-sm text-gray-700 flex items-center justify-between select-none">
-                    <span className="truncate">Viewing: {selectedPdf}</span>
-                    <span className="text-gray-400">Toolbar disabled</span>
-                  </div>
-                  <div className="relative h-[480px] bg-gray-100 select-none" onContextMenu={(e)=>e.preventDefault()}>
-                    {/* Hide viewer UI via params; allow scrolling to read the PDF */}
-                    <iframe
-                      src={`${selectedPdf}#toolbar=0&navpanes=0&scrollbar=0`}
-                      title="PDF Viewer"
-                      className="w-full h-full"
-                      sandbox="allow-same-origin"
-                    />
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </main>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

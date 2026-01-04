@@ -1,35 +1,79 @@
-import React, { useState } from 'react';
-import { FaBook, FaCalendarAlt, FaUpload, FaShare, FaEye, FaEdit, FaTrash, FaPlus, FaHistory} from 'react-icons/fa';
+import React, { useState, useEffect } from 'react';
+import {
+  FaBook, FaUpload, FaEdit, FaTrash, FaPenFancy, FaImage, FaVideo,
+  FaMicrophone, FaStop, FaTimes, FaCheck, FaSpinner, FaSearch, FaFilter
+} from 'react-icons/fa';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useQuery, useMutation } from '@apollo/client';
-import {  CREATE_DEVOTIONAL, UPDATE_DEVOTIONAL, DELETE_DEVOTIONAL } from '../../api/mutations';
+import { CREATE_DEVOTIONAL, UPDATE_DEVOTIONAL, DELETE_DEVOTIONAL } from '../../api/mutations';
 import { GET_DEVOTIONALS } from '../../api/queries';
-import { format } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import { getAccessToken } from '../../utils/auth';
 
-// Types
+// --- Components ---
+
+const Toast = ({ message, type, onClose }: { message: string, type: 'success' | 'error', onClose: () => void }) => {
+  useEffect(() => {
+    const timer = setTimeout(onClose, 3000);
+    return () => clearTimeout(timer);
+  }, [onClose]);
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: -50, scale: 0.9 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{ opacity: 0, y: -20, scale: 0.9 }}
+      className={`fixed top-6 right-6 z-50 flex items-center gap-3 px-6 py-4 rounded-2xl shadow-2xl backdrop-blur-md border border-white/20 ${type === 'success' ? 'bg-[#1a3c2b]/90 text-white' : 'bg-red-500/90 text-white'
+        }`}
+    >
+      <div className={`p-2 rounded-full ${type === 'success' ? 'bg-[#5E936C]' : 'bg-white/20'}`}>
+        {type === 'success' ? <FaCheck className="text-sm" /> : <FaTimes className="text-sm" />}
+      </div>
+      <div>
+        <h4 className="font-bold text-sm tracking-wide">{type === 'success' ? 'Success' : 'Error'}</h4>
+        <p className="text-xs opacity-90 font-medium">{message}</p>
+      </div>
+    </motion.div>
+  );
+};
+
+// --- Types ---
+
 interface Devotional {
   id: string;
   title: string;
   content: string;
   scripture: string;
   publishedAt: string;
-  author: {
-    fullName: string;
-  };
+  author: { fullName: string };
+  imageUrl?: string;
+  audioUrl?: string;
+  videoUrl?: string;
 }
 
+// --- Main Page ---
+
 const WordOfTheDay = () => {
-  const [activeView, setActiveView] = useState<'create' | 'preview' | 'list'>('create');
+  // Navigation & State
+  const [activeView, setActiveView] = useState<'create' | 'library'>('create');
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+
+  // Data State
   const [selectedDevotional, setSelectedDevotional] = useState<Devotional | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+
+  // Media & Form
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [audioFile, setAudioFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [audioPreview, setAudioPreview] = useState<string | null>(null);
-  const [isRecording, setIsRecording] = useState<boolean>(false);
+
+  // Recording
+  const [isRecording, setIsRecording] = useState(false);
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
-  const [, setRecordedChunks] = useState<BlobPart[]>([]);
+
   const [formData, setFormData] = useState({
     title: '',
     scripture: '',
@@ -37,60 +81,51 @@ const WordOfTheDay = () => {
     publishDate: format(new Date(), 'yyyy-MM-dd'),
   });
 
-  // GraphQL Queries
-  const { data, loading, error } = useQuery(GET_DEVOTIONALS, {
-    variables: { limit: 10, offset: 0 }
+  // Queries
+  const { data, loading } = useQuery(GET_DEVOTIONALS, {
+    variables: { limit: 50, offset: 0 },
+    fetchPolicy: 'cache-and-network'
   });
 
-// GraphQL Mutations
-const [createDevotional] = useMutation(CREATE_DEVOTIONAL, {
-  refetchQueries: [{ query: GET_DEVOTIONALS, variables: { limit: 10, offset: 0 } }],
-});
-
-const [updateDevotional] = useMutation(UPDATE_DEVOTIONAL, {
-  refetchQueries: [{ query: GET_DEVOTIONALS, variables: { limit: 10, offset: 0 } }],
-});
-
-const [deleteDevotional] = useMutation(DELETE_DEVOTIONAL, {
-  refetchQueries: [{ query: GET_DEVOTIONALS, variables: { limit: 10, offset: 0 } }],
-});
+  // Mutations
+  const [createDevotional] = useMutation(CREATE_DEVOTIONAL, {
+    refetchQueries: [{ query: GET_DEVOTIONALS, variables: { limit: 50, offset: 0 } }],
+  });
+  const [updateDevotional] = useMutation(UPDATE_DEVOTIONAL, {
+    refetchQueries: [{ query: GET_DEVOTIONALS, variables: { limit: 50, offset: 0 } }],
+  });
+  const [deleteDevotional] = useMutation(DELETE_DEVOTIONAL, {
+    refetchQueries: [{ query: GET_DEVOTIONALS, variables: { limit: 50, offset: 0 } }],
+  });
 
   const devotionals: Devotional[] = data?.devotionals || [];
+  const filteredDevotionals = devotionals.filter(d =>
+    d.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    d.scripture.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
-  // Toggle sidebar on mobile
-  
+  // --- Handlers ---
+
+  const showToast = (message: string, type: 'success' | 'error') => setToast({ message, type });
+
+  const resetForm = () => {
+    setFormData({ title: '', scripture: '', content: '', publishDate: format(new Date(), 'yyyy-MM-dd') });
+    setImageFile(null); setVideoFile(null); setAudioFile(null);
+    setImagePreview(null); setAudioPreview(null);
+    setSelectedDevotional(null);
+  };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
+    if (e.target.files?.[0]) {
       const file = e.target.files[0];
       setImageFile(file);
-      
       const reader = new FileReader();
-      reader.onloadend = () => {
-        setImagePreview(reader.result as string);
-      };
+      reader.onloadend = () => setImagePreview(reader.result as string);
       reader.readAsDataURL(file);
-    }
-  };
-
-  const handleVideoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      setVideoFile(file);
-    }
-  };
-
-  const handleAudioChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      setAudioFile(file);
-      const url = URL.createObjectURL(file);
-      setAudioPreview(url);
     }
   };
 
@@ -99,25 +134,17 @@ const [deleteDevotional] = useMutation(DELETE_DEVOTIONAL, {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const recorder = new MediaRecorder(stream);
       const chunks: BlobPart[] = [];
-      recorder.ondataavailable = (e) => {
-        if (e.data.size > 0) chunks.push(e.data);
-      };
+      recorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
       recorder.onstop = () => {
         const blob = new Blob(chunks, { type: 'audio/webm' });
-        const file = new File([blob], `devotional-audio-${Date.now()}.webm`, { type: 'audio/webm' });
+        const file = new File([blob], `rec-${Date.now()}.webm`, { type: 'audio/webm' });
         setAudioFile(file);
-        const url = URL.createObjectURL(blob);
-        setAudioPreview(url);
-        setRecordedChunks([]);
+        setAudioPreview(URL.createObjectURL(blob));
       };
-      setRecordedChunks([]);
       setMediaRecorder(recorder);
       recorder.start();
       setIsRecording(true);
-    } catch (err) {
-      console.error('Error starting recording:', err);
-      alert('Microphone access denied or unavailable.');
-    }
+    } catch { showToast('Microphone access denied', 'error'); }
   };
 
   const stopRecording = () => {
@@ -128,592 +155,281 @@ const [deleteDevotional] = useMutation(DELETE_DEVOTIONAL, {
     }
   };
 
-  const uploadAndGetUrl = async (file: File, folder: string): Promise<string> => {
+  const uploadFile = async (file: File, folder: string) => {
     const form = new FormData();
     form.append('file', file);
     form.append('folder', folder);
     const token = getAccessToken();
     const API_BASE = (import.meta as any).env?.VITE_API_BASE_URL || 'http://127.0.0.1:8000';
-    const endpoint = `${API_BASE.replace(/\/$/, '')}/api/upload/`;
-    const resp = await fetch(endpoint, {
-      method: 'POST',
-      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-      body: form,
-      mode: 'cors',
+    const res = await fetch(`${API_BASE.replace(/\/$/, '')}/api/upload/`, {
+      method: 'POST', headers: token ? { Authorization: `Bearer ${token}` } : undefined, body: form
     });
-    if (!resp.ok) {
-      let details = '';
-      try { details = await resp.text(); } catch {}
-      if (resp.status === 401) {
-        throw new Error('Unauthorized (401). Please log in again.');
-      }
-      throw new Error(`Upload failed ${resp.status}. ${details}`);
-    }
-    const data = await resp.json();
-    if (!data?.url) throw new Error('Upload succeeded but no URL returned');
-    return data.url as string;
+    if (!res.ok) throw new Error('Upload failed');
+    return (await res.json()).url;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+    setIsSubmitting(true);
     try {
-      // Upload media first (if any)
-      let imageUrl: string | undefined;
-      let audioUrl: string | undefined;
-      let videoUrl: string | undefined;
+      let [img, vid, aud] = [undefined, undefined, undefined];
+      if (imageFile) img = await uploadFile(imageFile, 'devotionals/images');
+      if (videoFile) vid = await uploadFile(videoFile, 'devotionals/videos');
+      if (audioFile) aud = await uploadFile(audioFile, 'devotionals/audios');
 
-      if (imageFile) {
-        imageUrl = await uploadAndGetUrl(imageFile, 'devotionals/images');
-      }
-      if (audioFile) {
-        audioUrl = await uploadAndGetUrl(audioFile, 'devotionals/audios');
-      }
-      if (videoFile) {
-        videoUrl = await uploadAndGetUrl(videoFile, 'devotionals/videos');
-      }
+      const input = {
+        title: formData.title, scripture: formData.scripture, content: formData.content,
+        publishedAt: formData.publishDate, imageUrl: img, audioUrl: aud, videoUrl: vid
+      };
 
       if (selectedDevotional) {
-        // Update existing devotional
-        await updateDevotional({
-          variables: {
-            id: selectedDevotional.id,
-            input: {
-              title: formData.title,
-              scripture: formData.scripture,
-              content: formData.content,
-              // Using camelCase to match GraphQL schema
-              publishedAt: formData.publishDate,
-              imageUrl: imageUrl,
-              audioUrl: audioUrl,
-              videoUrl: videoUrl,
-            }
-          }
-        });
+        await updateDevotional({ variables: { id: selectedDevotional.id, input } });
+        showToast('Devotional updated successfully', 'success');
       } else {
-        // Create new devotional
-        await createDevotional({
-          variables: {
-            input: {
-              title: formData.title,
-              scripture: formData.scripture,
-              content: formData.content,
-              // Using camelCase to match GraphQL schema
-              publishedAt: formData.publishDate,
-              imageUrl: imageUrl,
-              audioUrl: audioUrl,
-              videoUrl: videoUrl,
-            }
-          }
-        });
+        await createDevotional({ variables: { input } });
+        showToast('Devotional published successfully', 'success');
       }
-      
-      // Reset form
-      setFormData({
-        title: '',
-        scripture: '',
-        content: '',
-        publishDate: format(new Date(), 'yyyy-MM-dd'),
-      });
-      setImageFile(null);
-      setVideoFile(null);
-      setAudioFile(null);
-      setImagePreview(null);
-      setAudioPreview(null);
-      setSelectedDevotional(null);
-      
-      // Show success message
-      alert(selectedDevotional ? 'Devotional updated successfully!' : 'Devotional created successfully!');
+      resetForm();
+      setActiveView('library');
     } catch (err: any) {
-      console.error('Error saving devotional:', err);
-      const message = err?.message || 'Unknown error';
-      alert(`Error saving devotional. ${message}`);
+      showToast(err.message || 'Failed to save devotional', 'error');
+    } finally {
+      setIsSubmitting(false);
     }
-  };
-
-  const handleEdit = (devotional: Devotional) => {
-    setSelectedDevotional(devotional);
-    setFormData({
-      title: devotional.title,
-      scripture: devotional.scripture,
-      content: devotional.content,
-      publishDate: format(new Date(devotional.publishedAt), 'yyyy-MM-dd'),
-    });
-    setActiveView('create');
-  };
-
-  const handleDelete = async (id: string) => {
-    if (window.confirm('Are you sure you want to delete this devotional?')) {
-      try {
-        await deleteDevotional({ variables: { id } });
-        alert('Devotional deleted successfully!');
-      } catch (err) {
-        console.error('Error deleting devotional:', err);
-        alert('Error deleting devotional. Please try again.');
-      }
-    }
-  };
-
-  const handlePreview = (devotional: Devotional) => {
-    setSelectedDevotional(devotional);
-    setActiveView('preview');
-  };
-
-  const handleNewDevotional = () => {
-    setSelectedDevotional(null);
-    setFormData({
-      title: '',
-      scripture: '',
-      content: '',
-      publishDate: format(new Date(), 'yyyy-MM-dd'),
-    });
-    setImageFile(null);
-    setImagePreview(null);
-    setActiveView('create');
   };
 
   return (
-    <div className="flex h-screen bg-[#E8FFD7] overflow-hidden">
-      {/* Combined Navigation - Extended with Dashboard Items */}
-      
+    <div className="flex h-screen bg-[#F8FAFC] font-sans text-gray-800 overflow-hidden">
+      <AnimatePresence>{toast && <Toast {...toast} onClose={() => setToast(null)} />}</AnimatePresence>
 
-      {/* Main Content Area */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        
+      <div className="flex-1 flex flex-col h-full overflow-hidden">
+        {/* Navigation Bar */}
+        <header className="bg-white border-b border-gray-100 flex items-center justify-between px-8 py-5 shadow-sm z-10">
+          <div className="flex items-center gap-3">
+            <div className="bg-gradient-to-br from-[#1a3c2b] to-[#5E936C] p-2.5 rounded-xl shadow-lg shadow-green-900/20">
+              <FaBook className="text-white text-lg" />
+            </div>
+            <div>
+              <h1 className="text-xl font-bold text-[#1a3c2b] tracking-tight">Pastoral Desk</h1>
+              <p className="text-xs text-gray-500 font-medium">Word of the Day Manager</p>
+            </div>
+          </div>
+          <div className="flex bg-gray-100/80 p-1.5 rounded-xl">
+            {['create', 'library'].map((view) => (
+              <button
+                key={view}
+                onClick={() => { if (view === 'create') resetForm(); setActiveView(view as any); }}
+                className={`px-6 py-2 rounded-lg text-sm font-bold transition-all duration-300 ${activeView === view
+                    ? 'bg-white text-[#1a3c2b] shadow-md'
+                    : 'text-gray-500 hover:text-gray-700'
+                  }`}
+              >
+                {view === 'create' ? 'Studio' : 'Library'}
+              </button>
+            ))}
+          </div>
+        </header>
 
-        {/* Dashboard Content */}
-        <main className="flex-1 overflow-y-auto p-4 md:p-6 bg-[#F7FCF5] ">
-          <div className="max-w-6xl mx-auto">
-            {/* Header */}
-            <motion.div 
-              initial={{ opacity: 0, y: -20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="bg-white rounded-2xl shadow-lg p-6 mb-6 flex flex-col md:flex-row items-center justify-between"
-            >
-              <div className="flex items-center mb-4 md:mb-0">
-                <div className="bg-[#5E936C] p-3 rounded-full mr-4">
-                  <FaBook className="text-2xl text-white" />
+        {/* Content Area */}
+        <main className="flex-1 overflow-y-auto p-4 md:p-8 relative">
+          <AnimatePresence mode="wait">
+
+            {/* --- CREATE VIEW --- */}
+            {activeView === 'create' && (
+              <motion.form
+                key="create"
+                initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }}
+                onSubmit={handleSubmit}
+                className="max-w-7xl mx-auto grid grid-cols-1 xl:grid-cols-12 gap-8"
+              >
+                {/* Editor Canvas (Left Large) */}
+                <div className="xl:col-span-8 flex flex-col gap-6">
+                  <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden min-h-[600px] flex flex-col relative group hover:shadow-md transition-shadow duration-500">
+                    {/* Top Toolbar */}
+                    <div className="border-b border-gray-100 p-4 bg-gray-50/50 flex items-center gap-4">
+                      <div className="w-3 h-3 rounded-full bg-red-400"></div>
+                      <div className="w-3 h-3 rounded-full bg-yellow-400"></div>
+                      <div className="w-3 h-3 rounded-full bg-green-400"></div>
+                      <span className="ml-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Editor Canvas</span>
+                    </div>
+
+                    {/* Inputs */}
+                    <div className="p-8 flex-1 flex flex-col gap-6">
+                      <input
+                        name="title"
+                        value={formData.title}
+                        onChange={handleInputChange}
+                        className="text-4xl font-black text-[#1a3c2b] placeholder-gray-300 outline-none bg-transparent w-full"
+                        placeholder="Enter Title Here..."
+                        autoFocus
+                        required
+                      />
+                      <div className="flex items-center gap-2 text-gray-400">
+                        <FaPenFancy className="text-sm" />
+                        <input
+                          name="scripture"
+                          value={formData.scripture}
+                          onChange={handleInputChange}
+                          className="text-lg font-serif italic text-gray-600 placeholder-gray-300 outline-none bg-transparent w-full border-b border-dashed border-transparent focus:border-gray-200 transition"
+                          placeholder="Add Scripture Reference (e.g. John 3:16)..."
+                        />
+                      </div>
+                      <textarea
+                        name="content"
+                        value={formData.content}
+                        onChange={handleInputChange}
+                        className="flex-1 w-full resize-none outline-none text-lg text-gray-700 leading-relaxed placeholder-gray-200"
+                        placeholder="Start writing your daily inspiration..."
+                        required
+                      />
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <h1 className="text-2xl font-bold text-[#5E936C]">Word of the Day</h1>
-                  <p className="text-gray-600">Share daily inspiration with your congregation</p>
-                </div>
-              </div>
-              
-              <div className="flex space-x-2">
-                <button
-                  onClick={() => setActiveView('create')}
-                  className={`px-4 py-2 rounded-lg flex items-center ${activeView === 'create' ? 'bg-[#5E936C] text-white' : 'bg-[#E8FFD7] text-[#5E936C]'}`}
-                >
-                  <FaPlus className="mr-2" />
-                  New Devotional
-                </button>
-                <button
-                  onClick={() => setActiveView('list')}
-                  className={`px-4 py-2 rounded-lg flex items-center ${activeView === 'list' ? 'bg-[#5E936C] text-white' : 'bg-[#E8FFD7] text-[#5E936C]'}`}
-                >
-                  <FaHistory className="mr-2" />
-                  History
-                </button>
-              </div>
-            </motion.div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* Main Content */}
-              <div className="lg:col-span-2">
-                <AnimatePresence mode="wait">
-                  {activeView === 'create' && (
-                    <motion.div
-                      key="create"
-                      initial={{ opacity: 0, x: -20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      exit={{ opacity: 0, x: 20 }}
-                      className="bg-white rounded-2xl shadow-lg p-6"
-                    >
-                      <h2 className="text-xl font-bold text-[#5E936C] mb-4">
-                        {selectedDevotional ? 'Edit Devotional' : 'Create New Devotional'}
-                      </h2>
-                      
-                      <form onSubmit={handleSubmit}>
-                        <div className="mb-4">
-                          <label className="block text-gray-700 mb-2">Title</label>
-                          <input
-                            type="text"
-                            name="title"
-                            value={formData.title}
-                            onChange={handleInputChange}
-                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#5E936C] focus:border-transparent"
-                            placeholder="Enter devotional title"
-                            required
-                          />
-                        </div>
-                        
-                        <div className="mb-4">
-                          <label className="block text-gray-700 mb-2">Scripture Reference</label>
-                          <input
-                            type="text"
-                            name="scripture"
-                            value={formData.scripture}
-                            onChange={handleInputChange}
-                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#5E936C] focus:border-transparent"
-                            placeholder="e.g., John 3:16"
-                            required
-                          />
-                        </div>
-                        
-                        <div className="mb-4">
-                          <label className="block text-gray-700 mb-2">Publish Date</label>
-                          <div className="relative">
-                            <input
-                              type="date"
-                              name="publishDate"
-                              value={formData.publishDate}
-                              onChange={handleInputChange}
-                              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#5E936C] focus:border-transparent"
-                              required
-                            />
-                            <FaCalendarAlt className="absolute right-3 top-3 text-gray-400" />
-                          </div>
-                        </div>
-                        
-                        <div className="mb-4">
-                          <label className="block text-gray-700 mb-2">Featured Image (Optional)</label>
-                          <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
-                            {imagePreview ? (
-                              <div className="mb-4">
-                                <img 
-                                  src={imagePreview} 
-                                  alt="Preview" 
-                                  className="max-h-48 mx-auto rounded-lg"
-                                />
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setImageFile(null);
-                                    setImagePreview(null);
-                                  }}
-                                  className="mt-2 text-red-500 text-sm"
-                                >
-                                  Remove Image
-                                </button>
-                              </div>
-                            ) : (
-                              <>
-                                <FaUpload className="text-3xl text-gray-400 mx-auto mb-2" />
-                                <p className="text-gray-500 mb-2">Drag & drop an image here or click to browse</p>
-                              </>
-                            )}
-                            <label className="bg-[#5E936C] text-white px-4 py-2 rounded-lg cursor-pointer">
-                              Browse Files
-                              <input
-                                type="file"
-                                onChange={handleImageChange}
-                                className="hidden"
-                                accept="image/*"
-                              />
-                            </label>
-                          </div>
-                        </div>
-
-                        <div className="mb-4">
-                          <label className="block text-gray-700 mb-2">Video (Optional)</label>
-                          <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
-                            <FaUpload className="text-3xl text-gray-400 mx-auto mb-2" />
-                            <p className="text-gray-500 mb-2">Upload a short video (testimony/summary)</p>
-                            <label className="bg-[#5E936C] text-white px-4 py-2 rounded-lg cursor-pointer">
-                              Browse Files
-                              <input
-                                type="file"
-                                onChange={handleVideoChange}
-                                className="hidden"
-                                accept="video/*"
-                              />
-                            </label>
-                          </div>
-                        </div>
-
-                        <div className="mb-4">
-                          <label className="block text-gray-700 mb-2">Audio (Upload or Record)</label>
-                          <div className="border-2 border-dashed border-gray-300 rounded-lg p-4">
-                            <div className="flex items-center gap-2 mb-3">
-                              {!isRecording ? (
-                                <button type="button" onClick={startRecording} className="bg-[#5E936C] text-white px-3 py-2 rounded-lg">Start Recording</button>
-                              ) : (
-                                <button type="button" onClick={stopRecording} className="bg-red-500 text-white px-3 py-2 rounded-lg">Stop Recording</button>
-                              )}
-                              <label className="ml-auto bg-[#5E936C] text-white px-3 py-2 rounded-lg cursor-pointer">
-                                Upload Audio
-                                <input type="file" accept="audio/*" className="hidden" onChange={handleAudioChange} />
-                              </label>
-                            </div>
-                            {audioPreview && (
-                              <div className="mt-2">
-                                <audio src={audioPreview} controls className="w-full" />
-                                <button
-                                  type="button"
-                                  onClick={() => { setAudioFile(null); setAudioPreview(null); }}
-                                  className="mt-2 text-red-500 text-sm"
-                                >
-                                  Remove Audio
-                                </button>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                        
-                        <div className="mb-6">
-                          <label className="block text-gray-700 mb-2">Devotional Content</label>
-                          <textarea
-                            name="content"
-                            value={formData.content}
-                            onChange={handleInputChange}
-                            rows={10}
-                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#5E936C] focus:border-transparent"
-                            placeholder="Write your devotional content here..."
-                            required
-                          />
-                        </div>
-                        
-                        <div className="flex justify-end space-x-4">
-                          <button
-                            type="button"
-                            onClick={() => setActiveView('list')}
-                            className="px-6 py-3 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100"
-                          >
-                            Cancel
-                          </button>
-                          <button
-                            type="submit"
-                            className="bg-[#5E936C] text-white px-6 py-3 rounded-lg hover:bg-[#4a7a58] flex items-center"
-                          >
-                            {selectedDevotional ? 'Update Devotional' : 'Publish Devotional'}
-                          </button>
-                        </div>
-                      </form>
-                    </motion.div>
-                  )}
-                  
-                  {activeView === 'preview' && selectedDevotional && (
-                    <motion.div
-                      key="preview"
-                      initial={{ opacity: 0, x: -20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      exit={{ opacity: 0, x: 20 }}
-                      className="bg-white rounded-2xl shadow-lg overflow-hidden"
-                    >
-                      <div className="relative h-48 bg-gradient-to-r from-[#5E936C] to-[#93DA97]">
-                        <div className="absolute inset-0 bg-black bg-opacity-40 flex items-center justify-center">
-                          <h2 className="text-3xl font-bold text-white text-center px-4">
-                            {selectedDevotional.title}
-                          </h2>
-                        </div>
+                {/* Sidebar (Right Small) */}
+                <div className="xl:col-span-4 flex flex-col gap-6">
+                  {/* Publish Card */}
+                  <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6">
+                    <h3 className="font-bold text-[#1a3c2b] mb-4 flex items-center gap-2"><div className="w-1.5 h-4 bg-[#5E936C] rounded-full"></div> Publishing</h3>
+                    <div className="space-y-4">
+                      <div>
+                        <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">Publish Date</label>
+                        <input
+                          type="date"
+                          name="publishDate"
+                          value={formData.publishDate}
+                          onChange={handleInputChange}
+                          className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 font-medium outline-none focus:border-[#5E936C] transition"
+                        />
                       </div>
-                      
-                      <div className="p-6">
-                        <div className="flex items-center justify-between mb-6">
-                          <div>
-                            <p className="text-[#5E936C] font-semibold">
-                              {format(new Date(selectedDevotional.publishedAt), 'MMMM dd, yyyy')}
-                            </p>
-                            <p className="text-gray-600">By {selectedDevotional.author.fullName}</p>
-                          </div>
-                          <div className="bg-[#E8FFD7] text-[#5E936C] px-3 py-1 rounded-full">
-                            {selectedDevotional.scripture}
-                          </div>
-                        </div>
-                        
-                        <div className="prose max-w-none mb-8">
-                          <p className="text-gray-700 text-lg leading-relaxed whitespace-pre-line">
-                            {selectedDevotional.content}
-                          </p>
-                        </div>
-                        
-                        <div className="border-t border-gray-200 pt-6 flex justify-between items-center">
-                          <div className="text-gray-500">
-                            Word of the Day • KKKT Usharika wa Mkimbizi
-                          </div>
-                          <div className="flex space-x-2">
-                            <button className="bg-[#5E936C] text-white px-4 py-2 rounded-lg flex items-center">
-                              <FaShare className="mr-2" />
-                              Share
-                            </button>
-                            <button 
-                              onClick={() => handleEdit(selectedDevotional)}
-                              className="bg-[#E8FFD7] text-[#5E936C] px-4 py-2 rounded-lg flex items-center"
-                            >
-                              <FaEdit className="mr-2" />
-                              Edit
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    </motion.div>
-                  )}
-                  
-                  {activeView === 'list' && (
-                    <motion.div
-                      key="list"
-                      initial={{ opacity: 0, x: -20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      exit={{ opacity: 0, x: 20 }}
-                      className="bg-white rounded-2xl shadow-lg overflow-hidden"
-                    >
-                      <div className="p-6 border-b border-gray-200">
-                        <h2 className="text-xl font-bold text-[#5E936C]">Devotional History</h2>
-                        <p className="text-gray-600">View and manage past devotionals</p>
-                      </div>
-                      
-                      {loading ? (
-                        <div className="p-6 text-center">
-                          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#5E936C] mx-auto"></div>
-                          <p className="mt-4 text-gray-600">Loading devotionals...</p>
-                        </div>
-                      ) : error ? (
-                        <div className="p-6 text-center">
-                          <p className="text-red-500">Error loading devotionals: {error.message}</p>
-                        </div>
-                      ) : devotionals.length === 0 ? (
-                        <div className="p-6 text-center">
-                          <FaBook className="text-4xl text-gray-300 mx-auto mb-4" />
-                          <p className="text-gray-500">No devotionals found. Create your first one!</p>
-                          <button
-                            onClick={handleNewDevotional}
-                            className="mt-4 bg-[#5E936C] text-white px-4 py-2 rounded-lg"
-                          >
-                            Create Devotional
-                          </button>
-                        </div>
-                      ) : (
-                        <div className="divide-y divide-gray-100">
-                          {devotionals.map((devotional) => (
-                            <div key={devotional.id} className="p-6 hover:bg-gray-50">
-                              <div className="flex justify-between items-start">
-                                <div>
-                                  <h3 className="font-semibold text-lg text-[#5E936C]">
-                                    {devotional.title}
-                                  </h3>
-                                  <p className="text-gray-600 mb-2">
-                                    {format(new Date(devotional.publishedAt), 'MMMM dd, yyyy')} • {devotional.scripture}
-                                  </p>
-                                  <p className="text-gray-700 line-clamp-2">
-                                    {devotional.content.substring(0, 150)}...
-                                  </p>
-                                </div>
-                                <div className="flex space-x-2">
-                                  <button
-                                    onClick={() => handlePreview(devotional)}
-                                    className="p-2 text-gray-500 hover:text-[#5E936C]"
-                                    title="Preview"
-                                  >
-                                    <FaEye />
-                                  </button>
-                                  <button
-                                    onClick={() => handleEdit(devotional)}
-                                    className="p-2 text-gray-500 hover:text-[#5E936C]"
-                                    title="Edit"
-                                  >
-                                    <FaEdit />
-                                  </button>
-                                  <button
-                                    onClick={() => handleDelete(devotional.id)}
-                                    className="p-2 text-gray-500 hover:text-red-500"
-                                    title="Delete"
-                                  >
-                                    <FaTrash />
-                                  </button>
-                                </div>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-              
-              {/* Sidebar */}
-              <div>
-                <motion.div 
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.2 }}
-                  className="bg-white rounded-2xl shadow-lg p-6 mb-6"
-                >
-                  <h3 className="text-lg font-bold text-[#5E936C] mb-4">Today's Devotional</h3>
-                  
-                  {devotionals.length > 0 && (
-                    <div className="bg-[#E8FFD7] rounded-lg p-4 mb-4">
-                      <h4 className="font-semibold text-[#5E936C]">{devotionals[0].title}</h4>
-                      <p className="text-sm text-gray-600 mt-1">
-                        {format(new Date(devotionals[0].publishedAt), 'MMMM dd, yyyy')}
-                      </p>
-                      <p className="text-sm mt-2 line-clamp-3">
-                        {devotionals[0].content.substring(0, 100)}...
-                      </p>
                       <button
-                        onClick={() => handlePreview(devotionals[0])}
-                        className="mt-3 text-[#5E936C] text-sm font-medium"
+                        type="submit"
+                        disabled={isSubmitting}
+                        className="w-full py-4 rounded-xl bg-[#1a3c2b] text-white font-bold text-lg hover:bg-[#2d5c43] active:scale-95 transition-all shadow-xl shadow-green-900/20 flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-wait"
                       >
-                        Read Full Devotional →
+                        {isSubmitting ? <FaSpinner className="animate-spin" /> : <><FaCheck /> {selectedDevotional ? 'Save Changes' : 'Publish Now'}</>}
                       </button>
                     </div>
-                  )}
-                  
-                  <div className="bg-gray-100 rounded-lg p-4">
-                    <h4 className="font-semibold text-gray-700 mb-2">Quick Stats</h4>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="bg-white p-3 rounded-lg text-center">
-                        <p className="text-2xl font-bold text-[#5E936C]">{devotionals.length}</p>
-                        <p className="text-xs text-gray-600">Total Devotionals</p>
+                  </div>
+
+                  {/* Media Card */}
+                  <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6">
+                    <h3 className="font-bold text-[#1a3c2b] mb-4 flex items-center gap-2"><div className="w-1.5 h-4 bg-[#5E936C] rounded-full"></div> Media Assets</h3>
+
+                    <div className="space-y-4">
+                      {/* Image */}
+                      <div className="relative group cursor-pointer overflow-hidden rounded-xl border-2 border-dashed border-gray-200 hover:border-[#5E936C] transition bg-gray-50 h-40">
+                        {imagePreview ? (
+                          <>
+                            <img src={imagePreview} className="w-full h-full object-cover" />
+                            <button type="button" onClick={() => { setImageFile(null); setImagePreview(null); }} className="absolute top-2 right-2 bg-red-500 text-white p-1.5 rounded-full opacity-0 group-hover:opacity-100 transition"><FaTimes size={12} /></button>
+                          </>
+                        ) : (
+                          <label className="flex flex-col items-center justify-center h-full cursor-pointer text-gray-400 hover:text-[#5E936C] transition">
+                            <FaImage className="text-3xl mb-2" />
+                            <span className="text-xs font-bold">Upload Cover</span>
+                            <input type="file" onChange={handleImageChange} className="hidden" accept="image/*" />
+                          </label>
+                        )}
                       </div>
-                      <div className="bg-white p-3 rounded-lg text-center">
-                        <p className="text-2xl font-bold text-[#5E936C]">
-                          {devotionals.filter(d => new Date(d.publishedAt) > new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)).length}
-                        </p>
-                        <p className="text-xs text-gray-600">Last 30 Days</p>
+
+                      {/* Audio */}
+                      <div className="bg-gray-50 rounded-xl p-3 border border-gray-100">
+                        <label className="text-xs font-bold text-gray-500 uppercase mb-2 block">Audio Message</label>
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={isRecording ? stopRecording : startRecording}
+                            className={`flex-1 py-3 rounded-lg flex items-center justify-center gap-2 font-bold transition-colors ${isRecording ? 'bg-red-500 text-white animate-pulse' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
+                          >
+                            {isRecording ? 'Stop' : <><FaMicrophone /> Record</>}
+                          </button>
+                          <label className="px-4 py-3 bg-gray-200 text-gray-600 rounded-lg cursor-pointer hover:bg-gray-300 transition flex items-center">
+                            <FaUpload />
+                            <input type="file" onChange={(e) => { if (e.target.files?.[0]) { setAudioFile(e.target.files[0]); setAudioPreview(URL.createObjectURL(e.target.files[0])); } }} className="hidden" accept="audio/*" />
+                          </label>
+                        </div>
+                        {audioPreview && <audio src={audioPreview} controls className="w-full mt-3 h-8" />}
+                      </div>
+
+                      {/* Video */}
+                      <div className="bg-gray-50 rounded-xl p-3 border border-gray-100 flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="bg-white p-2 rounded-lg shadow-sm"><FaVideo className="text-[#5E936C]" /></div>
+                          <span className="text-sm font-medium text-gray-600 truncate max-w-[150px]">{videoFile ? videoFile.name : 'No video selected'}</span>
+                        </div>
+                        <label className="text-xs font-bold text-[#5E936C] cursor-pointer hover:underline">
+                          Choose
+                          <input type="file" onChange={(e) => { if (e.target.files?.[0]) setVideoFile(e.target.files[0]); }} className="hidden" accept="video/*" />
+                        </label>
                       </div>
                     </div>
                   </div>
-                </motion.div>
-                
-                <motion.div 
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.3 }}
-                  className="bg-white rounded-2xl shadow-lg p-6"
-                >
-                  <h3 className="text-lg font-bold text-[#5E936C] mb-4">Tips for Writing</h3>
-                  <ul className="space-y-3">
-                    <li className="flex items-start">
-                      <div className="bg-[#E8FFD7] text-[#5E936C] p-1 rounded-full mr-3 mt-1">
-                        <div className="h-2 w-2 rounded-full bg-[#5E936C]"></div>
+                </div>
+              </motion.form>
+            )}
+
+            {/* --- LIBRARY VIEW --- */}
+            {activeView === 'library' && (
+              <motion.div key="library" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="max-w-7xl mx-auto pb-20">
+
+                {/* Filters */}
+                <div className="flex flex-col md:flex-row gap-4 mb-8 bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
+                  <div className="flex-1 relative">
+                    <FaSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+                    <input
+                      type="text"
+                      placeholder="Search devotionals..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="w-full pl-11 pr-4 py-3 bg-gray-50 rounded-xl outline-none focus:ring-2 focus:ring-[#5E936C] transition"
+                    />
+                  </div>
+                  <div className="flex items-center gap-2 px-4 py-3 bg-gray-50 rounded-xl text-gray-500 font-medium">
+                    <FaFilter />
+                    <span>{filteredDevotionals.length} Items</span>
+                  </div>
+                </div>
+
+                {/* Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                  {loading ? [...Array(4)].map((_, i) => <div key={i} className="bg-gray-200 h-96 rounded-3xl animate-pulse" />) :
+                    filteredDevotionals.map((d) => (
+                      <div key={d.id} className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden group hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 relative flex flex-col h-[400px]">
+                        {/* Image */}
+                        <div className="h-48 relative overflow-hidden bg-gray-100">
+                          {d.imageUrl ? (
+                            <img src={d.imageUrl} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center bg-gradient-to-tr from-[#E8FFD7] to-white"><FaBook className="text-4xl text-[#5E936C]/30" /></div>
+                          )}
+                          <div className="absolute top-3 left-3 bg-black/50 backdrop-blur-sm text-white px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide">
+                            {d.publishedAt ? format(parseISO(d.publishedAt), 'MMM dd') : 'Draft'}
+                          </div>
+                          {/* Overlay Actions */}
+                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3 backdrop-blur-[2px]">
+                            <button onClick={() => { setSelectedDevotional(d); setFormData({ title: d.title, scripture: d.scripture, content: d.content, publishDate: d.publishedAt }); setImagePreview(d.imageUrl || null); setActiveView('create'); }} className="bg-white text-[#1a3c2b] p-3 rounded-full hover:scale-110 transition shadow-lg"><FaEdit /></button>
+                            <button onClick={() => { if (confirm('Delete?')) deleteDevotional({ variables: { id: d.id } }); }} className="bg-white text-red-500 p-3 rounded-full hover:scale-110 transition shadow-lg"><FaTrash /></button>
+                          </div>
+                        </div>
+
+                        {/* Content */}
+                        <div className="p-6 flex-1 flex flex-col">
+                          <h3 className="font-bold text-xl text-[#1a3c2b] mb-2 leading-tight line-clamp-2" title={d.title}>{d.title}</h3>
+                          <p className="text-xs font-bold text-[#5E936C] mb-3 font-serif italic">{d.scripture}</p>
+                          <p className="text-sm text-gray-500 line-clamp-3 mb-4 flex-1">{d.content}</p>
+
+                          <div className="pt-4 border-t border-gray-50 flex justify-between items-center text-xs text-gray-400">
+                            <span>Author: {d.author?.fullName || 'Me'}</span>
+                          </div>
+                        </div>
                       </div>
-                      <span className="text-gray-700">Keep it concise (200-400 words)</span>
-                    </li>
-                    <li className="flex items-start">
-                      <div className="bg-[#E8FFD7] text-[#5E936C] p-1 rounded-full mr-3 mt-1">
-                        <div className="h-2 w-2 rounded-full bg-[#5E936C]"></div>
-                      </div>
-                      <span className="text-gray-700">Include a clear scripture reference</span>
-                    </li>
-                    <li className="flex items-start">
-                      <div className="bg-[#E8FFD7] text-[#5E936C] p-1 rounded-full mr-3 mt-1">
-                        <div className="h-2 w-2 rounded-full bg-[#5E936C]"></div>
-                      </div>
-                      <span className="text-gray-700">Add a practical application</span>
-                    </li>
-                    <li className="flex items-start">
-                      <div className="bg-[#E8FFD7] text-[#5E936C] p-1 rounded-full mr-3 mt-1">
-                        <div className="h-2 w-2 rounded-full bg-[#5E936C]"></div>
-                      </div>
-                      <span className="text-gray-700">End with a prayer or reflection question</span>
-                    </li>
-                  </ul>
-                </motion.div>
-              </div>
-            </div>
-          </div>
+                    ))}
+                </div>
+              </motion.div>
+            )}
+
+          </AnimatePresence>
         </main>
       </div>
     </div>

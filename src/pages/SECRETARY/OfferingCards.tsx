@@ -1,647 +1,554 @@
 import React, { useMemo, useState } from 'react';
 import { useQuery, useMutation } from '@apollo/client';
-import { GET_STREETS_AND_GROUPS, GET_OFFERING_CARDS, GET_AVAILABLE_CARD_NUMBERS, GET_CARDS_OVERVIEW, REGISTRATION_WINDOW_STATUS, GET_CARD_APPLICATIONS } from '../../api/queries';
-import { CREATE_OFFERING_CARD, ASSIGN_CARD, UPDATE_ASSIGNMENT, RECORD_OFFERING_ENTRY, BULK_GENERATE_CARDS, OPEN_REGISTRATION_WINDOW, CLOSE_REGISTRATION_WINDOW, APPROVE_CARD_APPLICATION, REJECT_CARD_APPLICATION } from '../../api/mutations';
+import { motion, AnimatePresence } from 'framer-motion';
+import { FaPlus, FaCheck, FaTimes, FaSearch, FaFilter, FaEdit, FaEye, FaRegCreditCard, FaUserFriends, FaClipboardList, FaBullhorn, FaCalendarAlt, FaToggleOn, FaToggleOff } from 'react-icons/fa';
+import {
+  GET_STREETS_AND_GROUPS,
+  GET_OFFERING_CARDS,
+  GET_AVAILABLE_CARD_NUMBERS,
+  GET_CARDS_OVERVIEW,
+  REGISTRATION_WINDOW_STATUS,
+  GET_CARD_APPLICATIONS
+} from '../../api/queries';
+import {
+  CREATE_OFFERING_CARD,
+  ASSIGN_CARD,
+  UPDATE_ASSIGNMENT,
+  RECORD_OFFERING_ENTRY,
+  BULK_GENERATE_CARDS,
+  OPEN_REGISTRATION_WINDOW,
+  CLOSE_REGISTRATION_WINDOW,
+  APPROVE_CARD_APPLICATION,
+  REJECT_CARD_APPLICATION
+} from '../../api/mutations';
+import { toast } from 'react-toastify';
 
-const Section: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
-  <div className="bg-white shadow rounded p-4 mb-6">
-    <h2 className="text-lg font-semibold mb-3">{title}</h2>
-    {children}
+// -- Interfaces & Types --
+
+interface CardApplication {
+  id: string;
+  fullName: string;
+  phoneNumber: string;
+  street: string;
+  preferredNumber?: number;
+  pledgedAhadi: number;
+  pledgedShukrani: number;
+  pledgedMajengo: number;
+  note?: string;
+  createdAt: string;
+}
+
+interface OfferingCard {
+  id: string;
+  code: string;
+  street: string;
+  number: number;
+  isTaken: boolean;
+  assignedToName?: string;
+  assignedPhone?: string;
+  pledgedAhadi?: number;
+  pledgedShukrani?: number;
+  pledgedMajengo?: number;
+  progressAhadi?: number;
+  progressShukrani?: number;
+  progressMajengo?: number;
+}
+
+// -- Utility Components --
+
+const StatCard: React.FC<{ title: string; value: string | number; icon: React.ReactNode; color: string }> = ({ title, value, icon, color }) => (
+  <div className={`bg-white rounded-xl shadow-sm border border-gray-100 p-6 flex items-center justify-between hover:shadow-md transition-shadow`}>
+    <div>
+      <p className="text-gray-500 text-sm font-medium mb-1">{title}</p>
+      <h3 className={`text-2xl font-bold ${color}`}>{value}</h3>
+    </div>
+    <div className={`p-3 rounded-full bg-opacity-10 ${color.replace('text-', 'bg-')}`}>
+      <span className={color}>{icon}</span>
+    </div>
   </div>
 );
 
-const Modal: React.FC<{ open: boolean; title: string; onClose: () => void; children: React.ReactNode }> = ({ open, title, onClose, children }) => {
-  if (!open) return null;
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/30" onClick={onClose} />
-      <div className="relative bg-white rounded shadow-lg w-full max-w-xl p-4">
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="text-lg font-semibold text-green-700">{title}</h3>
-          <button className="text-gray-600" onClick={onClose}>✕</button>
+const Badge: React.FC<{ children: React.ReactNode; type?: 'success' | 'warning' | 'danger' | 'neutral' }> = ({ children, type = 'neutral' }) => {
+  const styles = {
+    success: 'bg-green-100 text-green-800',
+    warning: 'bg-yellow-100 text-yellow-800',
+    danger: 'bg-red-100 text-red-800',
+    neutral: 'bg-gray-100 text-gray-800',
+  };
+  return <span className={`px-2 py-1 rounded-full text-xs font-semibold ${styles[type]}`}>{children}</span>;
+};
+
+// -- Main Component --
+
+const OfferingCardsPage: React.FC = () => {
+  // State
+  const [activeTab, setActiveTab] = useState<'overview' | 'applications' | 'cards' | 'create'>('overview');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [streetFilter, setStreetFilter] = useState<string>('');
+
+  // Modals
+  const [approveModal, setApproveModal] = useState<{ isOpen: boolean; app: CardApplication | null }>({ isOpen: false, app: null });
+  const [rejectModal, setRejectModal] = useState<{ isOpen: boolean; app: CardApplication | null }>({ isOpen: false, app: null });
+  const [assignModal, setAssignModal] = useState(false);
+
+  // Queries
+  const { data: windowData, refetch: refetchWindow } = useQuery(REGISTRATION_WINDOW_STATUS);
+  const { data: appData, refetch: refetchApps } = useQuery(GET_CARD_APPLICATIONS, { variables: { status: 'NEW' } });
+  const { data: cardsData, refetch: refetchCards } = useQuery(GET_OFFERING_CARDS, {
+    variables: {
+      streetId: streetFilter ? Number(streetFilter) : null,
+      search: searchQuery || null
+    },
+    fetchPolicy: 'network-only' // Force refresh to ensure data appears
+  });
+  const { data: metaData } = useQuery(GET_STREETS_AND_GROUPS);
+
+  // Derived Data
+  const applications = (appData?.cardApplications || []) as CardApplication[];
+  const cards = (cardsData?.offeringCards || []) as OfferingCard[];
+  const streets = metaData?.streets || [];
+  const windowStatus = windowData?.registrationWindowStatus || { isOpen: false };
+
+  // Mutations
+  const [openWindow] = useMutation(OPEN_REGISTRATION_WINDOW, { onCompleted: () => refetchWindow() });
+  const [closeWindow] = useMutation(CLOSE_REGISTRATION_WINDOW, { onCompleted: () => refetchWindow() });
+  const [approveApp] = useMutation(APPROVE_CARD_APPLICATION, { onCompleted: () => { refetchApps(); refetchCards(); toast.success('Application Approved'); setApproveModal({ isOpen: false, app: null }); } });
+  const [rejectApp] = useMutation(REJECT_CARD_APPLICATION, { onCompleted: () => { refetchApps(); toast.info('Application Rejected'); setRejectModal({ isOpen: false, app: null }); } });
+  const [createCard, { loading: creating }] = useMutation(CREATE_OFFERING_CARD, { onCompleted: () => { refetchCards(); toast.success('Card Created'); } });
+  const [bulkGenerate, { loading: bulkLoading }] = useMutation(BULK_GENERATE_CARDS, { onCompleted: () => { refetchCards(); toast.success('Batch Generated'); } });
+
+  // -- handlers --
+
+  const toggleWindow = () => {
+    if (windowStatus.isOpen) {
+      if (confirm('Are you sure you want to close the registration window?')) closeWindow();
+    } else {
+      const now = new Date();
+      const end = new Date();
+      end.setDate(end.getDate() + 7); // Default 7 days
+      openWindow({ variables: { startAt: now.toISOString(), endAt: end.toISOString() } });
+    }
+  };
+
+  const handleApprove = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!approveModal.app) return;
+    const form = e.target as HTMLFormElement;
+    const data = new FormData(form);
+
+    approveApp({
+      variables: {
+        applicationId: approveModal.app.id,
+        cardId: data.get('cardId'),
+        year: new Date().getFullYear(),
+        pledgedAhadi: Number(data.get('pledgeAhadi')),
+        pledgedShukrani: Number(data.get('pledgeShukrani')),
+        pledgedMajengo: Number(data.get('pledgeMajengo')),
+      }
+    });
+  };
+
+  // -- Render Helpers --
+
+  const renderOverview = () => (
+    <div className="space-y-6 animate-fade-in">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatCard
+          title="Total Cards"
+          value={cards.length}
+          icon={<FaRegCreditCard size={20} />}
+          color="text-blue-600"
+        />
+        <StatCard
+          title="Assigned Cards"
+          value={cards.filter(c => c.isTaken).length}
+          icon={<FaCheck size={20} />}
+          color="text-[#5E936C]"
+        />
+        <StatCard
+          title="Available Cards"
+          value={cards.filter(c => !c.isTaken).length}
+          icon={<FaRegCreditCard size={20} />}
+          color="text-gray-500"
+        />
+        <StatCard
+          title="Pending Apps"
+          value={applications.length}
+          icon={<FaClipboardList size={20} />}
+          color="text-orange-500"
+        />
+      </div>
+
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-bold text-gray-800">Registration Window</h3>
+          <button
+            onClick={toggleWindow}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${windowStatus.isOpen ? 'bg-[#E8FFD7] text-[#5E936C] hover:bg-green-200' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+          >
+            {windowStatus.isOpen ? <FaToggleOn size={24} /> : <FaToggleOff size={24} />}
+            {windowStatus.isOpen ? 'Active' : 'Closed'}
+          </button>
         </div>
-        {children}
+        <p className="text-gray-600 text-sm">
+          {windowStatus.isOpen
+            ? `Registration is currently open. Members can apply for cards until ${new Date(windowStatus.endAt).toLocaleDateString()}.`
+            : "Registration is closed. Members cannot submit new applications."}
+        </p>
       </div>
     </div>
   );
-};
 
-const Tabs: React.FC<{ tabs: string[]; active: string; onChange: (t: string) => void }> = ({ tabs, active, onChange }) => (
-  <div className="flex gap-2 border-b mb-4">
-    {tabs.map(t => (
-      <button
-        key={t}
-        onClick={() => onChange(t)}
-        className={`px-3 py-2 -mb-px border-b-2 ${active === t ? 'border-green-600 text-green-600' : 'border-transparent text-gray-600 hover:text-gray-800'}`}
-      >
-        {t}
-      </button>
-    ))}
-  </div>
-);
+  const renderApplications = () => (
+    <div className="space-y-4 animate-fade-in">
+      {applications.length === 0 ? (
+        <div className="bg-white rounded-xl border border-gray-100 p-12 text-center text-gray-500">
+          <FaClipboardList size={48} className="mx-auto mb-4 opacity-20" />
+          <p>No pending applications found.</p>
+        </div>
+      ) : (
+        <div className="grid gap-4">
+          {applications.map(app => (
+            <div key={app.id} className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div className="flex-1">
+                <div className="flex items-center gap-3 mb-1">
+                  <h4 className="font-bold text-lg text-gray-800">{app.fullName}</h4>
+                  <Badge type="warning">Pending</Badge>
+                </div>
+                <div className="text-sm text-gray-600 flex flex-wrap gap-4">
+                  <span className="flex items-center gap-1"><FaUserFriends size={12} /> {app.street}</span>
+                  <span className="flex items-center gap-1">📞 {app.phoneNumber}</span>
+                  <span className="flex items-center gap-1">📅 {new Date(app.createdAt).toLocaleDateString()}</span>
+                  {app.preferredNumber && <span className="font-medium text-blue-600">Prefers: #{app.preferredNumber}</span>}
+                </div>
+                <div className="mt-3 flex gap-6 text-sm">
+                  <div><span className="text-gray-500 block text-xs uppercase">Ahadi</span> <span className="font-medium">{app.pledgedAhadi.toLocaleString()}</span></div>
+                  <div><span className="text-gray-500 block text-xs uppercase">Shukrani</span> <span className="font-medium">{app.pledgedShukrani.toLocaleString()}</span></div>
+                  <div><span className="text-gray-500 block text-xs uppercase">Majengo</span> <span className="font-medium">{app.pledgedMajengo.toLocaleString()}</span></div>
+                </div>
+                {app.note && <div className="mt-2 text-xs text-gray-500 italic">Note: {app.note}</div>}
+              </div>
 
-const numberFmt = (n?: number | null) => (n ?? 0).toLocaleString();
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => setApproveModal({ isOpen: true, app })}
+                  className="px-4 py-2 bg-[#5E936C] hover:bg-[#4a7a58] text-white rounded-lg text-sm font-medium transition-colors"
+                >
+                  Approve
+                </button>
+                <button
+                  onClick={() => setRejectModal({ isOpen: true, app })}
+                  className="px-4 py-2 border border-gray-200 hover:bg-red-50 hover:text-red-600 text-gray-700 rounded-lg text-sm font-medium transition-colors"
+                >
+                  Reject
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 
-const OfferingCardsPage: React.FC = () => {
-  const tabs = ['Create', 'Taken', 'Free', 'Applications', 'Overview'];
-  const [active, setActive] = useState<string>('Create');
-  const [streetFilter, setStreetFilter] = useState<number | undefined>(undefined);
-  const [search, setSearch] = useState('');
+  const renderCards = () => (
+    <div className="space-y-6 animate-fade-in">
+      {/* Filters */}
+      <div className="flex flex-col md:flex-row gap-4 bg-white p-4 rounded-xl border border-gray-100">
+        <div className="flex-1 relative">
+          <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+          <input
+            type="text"
+            placeholder="Search by name, code, or phone..."
+            className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#5E936C] focus:border-transparent transition-all"
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+          />
+        </div>
+        <div className="relative min-w-[200px]">
+          <FaFilter className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+          <select
+            className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#5E936C] appearance-none bg-white"
+            value={streetFilter}
+            onChange={e => setStreetFilter(e.target.value)}
+          >
+            <option value="">All Streets</option>
+            {streets.map((s: any) => <option key={s.id} value={s.id}>{s.name}</option>)}
+          </select>
+        </div>
+      </div>
 
-  const { data: meta } = useQuery(GET_STREETS_AND_GROUPS);
-  const streets = meta?.streets ?? [];
-
-  const { data: cardsData, refetch: refetchCards } = useQuery(GET_OFFERING_CARDS, {
-    variables: { streetId: streetFilter ?? null, isTaken: active === 'Free' ? false : active === 'Taken' ? true : null, search: search || null },
-    fetchPolicy: 'cache-and-network',
-  });
-  const cards = cardsData?.offeringCards ?? [];
-
-  const { data: availableData, refetch: refetchAvailable } = useQuery(GET_AVAILABLE_CARD_NUMBERS, {
-    variables: { streetId: streetFilter ?? null },
-    skip: active !== 'Free' && active !== 'Create',
-  });
-  const available = availableData?.availableCardNumbers ?? [];
-
-  const { data: overviewData, refetch: refetchOverview } = useQuery(GET_CARDS_OVERVIEW, {
-    variables: { streetId: streetFilter ?? null },
-    skip: active !== 'Overview',
-  });
-
-  const { data: windowData, refetch: refetchWindow } = useQuery(REGISTRATION_WINDOW_STATUS);
-
-  const [createCard, { loading: creating }] = useMutation(CREATE_OFFERING_CARD, {
-    onCompleted: () => { refetchCards(); refetchAvailable(); },
-  });
-  const [bulkGenerate, { loading: bulkLoading }] = useMutation(BULK_GENERATE_CARDS, {
-    onCompleted: () => { refetchCards(); refetchAvailable(); refetchOverview && refetchOverview(); },
-  });
-  const [assignCard, { loading: assigning }] = useMutation(ASSIGN_CARD, {
-    onCompleted: () => { refetchCards(); refetchAvailable(); refetchOverview && refetchOverview(); },
-  });
-  const [updateAssignment] = useMutation(UPDATE_ASSIGNMENT, {
-    onCompleted: () => { refetchCards(); refetchOverview && refetchOverview(); },
-  });
-  const [recordEntry] = useMutation(RECORD_OFFERING_ENTRY, {
-    onCompleted: () => { refetchCards(); refetchOverview && refetchOverview(); },
-  });
-
-  const [openWindow, { loading: openingWin }] = useMutation(OPEN_REGISTRATION_WINDOW, {
-    onCompleted: () => { refetchWindow && refetchWindow(); },
-  });
-  const [closeWindow, { loading: closingWin }] = useMutation(CLOSE_REGISTRATION_WINDOW, {
-    onCompleted: () => { refetchWindow && refetchWindow(); },
-  });
-
-  // Applications
-  const { data: appsData, refetch: refetchApps } = useQuery(GET_CARD_APPLICATIONS, { variables: { status: 'NEW' } });
-  const applications = appsData?.cardApplications ?? [];
-  const [approveOpen, setApproveOpen] = useState(false);
-  const [approveAppId, setApproveAppId] = useState<string>('');
-  const [approveCardId, setApproveCardId] = useState<string>('');
-  const [approveYear, setApproveYear] = useState<number>(new Date().getFullYear());
-  const [approveAhadi, setApproveAhadi] = useState<number | ''>('' as any);
-  const [approveShukrani, setApproveShukrani] = useState<number | ''>('' as any);
-  const [approveMajengo, setApproveMajengo] = useState<number | ''>('' as any);
-  const [approveApp] = useMutation(APPROVE_CARD_APPLICATION, {
-    onCompleted: () => { setApproveOpen(false); refetchApps && refetchApps(); refetchCards(); refetchAvailable(); refetchOverview && refetchOverview(); },
-  });
-  // View modal & reject
-  const [viewOpen, setViewOpen] = useState(false);
-  const [viewApp, setViewApp] = useState<any>(null);
-  const [rejectReason, setRejectReason] = useState<string>('');
-  const [rejectApp] = useMutation(REJECT_CARD_APPLICATION, {
-    onCompleted: () => { setViewOpen(false); setRejectReason(''); refetchApps && refetchApps(); },
-  });
-
-  // Create
-  const [createStreetId, setCreateStreetId] = useState<number | ''>('' as any);
-  const [createNumber, setCreateNumber] = useState<number | ''>('' as any);
-
-  const handleCreate = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!createStreetId || !createNumber) return;
-    await createCard({ variables: { input: { streetId: Number(createStreetId), number: Number(createNumber) } } });
-    setCreateNumber('' as any);
-  };
-
-  // Assign (modal-based)
-  const freeCardsForAssign = useMemo(() => (cards || []).filter((c: any) => !c.isTaken), [cards]);
-  const [assignOpen, setAssignOpen] = useState(false);
-  const [assignCardId, setAssignCardId] = useState<string>('');
-  const [assignName, setAssignName] = useState('');
-  const [assignPhone, setAssignPhone] = useState('');
-  const [assignYear, setAssignYear] = useState<number>(new Date().getFullYear());
-  const [pledgeAhadi, setPledgeAhadi] = useState<number>(0);
-  const [pledgeShukrani, setPledgeShukrani] = useState<number>(0);
-  const [pledgeMajengo, setPledgeMajengo] = useState<number>(0);
-
-  // Pagination state
-  const [takenPage, setTakenPage] = useState(1);
-  const [freePage, setFreePage] = useState(1);
-  const [appPage, setAppPage] = useState(1);
-  const pageSize = 20;
-  const takenCards = useMemo(() => (cards || []).filter((c: any) => c.isTaken), [cards]);
-  const takenTotalPages = Math.max(1, Math.ceil(takenCards.length / pageSize));
-  const takenPageItems = useMemo(() => takenCards.slice((takenPage - 1) * pageSize, takenPage * pageSize), [takenCards, takenPage]);
-  const freeAvailable = available; // keep alias for clarity
-  const freeTotalPages = Math.max(1, Math.ceil(freeAvailable.length / pageSize));
-  const freePageItems = useMemo(() => freeAvailable.slice((freePage - 1) * pageSize, freePage * pageSize), [freeAvailable, freePage]);
-  const applicationsTotalPages = Math.max(1, Math.ceil(applications.length / pageSize));
-  const applicationsPageItems = useMemo(() => applications.slice((appPage - 1) * pageSize, appPage * pageSize), [applications, appPage]);
-
-  const handleAssign = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!assignCardId || !assignName || !assignPhone) return;
-    await assignCard({ variables: { input: {
-      cardId: assignCardId,
-      fullName: assignName,
-      phoneNumber: assignPhone,
-      year: assignYear,
-      pledgedAhadi: Number(pledgeAhadi),
-      pledgedShukrani: Number(pledgeShukrani),
-      pledgedMajengo: Number(pledgeMajengo),
-    } } });
-    setAssignOpen(false);
-    setAssignCardId(''); setAssignName(''); setAssignPhone('');
-  };
-
-  const handleUpdateAssignment = async (assignmentId: string, patch: Partial<{ fullName: string; phoneNumber: string; pledgedAhadi: number; pledgedShukrani: number; pledgedMajengo: number; active: boolean }>) => {
-    await updateAssignment({ variables: { input: { assignmentId, ...patch } } });
-  };
-
-  // Record entry
-  const [entryOpen, setEntryOpen] = useState(false);
-  const [entryCardId, setEntryCardId] = useState<string>('');
-  const [entryType, setEntryType] = useState<string>('AHADI');
-  const [entryAmount, setEntryAmount] = useState<number>(0);
-  const handleRecordEntry = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!entryCardId || !entryType || !entryAmount) return;
-    await recordEntry({ variables: { input: { cardId: entryCardId, entryType, amount: Number(entryAmount) } } });
-    setEntryAmount(0);
-    setEntryOpen(false);
-  };
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+        <table className="w-full text-left border-collapse">
+          <thead>
+            <tr className="bg-gray-50 border-b border-gray-100 text-xs uppercase text-gray-500 font-semibold">
+              <th className="px-6 py-4">Card Code</th>
+              <th className="px-6 py-4">Assigned Member</th>
+              <th className="px-6 py-4">Street</th>
+              <th className="px-6 py-4">Status</th>
+              <th className="px-6 py-4 text-right">Progress</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-100 text-sm">
+            {cards.map(card => (
+              <tr key={card.id} className="hover:bg-gray-50 transition-colors">
+                <td className="px-6 py-4 font-mono font-medium text-gray-700">{card.code}</td>
+                <td className="px-6 py-4">
+                  {card.assignedToName ? (
+                    <div>
+                      <div className="font-medium text-gray-900">{card.assignedToName}</div>
+                      <div className="text-gray-500 text-xs">{card.assignedPhone}</div>
+                    </div>
+                  ) : <span className="text-gray-400 italic">Unassigned</span>}
+                </td>
+                <td className="px-6 py-4 text-gray-600">{card.street}</td>
+                <td className="px-6 py-4">
+                  {card.isTaken ? <Badge type="success">Active</Badge> : <Badge type="neutral">Free</Badge>}
+                </td>
+                <td className="px-6 py-4 text-right">
+                  {card.isTaken ? (
+                    <div className="flex flex-col items-end gap-1">
+                      <div className="w-24 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                        <div className="h-full bg-[#5E936C] rounded-full" style={{ width: `${Math.min(100, card.progressAhadi || 0)}%` }}></div>
+                      </div>
+                      <span className="text-[10px] text-gray-400">{(card.progressAhadi || 0).toFixed(0)}% Ahadi</span>
+                    </div>
+                  ) : <span>-</span>}
+                </td>
+              </tr>
+            ))}
+            {cards.length === 0 && (
+              <tr>
+                <td colSpan={5} className="px-6 py-12 text-center text-gray-500">
+                  No cards found matching your criteria.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
 
   return (
-    <div className="p-4">
-      <div className="flex items-center justify-between mb-4">
-        <h1 className="text-2xl font-bold text-green-700">Offering Cards</h1>
-        <div className="flex flex-wrap gap-2 items-center">
-          <div className="text-sm text-gray-600">
-            Window: {windowData?.registrationWindowStatus?.isOpen ? 'OPEN' : 'CLOSED'}
-            {windowData?.registrationWindowStatus?.startAt ? ` · ${windowData.registrationWindowStatus.startAt} → ${windowData.registrationWindowStatus.endAt}` : ''}
-          </div>
-          <button className="border px-3 py-2 rounded" onClick={() => setAssignOpen(true)}>Assign Card</button>
-          <button
-            className="border px-3 py-2 rounded disabled:opacity-50"
-            disabled={openingWin}
-            onClick={() => {
-              const now = new Date();
-              const startAt = new Date(now.getTime()).toISOString().slice(0,19);
-              const endAt = new Date(now.getTime() + 7*24*60*60*1000).toISOString().slice(0,19);
-              openWindow({ variables: { startAt, endAt } });
-            }}
-          >{openingWin ? 'Opening…' : 'Open Window (7 days)'}</button>
-          <button
-            className="border px-3 py-2 rounded disabled:opacity-50"
-            disabled={closingWin}
-            onClick={() => closeWindow()}
-          >{closingWin ? 'Closing…' : 'Close Window'}</button>
+    <div className="p-6 max-w-7xl mx-auto min-h-screen">
+      <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">Offering Management</h1>
+          <p className="text-gray-500 mt-1">Manage cards, applications, and registration windows.</p>
+        </div>
+        <div className="flex items-center gap-3">
+          {/* Action buttons could go here */}
         </div>
       </div>
 
-      <div className="grid md:grid-cols-3 gap-3 mb-4">
-        <div className="bg-white border border-green-100 rounded p-3">
-          <div className="text-sm text-gray-600">Total Cards</div>
-          <div className="text-xl font-bold text-green-700">{overviewData?.cardsOverview?.totalCards ?? cards.length}</div>
-        </div>
-        <div className="bg-white border border-green-100 rounded p-3">
-          <div className="text-sm text-gray-600">Taken</div>
-          <div className="text-xl font-bold text-green-700">{(cards || []).filter((c: any) => c.isTaken).length}</div>
-        </div>
-        <div className="bg-white border border-green-100 rounded p-3">
-          <div className="text-sm text-gray-600">Free</div>
-          <div className="text-xl font-bold text-green-700">{(cards || []).filter((c: any) => !c.isTaken).length}</div>
-        </div>
-      </div>
-
-      <Tabs tabs={tabs} active={active} onChange={setActive} />
-
-      <div className="flex items-center gap-3 mb-4">
-        <select className="border rounded px-2 py-1" value={streetFilter ?? ''} onChange={e => setStreetFilter(e.target.value ? Number(e.target.value) : undefined)}>
-          <option value="">All Streets</option>
-          {streets.map((s: any) => (
-            <option key={s.id} value={s.id}>{s.name}</option>
-          ))}
-        </select>
-        {(active === 'Taken' || active === 'Free') && (
-          <input className="border rounded px-2 py-1" placeholder="Search code..." value={search} onChange={e => setSearch(e.target.value)} />
-        )}
-      </div>
-
-      {active === 'Create' && (
-        <>
-          <Section title="Create Card">
-            <form onSubmit={handleCreate} className="grid md:grid-cols-4 gap-3 items-end">
-              <label className="flex flex-col">
-                <span className="text-sm text-gray-600">Street</span>
-                <select className="border rounded px-2 py-1" value={createStreetId} onChange={e => setCreateStreetId(e.target.value ? Number(e.target.value) : ('' as any))}>
-                  <option value="">Select street</option>
-                  {streets.map((s: any) => <option key={s.id} value={s.id}>{s.name}</option>)}
-                </select>
-              </label>
-              <label className="flex flex-col">
-                <span className="text-sm text-gray-600">Card Number</span>
-                <input type="number" className="border rounded px-2 py-1" value={createNumber} onChange={e => setCreateNumber(e.target.value ? Number(e.target.value) : ('' as any))} placeholder="e.g. 1" />
-              </label>
-              <button type="submit" disabled={creating} className="bg-green-600 text-white px-3 py-2 rounded disabled:opacity-50">{creating ? 'Creating...' : 'Create'}</button>
-              <div className="text-sm text-gray-500">Prefix is auto-generated from street. Example: BW-001</div>
-            </form>
-            <div className="mt-4 flex flex-wrap gap-3 items-center">
-              <button
-                onClick={() => {
-                  if (!createStreetId) return;
-                  bulkGenerate({ variables: { input: { streetId: Number(createStreetId), startNumber: 1, endNumber: 300 } } });
-                }}
-                disabled={bulkLoading || !createStreetId}
-                className="border px-3 py-2 rounded disabled:opacity-50"
-              >
-                {bulkLoading ? 'Generating…' : 'Generate 001–300 for selected street'}
-              </button>
-              <button
-                onClick={() => bulkGenerate({ variables: { input: { startNumber: 1, endNumber: 300 } } })}
-                disabled={bulkLoading}
-                className="border px-3 py-2 rounded disabled:opacity-50"
-              >
-                {bulkLoading ? 'Generating…' : 'Generate 001–300 for ALL streets'}
-              </button>
-              <span className="text-sm text-gray-500">Existing cards are skipped automatically.</span>
-            </div>
-          </Section>
-
-          <></>
-        </>
-      )}
-
-      {active === 'Applications' && (
-        <Section title="Pending Applications">
-          <div className="overflow-x-auto">
-            <table className="min-w-full text-sm">
-              <thead>
-                <tr className="text-left text-gray-600">
-                  <th className="p-2">Applicant</th>
-                  <th className="p-2">Phone</th>
-                  <th className="p-2">Street</th>
-                  <th className="p-2">Preferred</th>
-                  <th className="p-2">Pledges</th>
-                  <th className="p-2">Date</th>
-                  <th className="p-2">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {applicationsPageItems.map((a: any) => (
-                  <tr key={a.id} className="border-t">
-                    <td className="p-2">{a.fullName}</td>
-                    <td className="p-2">{a.phoneNumber}</td>
-                    <td className="p-2">{a.street}</td>
-                    <td className="p-2">{a.preferredNumber || '-'}</td>
-                    <td className="p-2">A: {numberFmt(a.pledgedAhadi)} | S: {numberFmt(a.pledgedShukrani)} | M: {numberFmt(a.pledgedMajengo)}</td>
-                    <td className="p-2">{a.createdAt}</td>
-                    <td className="p-2">
-                      <div className="flex gap-2">
-                        <button
-                          className="border px-2 py-1 rounded"
-                          onClick={() => { setViewOpen(true); setViewApp(a); }}
-                        >View</button>
-                        <button
-                          className="border px-2 py-1 rounded"
-                          onClick={() => { setApproveOpen(true); setApproveAppId(a.id); setApproveAhadi(a.pledgedAhadi || '' as any); setApproveShukrani(a.pledgedShukrani || '' as any); setApproveMajengo(a.pledgedMajengo || '' as any); }}
-                        >Approve</button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          {/* Applications Pagination */}
-          <div className="flex items-center justify-end gap-2 mt-3">
-            <button className="border px-2 py-1 rounded disabled:opacity-50" disabled={appPage <= 1} onClick={() => setAppPage((p) => Math.max(1, p - 1))}>Prev</button>
-            <span className="text-sm text-gray-600">Page {appPage} of {applicationsTotalPages}</span>
-            <button className="border px-2 py-1 rounded disabled:opacity-50" disabled={appPage >= applicationsTotalPages} onClick={() => setAppPage((p) => Math.min(applicationsTotalPages, p + 1))}>Next</button>
-          </div>
-        </Section>
-      )}
-
-      {/* Approve Modal */}
-      <Modal open={approveOpen} title="Approve Application" onClose={() => setApproveOpen(false)}>
-        <form
-          onSubmit={async (e) => {
-            e.preventDefault();
-            if (!approveAppId || !approveCardId || !approveYear) return;
-            await approveApp({ variables: {
-              applicationId: approveAppId,
-              cardId: approveCardId,
-              year: Number(approveYear),
-              pledgedAhadi: approveAhadi ? Number(approveAhadi) : 0,
-              pledgedShukrani: approveShukrani ? Number(approveShukrani) : 0,
-              pledgedMajengo: approveMajengo ? Number(approveMajengo) : 0,
-            } });
-          }}
-          className="grid md:grid-cols-2 gap-3 items-end"
+      {/* Navigation Tabs */}
+      <div className="flex items-center gap-6 border-b border-gray-200 mb-8 overflow-x-auto">
+        <button
+          onClick={() => setActiveTab('overview')}
+          className={`pb-3 px-1 font-medium text-sm transition-colors whitespace-nowrap ${activeTab === 'overview' ? 'text-[#5E936C] border-b-2 border-[#5E936C]' : 'text-gray-500 hover:text-gray-700'}`}
         >
-          <label className="flex flex-col md:col-span-2">
-            <span className="text-sm text-gray-600">Select Free Card</span>
-            <select className="border rounded px-2 py-1" value={approveCardId} onChange={(e) => setApproveCardId(e.target.value)}>
-              <option value="">Choose card…</option>
-              {freeCardsForAssign.map((c: any) => (
-                <option key={c.id} value={c.id}>{c.code}</option>
-              ))}
-            </select>
-          </label>
-          <label className="flex flex-col">
-            <span className="text-sm text-gray-600">Year</span>
-            <input type="number" className="border rounded px-2 py-1" value={approveYear as any} onChange={(e) => setApproveYear(Number(e.target.value || new Date().getFullYear()))} />
-          </label>
-          <label className="flex flex-col">
-            <span className="text-sm text-gray-600">Pledge - Ahadi</span>
-            <input type="number" className="border rounded px-2 py-1" value={approveAhadi as any} onChange={(e) => setApproveAhadi(e.target.value ? Number(e.target.value) : ('' as any))} />
-          </label>
-          <label className="flex flex-col">
-            <span className="text-sm text-gray-600">Pledge - Shukrani</span>
-            <input type="number" className="border rounded px-2 py-1" value={approveShukrani as any} onChange={(e) => setApproveShukrani(e.target.value ? Number(e.target.value) : ('' as any))} />
-          </label>
-          <label className="flex flex-col">
-            <span className="text-sm text-gray-600">Pledge - Majengo</span>
-            <input type="number" className="border rounded px-2 py-1" value={approveMajengo as any} onChange={(e) => setApproveMajengo(e.target.value ? Number(e.target.value) : ('' as any))} />
-          </label>
-          <div className="md:col-span-2 flex gap-2">
-            <button className="bg-[#5E936C] text-white px-3 py-2 rounded">Approve</button>
-            <button type="button" className="border px-3 py-2 rounded" onClick={() => setApproveOpen(false)}>Cancel</button>
-          </div>
-        </form>
-      </Modal>
+          Overview
+        </button>
+        <button
+          onClick={() => setActiveTab('applications')}
+          className={`pb-3 px-1 font-medium text-sm transition-colors whitespace-nowrap flex items-center gap-2 ${activeTab === 'applications' ? 'text-[#5E936C] border-b-2 border-[#5E936C]' : 'text-gray-500 hover:text-gray-700'}`}
+        >
+          Applications
+          {applications.length > 0 && <span className="bg-orange-100 text-orange-600 px-2 py-0.5 rounded-full text-xs font-bold">{applications.length}</span>}
+        </button>
+        <button
+          onClick={() => setActiveTab('cards')}
+          className={`pb-3 px-1 font-medium text-sm transition-colors whitespace-nowrap ${activeTab === 'cards' ? 'text-[#5E936C] border-b-2 border-[#5E936C]' : 'text-gray-500 hover:text-gray-700'}`}
+        >
+          All Cards
+        </button>
+        <button
+          onClick={() => setActiveTab('create')}
+          className={`pb-3 px-1 font-medium text-sm transition-colors whitespace-nowrap ${activeTab === 'create' ? 'text-[#5E936C] border-b-2 border-[#5E936C]' : 'text-gray-500 hover:text-gray-700'}`}
+        >
+          Create / Batch
+        </button>
+      </div>
 
-      {/* View Modal */}
-      <Modal open={viewOpen} title="Application Details" onClose={() => setViewOpen(false)}>
-        {viewApp && (
-          <div className="space-y-3">
-            <div className="grid md:grid-cols-2 gap-3">
-              <div>
-                <div className="text-xs text-gray-500">Applicant</div>
-                <div className="font-medium">{viewApp.fullName}</div>
+      {/* Content Area */}
+      <div className="min-h-[500px]">
+        <AnimatePresence mode="wait">
+          {activeTab === 'overview' && (
+            <motion.div key="overview" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
+              {renderOverview()}
+            </motion.div>
+          )}
+          {activeTab === 'applications' && (
+            <motion.div key="applications" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
+              {renderApplications()}
+            </motion.div>
+          )}
+          {activeTab === 'cards' && (
+            <motion.div key="cards" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
+              {renderCards()}
+            </motion.div>
+          )}
+          {activeTab === 'create' && (
+            <motion.div key="create" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="grid md:grid-cols-2 gap-8">
+              {/* Single Create */}
+              <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-8">
+                <h3 className="text-xl font-bold mb-6 flex items-center gap-2"><div className="w-8 h-8 rounded-full bg-[#E8FFD7] text-[#5E936C] flex items-center justify-center text-sm">1</div> Single Card</h3>
+                <form onSubmit={(e) => {
+                  e.preventDefault();
+                  const form = e.target as HTMLFormElement;
+                  const data = new FormData(form);
+                  createCard({ variables: { input: { streetId: Number(data.get('streetId')), number: Number(data.get('number')) } } });
+                  form.reset();
+                }} className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Street</label>
+                    <select name="streetId" className="w-full rounded-lg border border-gray-300 p-2.5 bg-white focus:ring-2 focus:ring-[#5E936C]" required>
+                      <option value="">Select a street...</option>
+                      {streets.map((s: any) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Card Number</label>
+                    <input name="number" type="number" className="w-full rounded-lg border border-gray-300 p-2.5 focus:ring-2 focus:ring-[#5E936C]" placeholder="e.g 45" required />
+                  </div>
+                  <button type="submit" disabled={creating} className="w-full bg-[#5E936C] text-white rounded-lg py-3 font-semibold hover:bg-[#4a7a58] transition-colors">
+                    {creating ? 'Creating...' : 'Create Card'}
+                  </button>
+                </form>
               </div>
-              <div>
-                <div className="text-xs text-gray-500">Phone</div>
-                <div>{viewApp.phoneNumber}</div>
-              </div>
-              <div>
-                <div className="text-xs text-gray-500">Street</div>
-                <div>{viewApp.street}</div>
-              </div>
-              <div>
-                <div className="text-xs text-gray-500">Preferred Number</div>
-                <div>{viewApp.preferredNumber || '-'}</div>
-              </div>
-              <div className="md:col-span-2">
-                <div className="text-xs text-gray-500">Pledges</div>
-                <div>A: {numberFmt(viewApp.pledgedAhadi)} · S: {numberFmt(viewApp.pledgedShukrani)} · M: {numberFmt(viewApp.pledgedMajengo)}</div>
-              </div>
-              <div className="md:col-span-2">
-                <div className="text-xs text-gray-500">Note</div>
-                <div className="whitespace-pre-wrap">{viewApp.note || '-'}</div>
-              </div>
-              <div>
-                <div className="text-xs text-gray-500">Submitted</div>
-                <div>{viewApp.createdAt}</div>
-              </div>
-            </div>
 
-            <div className="border-t pt-3 grid md:grid-cols-2 gap-3 items-end">
-              <div className="flex gap-2">
-                <button
-                  className="bg-[#5E936C] text-white px-3 py-2 rounded"
-                  onClick={() => {
-                    setViewOpen(false);
-                    setApproveOpen(true);
-                    setApproveAppId(viewApp.id);
-                    setApproveAhadi(viewApp.pledgedAhadi || ('' as any));
-                    setApproveShukrani(viewApp.pledgedShukrani || ('' as any));
-                    setApproveMajengo(viewApp.pledgedMajengo || ('' as any));
-                    // try auto-pick preferred card if currently free in cached list
-                    const pref = viewApp.preferredNumber;
-                    if (pref) {
-                      const match = freeCardsForAssign.find((c: any) => c.number === pref && c.street === viewApp.street);
-                      if (match) setApproveCardId(match.id || match.code || '');
+              {/* Batch Create */}
+              <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-8">
+                <h3 className="text-xl font-bold mb-6 flex items-center gap-2"><div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-sm">N</div> Batch Generate</h3>
+                <form onSubmit={(e) => {
+                  e.preventDefault();
+                  const form = e.target as HTMLFormElement;
+                  const data = new FormData(form);
+                  const streetId = data.get('streetId');
+                  // if streetid is missing, it will generate for ALL streets (if backend supports) or error. 
+                  // Assuming for now user must pick street or all streets option
+                  const variables: any = {
+                    input: {
+                      startNumber: Number(data.get('start')),
+                      endNumber: Number(data.get('end'))
                     }
-                  }}
-                >Accept</button>
-                <button
-                  className="border px-3 py-2 rounded"
-                  onClick={async () => {
-                    await rejectApp({ variables: { applicationId: viewApp.id, reason: rejectReason || null } });
-                  }}
-                >Reject</button>
+                  };
+                  if (streetId) variables.input.streetId = Number(streetId);
+
+                  bulkGenerate({ variables });
+                }} className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Target Street (Optional)</label>
+                    <select name="streetId" className="w-full rounded-lg border border-gray-300 p-2.5 bg-white focus:ring-2 focus:ring-blue-500">
+                      <option value="">All Streets</option>
+                      {streets.map((s: any) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                    </select>
+                    <p className="text-xs text-gray-500 mt-1">Leave empty to generate for all streets at once.</p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Start #</label>
+                      <input name="start" type="number" className="w-full rounded-lg border border-gray-300 p-2.5 focus:ring-2 focus:ring-blue-500" placeholder="1" required />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">End #</label>
+                      <input name="end" type="number" className="w-full rounded-lg border border-gray-300 p-2.5 focus:ring-2 focus:ring-blue-500" placeholder="50" required />
+                    </div>
+                  </div>
+                  <button type="submit" disabled={bulkLoading} className="w-full bg-blue-600 text-white rounded-lg py-3 font-semibold hover:bg-blue-700 transition-colors">
+                    {bulkLoading ? 'Generating Batch...' : 'Generate Batch'}
+                  </button>
+                  <p className="text-xs text-gray-500 mt-2 text-center">Existing cards in range will be skipped.</p>
+                </form>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-gray-600">Reason (optional):</span>
-                <input className="border rounded px-2 py-1 w-full" value={rejectReason} onChange={(e) => setRejectReason(e.target.value)} />
-              </div>
+
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
+      {/* Modal: Approve Application */}
+      {approveModal.isOpen && approveModal.app && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} className="bg-white rounded-xl shadow-xl w-full max-w-lg overflow-hidden">
+            <div className="p-6 border-b border-gray-100 flex justify-between items-center">
+              <h3 className="text-xl font-bold">Approve Application</h3>
+              <button onClick={() => setApproveModal({ isOpen: false, app: null })}><FaTimes /></button>
             </div>
-          </div>
-        )}
-      </Modal>
-      {active === 'Taken' && (
-        <Section title="Taken Cards">
-          <div className="overflow-x-auto">
-            <table className="min-w-full text-sm">
-              <thead>
-                <tr className="text-left text-gray-600">
-                  <th className="p-2">Code</th>
-                  <th className="p-2">Member</th>
-                  <th className="p-2">Phone/Year</th>
-                  <th className="p-2">Street</th>
-                  <th className="p-2">Pledged</th>
-                  <th className="p-2">Progress</th>
-                  <th className="p-2">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {takenPageItems.map((c: any) => (
-                  <tr key={c.id} className="border-t">
-                    <td className="p-2 font-medium">{c.code}</td>
-                    <td className="p-2">{c.assignedToName || '-'}</td>
-                    <td className="p-2">{c.assignedPhone || '-'}{c.assignedYear ? ` / ${c.assignedYear}` : ''}</td>
-                    <td className="p-2">{c.street}</td>
-                    <td className="p-2">
-                      A: {numberFmt(c.pledgedAhadi)} | S: {numberFmt(c.pledgedShukrani)} | M: {numberFmt(c.pledgedMajengo)}
-                    </td>
-                    <td className="p-2">
-                      <div className="space-y-1">
-                        <div className="w-56 bg-green-100 h-2 rounded"><div className="bg-green-700 h-2 rounded" style={{ width: `${Math.min(100, Math.round(c.progressAhadi || 0))}%` }} /></div>
-                        <div className="w-56 bg-green-100 h-2 rounded"><div className="bg-green-600 h-2 rounded" style={{ width: `${Math.min(100, Math.round(c.progressShukrani || 0))}%` }} /></div>
-                        <div className="w-56 bg-green-100 h-2 rounded"><div className="bg-green-500 h-2 rounded" style={{ width: `${Math.min(100, Math.round(c.progressMajengo || 0))}%` }} /></div>
-                      </div>
-                    </td>
-                    <td className="p-2">
-                      <div className="flex gap-2">
-                        <button className="px-2 py-1 border rounded" onClick={() => handleUpdateAssignment(c.assignmentId, { active: false })}>Deactivate</button>
-                        <button className="px-2 py-1 border rounded" onClick={() => { setEntryCardId(c.id); setEntryOpen(true); }}>Record Entry</button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            {/* Taken Pagination */}
-            <div className="flex items-center justify-end gap-2 mt-3">
-              <button className="border px-2 py-1 rounded disabled:opacity-50" disabled={takenPage <= 1} onClick={() => setTakenPage((p) => Math.max(1, p - 1))}>Prev</button>
-              <span className="text-sm text-gray-600">Page {takenPage} of {takenTotalPages}</span>
-              <button className="border px-2 py-1 rounded disabled:opacity-50" disabled={takenPage >= takenTotalPages} onClick={() => setTakenPage((p) => Math.min(takenTotalPages, p + 1))}>Next</button>
-            </div>
-          </div>
-          <Modal open={entryOpen} title="Record Offering Entry" onClose={() => setEntryOpen(false)}>
-            <form onSubmit={handleRecordEntry} className="grid md:grid-cols-4 gap-3 items-end">
-              <div className="md:col-span-4 text-sm text-gray-600">Card ID: {entryCardId}</div>
-              <label className="flex flex-col">
-                <span className="text-sm text-gray-600">Type</span>
-                <select className="border rounded px-2 py-1" value={entryType} onChange={e => setEntryType(e.target.value)}>
-                  <option value="AHADI">Ahadi</option>
-                  <option value="SHUKRANI">Shukrani</option>
-                  <option value="MAJENGO">Majengo</option>
+            <form onSubmit={handleApprove} className="p-6 space-y-4">
+              <input type="hidden" name="appId" value={approveModal.app.id} />
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Assign Card</label>
+                <select name="cardId" className="w-full rounded-lg border-gray-300 border p-2 bg-gray-50" required>
+                  <option value="">Select a free card...</option>
+                  {/* Only showing free cards compatible with street would be ideal, for now showing all free */}
+                  {cards.filter(c => !c.isTaken && c.street === approveModal.app!.street).map(c => (
+                    <option key={c.id} value={c.id}>{c.code} (Matches Street)</option>
+                  ))}
+                  <option disabled>--- Other Streets ---</option>
+                  {cards.filter(c => !c.isTaken && c.street !== approveModal.app!.street).map(c => (
+                    <option key={c.id} value={c.id}>{c.code}</option>
+                  ))}
                 </select>
-              </label>
-              <label className="flex flex-col">
-                <span className="text-sm text-gray-600">Amount</span>
-                <input type="number" className="border rounded px-2 py-1" value={entryAmount} onChange={e => setEntryAmount(Number(e.target.value))} />
-              </label>
-              <button className="bg-green-700 text-white px-3 py-2 rounded">Save Entry</button>
-              <button type="button" className="border px-3 py-2 rounded" onClick={() => setEntryOpen(false)}>Cancel</button>
+                {approveModal.app.preferredNumber && (
+                  <p className="text-xs text-blue-600 mt-1">User prefers #{approveModal.app.preferredNumber}</p>
+                )}
+              </div>
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Ahadi</label>
+                  <input name="pledgeAhadi" type="number" defaultValue={approveModal.app.pledgedAhadi} className="w-full rounded border border-gray-300 p-2 text-sm" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Shukrani</label>
+                  <input name="pledgeShukrani" type="number" defaultValue={approveModal.app.pledgedShukrani} className="w-full rounded border border-gray-300 p-2 text-sm" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Majengo</label>
+                  <input name="pledgeMajengo" type="number" defaultValue={approveModal.app.pledgedMajengo} className="w-full rounded border border-gray-300 p-2 text-sm" />
+                </div>
+              </div>
+              <div className="pt-4 flex gap-3">
+                <button type="submit" className="flex-1 bg-[#5E936C] text-white py-2.5 rounded-lg font-medium hover:bg-[#4a7a58]">Confirm Approval</button>
+                <button type="button" onClick={() => setApproveModal({ isOpen: false, app: null })} className="flex-1 bg-gray-100 text-gray-700 py-2.5 rounded-lg font-medium hover:bg-gray-200">Cancel</button>
+              </div>
             </form>
-          </Modal>
-        </Section>
+          </motion.div>
+        </div>
       )}
 
-      {active === 'Free' && (
-        <Section title="Free Cards">
-          <div className="flex flex-wrap gap-2">
-            {freePageItems.map((a: any) => (
-              <button
-                key={a.code}
-                className="border rounded px-3 py-2 hover:bg-green-50"
-                onClick={() => {
-                  // find matching card in current cards list to get id
-                  const match = (cards || []).find((c: any) => !c.isTaken && c.code === a.code);
-                  if (match) {
-                    setAssignCardId(match.id);
-                  } else {
-                    setAssignCardId('');
-                  }
-                  setAssignOpen(true);
-                }}
-              >
-                {a.code}
-              </button>
-            ))}
-            {!freeAvailable.length && <div className="text-gray-500">No free cards found.</div>}
-          </div>
-          {/* Free Pagination */}
-          <div className="flex items-center justify-end gap-2 mt-3">
-            <button className="border px-2 py-1 rounded disabled:opacity-50" disabled={freePage <= 1} onClick={() => setFreePage((p) => Math.max(1, p - 1))}>Prev</button>
-            <span className="text-sm text-gray-600">Page {freePage} of {freeTotalPages}</span>
-            <button className="border px-2 py-1 rounded disabled:opacity-50" disabled={freePage >= freeTotalPages} onClick={() => setFreePage((p) => Math.min(freeTotalPages, p + 1))}>Next</button>
-          </div>
-        </Section>
+      {/* Modal: Reject Application */}
+      {rejectModal.isOpen && rejectModal.app && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} className="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden">
+            <div className="p-6 border-b border-gray-100">
+              <h3 className="text-xl font-bold text-red-600">Reject Application</h3>
+            </div>
+            <div className="p-6">
+              <p className="text-gray-600 mb-4">Are you sure you want to reject the application for <strong>{rejectModal.app.fullName}</strong>?</p>
+              <textarea
+                className="w-full border border-gray-300 rounded-lg p-3 text-sm focus:ring-2 focus:ring-red-200 focus:border-red-400 outline-none"
+                rows={3}
+                placeholder="Reason for rejection (optional)..."
+                id="rejectReason"
+              ></textarea>
+              <div className="pt-4 flex gap-3">
+                <button
+                  onClick={() => {
+                    const reason = (document.getElementById('rejectReason') as HTMLTextAreaElement).value;
+                    rejectApp({ variables: { applicationId: rejectModal.app!.id, reason } });
+                  }}
+                  className="flex-1 bg-red-600 text-white py-2.5 rounded-lg font-medium hover:bg-red-700"
+                >
+                  Reject Application
+                </button>
+                <button onClick={() => setRejectModal({ isOpen: false, app: null })} className="flex-1 bg-gray-100 text-gray-700 py-2.5 rounded-lg font-medium hover:bg-gray-200">Cancel</button>
+              </div>
+            </div>
+          </motion.div>
+        </div>
       )}
 
-      {active === 'Overview' && overviewData && (
-        <Section title="Overview">
-          <div className="grid md:grid-cols-3 gap-4">
-            <div className="bg-white border border-green-100 rounded p-3">
-              <div className="text-sm text-gray-600">Total Cards</div>
-              <div className="text-xl font-bold text-green-700">{overviewData.cardsOverview.totalCards}</div>
-            </div>
-            <div className="bg-white border border-green-100 rounded p-3">
-              <div className="text-sm text-gray-600">Taken / Free</div>
-              <div className="text-xl font-bold text-green-700">{overviewData.cardsOverview.takenCards} / {overviewData.cardsOverview.freeCards}</div>
-            </div>
-            <div className="bg-white border border-green-100 rounded p-3">
-              <div className="text-sm text-gray-600">Active Cards</div>
-              <div className="text-xl font-bold text-green-700">{overviewData.cardsOverview.activelyUsedCards}</div>
-            </div>
-          </div>
-          <div className="grid md:grid-cols-3 gap-4 mt-4">
-            <div className="bg-white border border-green-100 rounded p-3">
-              <div className="text-sm text-gray-600">Total Pledged (Ahadi)</div>
-              <div className="text-lg font-bold text-green-700">{numberFmt(overviewData.cardsOverview.totalPledgedAhadi)}</div>
-            </div>
-            <div className="bg-white border border-green-100 rounded p-3">
-              <div className="text-sm text-gray-600">Total Pledged (Shukrani)</div>
-              <div className="text-lg font-bold text-green-700">{numberFmt(overviewData.cardsOverview.totalPledgedShukrani)}</div>
-            </div>
-            <div className="bg-white border border-green-100 rounded p-3">
-              <div className="text-sm text-gray-600">Total Pledged (Majengo)</div>
-              <div className="text-lg font-bold text-green-700">{numberFmt(overviewData.cardsOverview.totalPledgedMajengo)}</div>
-            </div>
-          </div>
-          <div className="grid md:grid-cols-3 gap-4 mt-4">
-            <div className="bg-white border border-green-100 rounded p-3">
-              <div className="text-sm text-gray-600">Collected (Ahadi)</div>
-              <div className="text-lg font-bold text-green-700">{numberFmt(overviewData.cardsOverview.totalCollectedAhadi)}</div>
-            </div>
-            <div className="bg-white border border-green-100 rounded p-3">
-              <div className="text-sm text-gray-600">Collected (Shukrani)</div>
-              <div className="text-lg font-bold text-green-700">{numberFmt(overviewData.cardsOverview.totalCollectedShukrani)}</div>
-            </div>
-            <div className="bg-white border border-green-100 rounded p-3">
-              <div className="text-sm text-gray-600">Collected (Majengo)</div>
-              <div className="text-lg font-bold text-green-700">{numberFmt(overviewData.cardsOverview.totalCollectedMajengo)}</div>
-            </div>
-          </div>
-          <div className="mt-4 text-sm text-gray-600">Least active card: {overviewData.cardsOverview.leastActiveCard || '-'}</div>
-        </Section>
-      )}
-
-      {/* Assign Modal */}
-      <Modal open={assignOpen} title="Assign Card" onClose={() => setAssignOpen(false)}>
-        <form onSubmit={handleAssign} className="grid md:grid-cols-6 gap-3 items-end">
-          <label className="flex flex-col md:col-span-2">
-            <span className="text-sm text-gray-600">Free Card</span>
-            <select className="border rounded px-2 py-1" value={assignCardId} onChange={e => setAssignCardId(e.target.value)}>
-              <option value="">Select free card</option>
-              {freeCardsForAssign.map((c: any) => <option key={c.id} value={c.id}>{c.code}</option>)}
-            </select>
-          </label>
-          <label className="flex flex-col">
-            <span className="text-sm text-gray-600">Full Name</span>
-            <input className="border rounded px-2 py-1" value={assignName} onChange={e => setAssignName(e.target.value)} />
-          </label>
-          <label className="flex flex-col">
-            <span className="text-sm text-gray-600">Phone</span>
-            <input className="border rounded px-2 py-1" value={assignPhone} onChange={e => setAssignPhone(e.target.value)} />
-          </label>
-          <label className="flex flex-col">
-            <span className="text-sm text-gray-600">Year</span>
-            <input type="number" className="border rounded px-2 py-1" value={assignYear} onChange={e => setAssignYear(Number(e.target.value))} />
-          </label>
-          <div className="md:col-span-6 grid md:grid-cols-3 gap-3">
-            <label className="flex flex-col">
-              <span className="text-sm text-gray-600">Pledge Ahadi</span>
-              <input type="number" className="border rounded px-2 py-1" value={pledgeAhadi} onChange={e => setPledgeAhadi(Number(e.target.value))} />
-            </label>
-            <label className="flex flex-col">
-              <span className="text-sm text-gray-600">Pledge Shukrani</span>
-              <input type="number" className="border rounded px-2 py-1" value={pledgeShukrani} onChange={e => setPledgeShukrani(Number(e.target.value))} />
-            </label>
-            <label className="flex flex-col">
-              <span className="text-sm text-gray-600">Pledge Majengo</span>
-              <input type="number" className="border rounded px-2 py-1" value={pledgeMajengo} onChange={e => setPledgeMajengo(Number(e.target.value))} />
-            </label>
-          </div>
-          <button type="submit" disabled={assigning} className="bg-green-600 text-white px-3 py-2 rounded disabled:opacity-50">{assigning ? 'Assigning...' : 'Assign'}</button>
-        </form>
-      </Modal>
     </div>
   );
 };

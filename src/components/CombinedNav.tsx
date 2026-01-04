@@ -6,6 +6,8 @@ import { useQuery, useMutation } from '@apollo/client';
 import { gql } from '@apollo/client';
 import { Link, useNavigate, Outlet } from 'react-router-dom';
 import { clearAuthTokens } from '../utils/auth';
+import { toast } from 'react-toastify';
+import { differenceInMilliseconds, formatDuration, intervalToDuration } from 'date-fns';
 
 const ME_QUERY = gql`
   query Me {
@@ -18,11 +20,67 @@ const ME_QUERY = gql`
   }
 `;
 
+const GET_NOTIFICATIONS = gql`
+  query GetNotifications {
+    myNotifications {
+      id
+      title
+      message
+      isRead
+      createdAt
+      notificationType
+    }
+  }
+`;
+
+const GET_REGISTRATION_WINDOW = gql`
+  query GetRegistrationWindow {
+    registrationWindowStatus {
+      isOpen
+      startAt
+      endAt
+    }
+  }
+`;
+
 const LOGOUT_MUTATION = gql`
   mutation Logout {
     logout
   }
 `;
+
+// Countdown Toast Component
+const CountdownToast = ({ endAt }: { endAt: string }) => {
+  const [timeLeft, setTimeLeft] = useState('');
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      const end = new Date(endAt);
+      const now = new Date();
+      if (now >= end) {
+        setTimeLeft('Closed');
+        clearInterval(timer);
+        return;
+      }
+      const duration = intervalToDuration({ start: now, end: end });
+      const formatted = [];
+      if (duration.days) formatted.push(`${duration.days}d`);
+      if (duration.hours) formatted.push(`${duration.hours}h`);
+      if (duration.minutes) formatted.push(`${duration.minutes}m`);
+      if (duration.seconds) formatted.push(`${duration.seconds}s`);
+      setTimeLeft(formatted.join(' '));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [endAt]);
+
+  return (
+    <div>
+      <h4 className="font-bold">Registration Window Open!</h4>
+      <p>Hurry! Closing in: {timeLeft}</p>
+      <Link to="/get-card" className="underline text-sm mt-1 block text-yellow-200">Click to Register</Link>
+    </div>
+  );
+};
 
 interface SidebarItem {
   name: string;
@@ -37,7 +95,7 @@ const sidebarItems: SidebarItem[] = [
   { name: 'Dashboard', icon: FaTachometerAlt, href: '/secretaryDashboard', roles: ['CHURCH_SECRETARY'] },
   { name: 'Dashboard', icon: FaTachometerAlt, href: '/evangelist-dashboard', roles: ['EVANGELIST'] },
   { name: 'Word of the Day', icon: FaBook, href: '/word-of-the-day', roles: ['PASTOR', 'ASSISTANT_PASTOR', 'EVANGELIST'] },
-  { name: 'The Word of the Day', icon: FaTachometerAlt, href: '/member-word-of-the-day', roles: ['CHURCH_MEMBER','CHURCH_SECRETARY'] },
+  { name: 'The Word of the Day', icon: FaTachometerAlt, href: '/member-word-of-the-day', roles: ['CHURCH_MEMBER', 'CHURCH_SECRETARY'] },
   { name: 'Prayer Requests', icon: FaPray, href: '/prayer-requests', roles: ['PASTOR', 'ASSISTANT_PASTOR', 'EVANGELIST'] },
   { name: 'My Prayer Requests', icon: FaTachometerAlt, href: '/member-prayer-requests', roles: ['CHURCH_MEMBER'] },
   { name: 'Announcements', icon: FaBullhorn, href: '/announcements', roles: ['PASTOR', 'ASSISTANT_PASTOR', 'EVANGELIST', 'CHURCH_SECRETARY'] },
@@ -45,7 +103,7 @@ const sidebarItems: SidebarItem[] = [
   { name: 'Offerings Overview', icon: FaDonate, href: '/offerings', roles: ['PASTOR', 'ASSISTANT_PASTOR'] },
   { name: 'Group Management', icon: FaUsers, href: '/group-management', roles: ['PASTOR', 'ASSISTANT_PASTOR', 'EVANGELIST', 'CHURCH_SECRETARY'] },
   { name: 'Member Contributions', icon: FaFileAlt, href: '/contributions', roles: ['PASTOR'] },
-  { name: 'Blog', icon: FaRss, href: '/blog', roles: ['PASTOR', 'ASSISTANT_PASTOR', 'EVANGELIST', 'CHURCH_MEMBER'] },
+  { name: 'Blog', icon: FaRss, href: '/blog', roles: ['PASTOR', 'ASSISTANT_PASTOR', 'EVANGELIST', 'CHURCH_SECRETARY', 'CHURCH_MEMBER'] },
   { name: 'Service Schedule', icon: FaCalendarAlt, href: '/services', roles: ['PASTOR', 'ASSISTANT_PASTOR', 'EVANGELIST'] },
   { name: 'Notifications Center', icon: FaBell, href: '/notifications', roles: ['PASTOR'] },
   { name: 'Analytics Dashboard', icon: FaChartBar, href: '/analytics', roles: ['PASTOR'] },
@@ -55,7 +113,7 @@ const sidebarItems: SidebarItem[] = [
   { name: 'Export Reports', icon: FaFileExport, href: '/reports', roles: ['CHURCH_SECRETARY'] },
   { name: 'Member Directory', icon: FaUsers, href: '/directory', roles: ['ASSISTANT_PASTOR', 'CHURCH_SECRETARY'] },
   { name: 'Community Events Calendar', icon: FaCalendarAlt, href: '/events', roles: ['EVANGELIST'] },
-  { name: 'My Offerings', icon: FaDonate, href: '/my-offerings-overview', roles: ['CHURCH_MEMBER','CHURCH_SECRETARY','PASTOR', 'ASSISTANT_PASTOR', 'EVANGELIST',] },
+  { name: 'My Offerings', icon: FaDonate, href: '/my-offerings-overview', roles: ['CHURCH_MEMBER', 'CHURCH_SECRETARY', 'PASTOR', 'ASSISTANT_PASTOR', 'EVANGELIST',] },
   { name: 'My Profile', icon: FaUser, href: '/profile', roles: ['CHURCH_MEMBER'] },
   { name: 'My Groups', icon: FaUsers, href: '/my-groups', roles: ['CHURCH_MEMBER'] },
   { name: 'RSVP to Events', icon: FaCalendarAlt, href: '/rsvp', roles: ['CHURCH_MEMBER'] },
@@ -75,6 +133,7 @@ const CombinedNav = ({ children }: CombinedNavProps) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [languageOpen, setLanguageOpen] = useState(false);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
   const { data, error } = useQuery(ME_QUERY, {
     fetchPolicy: 'network-only',
   });
@@ -90,6 +149,25 @@ const CombinedNav = ({ children }: CombinedNavProps) => {
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  // Create a separate component/hook logic or putting it here
+  const { data: notifData, startPolling: startNotifPolling } = useQuery(GET_NOTIFICATIONS, {
+    pollInterval: 30000, // Poll notifications every 30s
+    skip: !data?.me,
+  });
+
+  const { data: windowData, startPolling: startWindowPolling } = useQuery(GET_REGISTRATION_WINDOW, {
+    pollInterval: 600000, // 10 minutes
+    skip: !data?.me,
+    onCompleted: (d) => {
+      if (d.registrationWindowStatus?.isOpen) {
+        toast.info(<CountdownToast endAt={d.registrationWindowStatus.endAt} />, {
+          autoClose: 15000,
+          icon: <FaBullhorn />,
+        });
+      }
+    }
+  });
 
   if (error) {
     console.error('ME_QUERY Error:', error);
@@ -143,6 +221,11 @@ const CombinedNav = ({ children }: CombinedNavProps) => {
   // const allowedItems = sidebarItems
   // const notifications = []; 
 
+
+
+  const notifications = notifData?.myNotifications || [];
+  const unreadCount = notifications.filter((n: any) => !n.isRead).length;
+
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col md:flex-row pt-16">
       {/* Top Navbar */}
@@ -172,16 +255,16 @@ const CombinedNav = ({ children }: CombinedNavProps) => {
           {/* Right Side Actions */}
           <div className="flex items-center space-x-4">
             {/* Notifications */}
-            {/* <div className="relative">
+            <div className="relative">
               <button
                 onClick={() => setNotificationsOpen(!notificationsOpen)}
                 className="relative flex items-center"
                 aria-label="Notifications"
               >
                 <FaBell className="text-xl" />
-                {notifications.length > 0 && (
+                {unreadCount > 0 && (
                   <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">
-                    {notifications.length}
+                    {unreadCount}
                   </span>
                 )}
               </button>
@@ -189,22 +272,25 @@ const CombinedNav = ({ children }: CombinedNavProps) => {
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="absolute right-0 mt-2 w-64 bg-[#93DA97] rounded-md shadow-lg z-50"
+                  className="absolute right-0 mt-2 w-80 bg-[#93DA97] rounded-md shadow-lg z-50 max-h-96 overflow-y-auto"
                 >
                   <div className="p-2 text-[#2D3748]">
+                    <h3 className="px-4 py-2 font-bold border-b border-gray-400">Notifications</h3>
                     {notifications.length === 0 ? (
-                      <p className="px-4 py-2">{t('No notifications')}</p>
+                      <p className="px-4 py-2 italic">{t('No notifications')}</p>
                     ) : (
-                      notifications.map((notif, index) => (
-                        <p key={index} className="px-4 py-2 hover:bg-[#5E936C] hover:text-[#E8FFD7]">
-                          {notif.message}
-                        </p>
+                      notifications.map((notif: any) => (
+                        <div key={notif.id} className={`px-4 py-3 hover:bg-[#5E936C] hover:text-[#E8FFD7] border-b border-gray-300 ${!notif.isRead ? 'bg-white/50' : ''}`}>
+                          <p className="font-semibold text-sm">{notif.title}</p>
+                          <p className="text-xs">{notif.message}</p>
+                          <p className="text-[10px] text-right mt-1">{new Date(notif.createdAt).toLocaleDateString()}</p>
+                        </div>
                       ))
                     )}
                   </div>
                 </motion.div>
               )}
-            </div> */}
+            </div>
 
             {/* Language Switcher */}
             <div className="relative">
@@ -332,10 +418,9 @@ const CombinedNav = ({ children }: CombinedNavProps) => {
       )}
 
       {/* Main Content */}
-      <main 
-        className={`flex-1 min-h-0 transition-all duration-300 scrollbar-hide overflow-auto no-overscroll h-[calc(100vh-64px)] ${
-          windowWidth >= 768 ? 'ml-0' : 'ml-0'
-        }`}
+      <main
+        className={`flex-1 min-h-0 transition-all duration-300 scrollbar-hide overflow-auto no-overscroll h-[calc(100vh-64px)] ${windowWidth >= 768 ? 'ml-0' : 'ml-0'
+          }`}
         style={{
           marginLeft: windowWidth >= 768 && isSidebarOpen ? '16rem' : '0',
         }}

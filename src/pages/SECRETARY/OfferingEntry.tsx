@@ -1,191 +1,461 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useQuery, useMutation } from '@apollo/client';
+import { motion, AnimatePresence } from 'framer-motion';
+import { FaCheckCircle, FaTrash, FaPlus, FaSave, FaSearch, FaExclamationCircle } from 'react-icons/fa';
 import { GET_STREETS_AND_GROUPS, GET_OFFERING_CARDS } from '../../api/queries';
 import { BULK_RECORD_OFFERING_ENTRIES } from '../../api/mutations';
+import { toast } from 'react-toastify';
 
-// Types
-type EntryItem = { cardId: string; cardCode: string; entryType: 'AHADI'|'SHUKRANI'|'MAJENGO'; amount: number; date?: string };
+interface EntryItem {
+  cardId: string;
+  cardCode: string;
+  entryType: 'AHADI' | 'SHUKRANI' | 'MAJENGO';
+  amount: number;
+  date?: string;
+}
 
-// Utils
-const numberFmt = (n?: number|null) => (n ?? 0).toLocaleString();
-const batchKey = (date: string, massType: string, streetId: number, major?: number) => `offeringBatch:${date}:${massType}:${streetId}:${major||0}`;
+const numberFmt = (n?: number | null) => (n ?? 0).toLocaleString();
 
 const OfferingEntryPage: React.FC = () => {
-  // Intake state
+  // --- STATE: INTAKE SETUP ---
   const [recorderName, setRecorderName] = useState('');
-  const [date, setDate] = useState<string>(new Date().toISOString().slice(0,10));
+  const [date, setDate] = useState<string>(new Date().toISOString().slice(0, 10));
   const [massType, setMassType] = useState<string>('MAJOR');
-  const [majorMassNumber, setMajorMassNumber] = useState<number|''>('' as any);
-  const [streetId, setStreetId] = useState<number|''>('' as any);
+  const [majorMassNumber, setMajorMassNumber] = useState<number | ''>('' as any);
+  const [streetId, setStreetId] = useState<number | ''>('' as any);
   const [intakeDone, setIntakeDone] = useState(false);
 
-  // Meta
+  // --- STATE: ENTRIES ---
+  const [unpledgedAmount, setUnpledgedAmount] = useState<number | ''>('' as any);
+  const [entries, setEntries] = useState<EntryItem[]>([]);
+
+  // --- STATE: QUICK ADD ---
+  const [search, setSearch] = useState('');
+  const [selectedCard, setSelectedCard] = useState<any>(null);
+  const [amtAhadi, setAmtAhadi] = useState<string>('');
+  const [amtShukrani, setAmtShukrani] = useState<string>('');
+  const [amtMajengo, setAmtMajengo] = useState<string>('');
+
+  // --- QUERIES ---
   const { data: meta } = useQuery(GET_STREETS_AND_GROUPS);
   const streets = meta?.streets ?? [];
 
-  // Restore intake
-  useEffect(() => {
-    const raw = localStorage.getItem('offeringEntry:lastIntake');
-    if (!raw) return;
-    try {
-      const v = JSON.parse(raw);
-      setRecorderName(v.recorderName || '');
-      setDate(v.date || new Date().toISOString().slice(0,10));
-      setMassType(v.massType || 'MAJOR');
-      setMajorMassNumber(v.majorMassNumber ?? ('' as any));
-      setStreetId(v.streetId ?? ('' as any));
-    } catch {}
-  }, []);
+  const { data: cardsData, refetch: refetchCards } = useQuery(GET_OFFERING_CARDS, {
+    variables: {
+      streetId: streetId ? Number(streetId) : null,
+      isTaken: true, // Only show taken cards for entry? Usually yes.
+      search: search || null
+    },
+    skip: !streetId,
+    fetchPolicy: 'cache-and-network'
+  });
 
-  // Persist intake
-  useEffect(() => {
-    localStorage.setItem('offeringEntry:lastIntake', JSON.stringify({ recorderName, date, massType, majorMassNumber, streetId }));
-  }, [recorderName, date, massType, majorMassNumber, streetId]);
-
-  // Batch storage
-  const storageKey = useMemo(() => (!date||!massType||!streetId)?'':batchKey(date, massType, Number(streetId), massType==='MAJOR'?Number(majorMassNumber||0):0), [date, massType, streetId, majorMassNumber]);
-  const [entries, setEntries] = useState<EntryItem[]>([]);
-  useEffect(() => {
-    if (!storageKey) return;
-    const raw = localStorage.getItem(storageKey);
-    if (!raw) { setEntries([]); return; }
-    try { const v = JSON.parse(raw); setEntries(v.entries || []); } catch { setEntries([]); }
-  }, [storageKey]);
-  const saveBatch = (next: EntryItem[]) => {
-    if (!storageKey || !streetId) return;
-    localStorage.setItem(storageKey, JSON.stringify({ meta:{ recorderName, date, massType, streetId:Number(streetId), majorMassNumber: massType==='MAJOR'?(majorMassNumber?Number(majorMassNumber):undefined):undefined }, entries: next }));
-  };
-
-  // Search scoped by street (debounced)
-  const [search, setSearch] = useState('');
-  const { data: cardsData, refetch } = useQuery(GET_OFFERING_CARDS, { variables: { streetId: streetId?Number(streetId):null, isTaken: null, search: search || null }, skip: !streetId, fetchPolicy: 'cache-and-network' });
+  // Debounce search
   useEffect(() => {
     if (!streetId) return;
     const t = setTimeout(() => {
-      refetch({ streetId: Number(streetId), isTaken: null, search: search || null });
-    }, 250);
+      refetchCards({ streetId: Number(streetId), isTaken: true, search: search || null });
+    }, 300);
     return () => clearTimeout(t);
-  }, [search, streetId, refetch]);
-  const cards = cardsData?.offeringCards ?? [];
+  }, [search, streetId]);
 
-  // Quick add (three amounts at once)
-  const [selectedCardId, setSelectedCardId] = useState('');
-  const [selectedCardCode, setSelectedCardCode] = useState('');
-  const [amtAhadi, setAmtAhadi] = useState<number | ''>('' as any);
-  const [amtShukrani, setAmtShukrani] = useState<number | ''>('' as any);
-  const [amtMajengo, setAmtMajengo] = useState<number | ''>('' as any);
-  const selectCard = (c:any) => { setSelectedCardId(c.id); setSelectedCardCode(c.code); };
-  const addEntry = () => {
-    if (!selectedCardId) return;
-    const toAdd: EntryItem[] = [];
-    const a = amtAhadi ? Number(amtAhadi) : 0;
-    const s = amtShukrani ? Number(amtShukrani) : 0;
-    const m = amtMajengo ? Number(amtMajengo) : 0;
-    if (a > 0) toAdd.push({ cardId: selectedCardId, cardCode: selectedCardCode, entryType: 'AHADI', amount: a, date });
-    if (s > 0) toAdd.push({ cardId: selectedCardId, cardCode: selectedCardCode, entryType: 'SHUKRANI', amount: s, date });
-    if (m > 0) toAdd.push({ cardId: selectedCardId, cardCode: selectedCardCode, entryType: 'MAJENGO', amount: m, date });
-    if (!toAdd.length) return;
-    const next = [...entries, ...toAdd];
-    setEntries(next); saveBatch(next);
-    setAmtAhadi('' as any); setAmtShukrani('' as any); setAmtMajengo('' as any);
+  // --- RESTORE & PERSIST ---
+  useEffect(() => {
+    const raw = localStorage.getItem('offeringEntry:session');
+    if (raw) {
+      try {
+        const d = JSON.parse(raw);
+        setRecorderName(d.recorderName || '');
+        setDate(d.date || new Date().toISOString().slice(0, 10));
+        setMassType(d.massType || 'MAJOR');
+        setMajorMassNumber(d.majorMassNumber ?? '');
+        setStreetId(d.streetId ?? '');
+        setUnpledgedAmount(d.unpledgedAmount ?? '');
+        setEntries(d.entries || []);
+        if (d.intakeDone) setIntakeDone(true);
+      } catch (e) {
+        console.error("Failed to restore session", e);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem('offeringEntry:session', JSON.stringify({
+      recorderName, date, massType, majorMassNumber, streetId, unpledgedAmount, entries, intakeDone
+    }));
+  }, [recorderName, date, massType, majorMassNumber, streetId, unpledgedAmount, entries, intakeDone]);
+
+  // --- ACTIONS ---
+
+  const handleAddEntry = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedCard) {
+      toast.error('Please select a card first.');
+      return;
+    }
+
+    const newItems: EntryItem[] = [];
+    if (Number(amtAhadi) > 0) newItems.push({ cardId: selectedCard.id, cardCode: selectedCard.code, entryType: 'AHADI', amount: Number(amtAhadi), date });
+    if (Number(amtShukrani) > 0) newItems.push({ cardId: selectedCard.id, cardCode: selectedCard.code, entryType: 'SHUKRANI', amount: Number(amtShukrani), date });
+    if (Number(amtMajengo) > 0) newItems.push({ cardId: selectedCard.id, cardCode: selectedCard.code, entryType: 'MAJENGO', amount: Number(amtMajengo), date });
+
+    if (newItems.length === 0) {
+      toast.warn('Please enter at least one amount.');
+      return;
+    }
+
+    setEntries(prev => [...prev, ...newItems]);
+    // Reset form
+    setAmtAhadi('');
+    setAmtShukrani('');
+    setAmtMajengo('');
+    setSelectedCard(null);
+    setSearch(''); // Optional: clear search to be ready for next
+    toast.success(`Added ${newItems.length} entries for ${selectedCard.code}`);
   };
-  const removeEntry = (i:number) => { const next = entries.filter((_,idx)=>idx!==i); setEntries(next); saveBatch(next); };
 
-  // Totals
-  const totals = useMemo(() => { let a=0,s=0,m=0; for (const e of entries){ if(e.entryType==='AHADI') a+=e.amount; else if(e.entryType==='SHUKRANI') s+=e.amount; else m+=e.amount; } return { a,s,m,count:entries.length, unique:new Set(entries.map(e=>e.cardId)).size }; }, [entries]);
+  const [submitBatch, { loading: submitting }] = useMutation(BULK_RECORD_OFFERING_ENTRIES, {
+    onCompleted: () => {
+      toast.success('Batch recorded successfully!');
+      // Reset critical parts but keep some context if needed, usually full reset is safer
+      setEntries([]);
+      setUnpledgedAmount('');
+      setIntakeDone(false);
+      localStorage.removeItem('offeringEntry:session');
+    },
+    onError: (err) => {
+      toast.error(err.message);
+    }
+  });
 
-  // Submit bulk
-  const [bulkSave, { loading: submitting }] = useMutation(BULK_RECORD_OFFERING_ENTRIES, { onCompleted:()=>{ if (storageKey) localStorage.removeItem(storageKey); setEntries([]); alert('Saved successfully'); } });
-  const handleSubmit = async () => {
-    if (!streetId || !recorderName || !date || !massType) return;
-    if (massType==='MAJOR' && !majorMassNumber) return;
-    if (!entries.length) return;
-    await bulkSave({ variables:{ input:{ meta:{ streetId:Number(streetId), recorderName, date, massType, majorMassNumber: massType==='MAJOR'?Number(majorMassNumber):null }, entries: entries.map(e=>({ cardId:e.cardId, entryType:e.entryType, amount:e.amount, date:e.date })) } } });
+  const handleSubmit = () => {
+    if (!recorderName || !date || !massType) {
+      toast.error('Missing intake details.');
+      return;
+    }
+    if (massType === 'MAJOR' && !majorMassNumber) {
+      toast.error('Please select First or Second mass.');
+      return;
+    }
+
+    const payload = {
+      meta: {
+        streetId: Number(streetId) || 0, // Street ID might be optional for general recording, but schema likely requires it for the batch grouping. 
+        // If massType is NOT Major, maybe we ignore street? It depends on backend. We'll send it if we have it, or 0.
+        // Actually earlier code forced street selection. We will keep that constraint for now.
+        recorderName,
+        date,
+        massType,
+        majorMassNumber: massType === 'MAJOR' ? Number(majorMassNumber) : null,
+        unpledgedAmount: unpledgedAmount ? Number(unpledgedAmount) : 0
+      },
+      entries: entries.map(e => ({
+        cardId: e.cardId,
+        entryType: e.entryType,
+        amount: e.amount,
+        date: e.date || date
+      }))
+    };
+
+    submitBatch({ variables: { input: payload } });
   };
+
+  // --- RENDER HELPERS ---
+
+  const renderIntakeForm = () => (
+    <div className="max-w-4xl mx-auto bg-white rounded-2xl shadow-xl overflow-hidden animate-fade-in-up">
+      <div className="bg-[#5E936C] p-6">
+        <h2 className="text-2xl font-bold text-white">New Offering Batch</h2>
+        <p className="text-[#E8FFD7]">Configure the session details before recording.</p>
+      </div>
+      <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div>
+          <label className="block text-sm font-semibold text-gray-700 mb-2">Recorder Name</label>
+          <input
+            value={recorderName}
+            onChange={e => setRecorderName(e.target.value)}
+            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#5E936C] outline-none"
+            placeholder="e.g. John Doe"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-semibold text-gray-700 mb-2">Date</label>
+          <input
+            type="date"
+            value={date}
+            onChange={e => setDate(e.target.value)}
+            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#5E936C] outline-none"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-semibold text-gray-700 mb-2">Mass Type</label>
+          <select
+            value={massType}
+            onChange={e => setMassType(e.target.value)}
+            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#5E936C] outline-none"
+          >
+            <option value="MAJOR">Major (Sunday)</option>
+            <option value="MORNING_GLORY">Morning Glory</option>
+            <option value="EVENING_GLORY">Evening Glory</option>
+            <option value="SELI">Seli</option>
+          </select>
+        </div>
+
+        {/* Conditional Fields */}
+        <AnimatePresence>
+          {massType === 'MAJOR' && (
+            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Service Number</label>
+              <select
+                value={majorMassNumber}
+                onChange={e => setMajorMassNumber(e.target.value ? Number(e.target.value) : ('' as any))}
+                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#5E936C] outline-none"
+              >
+                <option value="">Select...</option>
+                <option value="1">First Service</option>
+                <option value="2">Second Service</option>
+              </select>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <div className="md:col-span-2">
+          <label className="block text-sm font-semibold text-gray-700 mb-2">Target Street (for Batch)</label>
+          <select
+            value={streetId}
+            onChange={e => setStreetId(e.target.value ? Number(e.target.value) : ('' as any))}
+            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#5E936C] outline-none"
+          >
+            <option value="">Select Street...</option>
+            {streets.map((s: any) => <option key={s.id} value={s.id}>{s.name}</option>)}
+          </select>
+          <p className="text-xs text-gray-500 mt-1">Selecting a street helps filter cards and organize reports.</p>
+        </div>
+      </div>
+      <div className="bg-gray-50 p-6 flex justify-end">
+        <button
+          disabled={!recorderName || !date || !streetId || (massType === 'MAJOR' && !majorMassNumber)}
+          onClick={() => setIntakeDone(true)}
+          className="bg-[#5E936C] hover:bg-[#4a7a58] text-white font-bold py-3 px-8 rounded-lg shadow-md transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          Start Recording
+        </button>
+      </div>
+    </div>
+  );
+
+  const calculateTotal = () => entries.reduce((acc, curr) => acc + curr.amount, 0);
 
   return (
-    <div className="p-4">
-      <h1 className="text-2xl font-bold text-green-700 mb-4">Offering Entry</h1>
+    <div className="min-h-screen bg-gray-50 p-6">
+      {!intakeDone ? renderIntakeForm() : (
+        <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-6 animate-fade-in">
 
-      {!intakeDone && (
-        <div className="bg-white shadow rounded p-4 mb-6">
-          <h2 className="text-lg font-semibold mb-3">Intake</h2>
-          <div className="grid md:grid-cols-4 gap-3 items-end">
-            <label className="flex flex-col"><span className="text-sm text-gray-600">Recorder Name</span><input className="border rounded px-2 py-1" value={recorderName} onChange={e=>setRecorderName(e.target.value)} placeholder="e.g. Jane Doe" /></label>
-            <label className="flex flex-col"><span className="text-sm text-gray-600">Date</span><input type="date" className="border rounded px-2 py-1" value={date} onChange={e=>setDate(e.target.value)} /></label>
-            <label className="flex flex-col"><span className="text-sm text-gray-600">Mass Type</span><select className="border rounded px-2 py-1" value={massType} onChange={e=>setMassType(e.target.value)}><option value="MAJOR">Major</option><option value="MORNING_GLORY">Morning Glory</option><option value="EVENING_GLORY">Evening Glory</option><option value="SELI">SELI</option></select></label>
-            {massType==='MAJOR' && (<label className="flex flex-col"><span className="text-sm text-gray-600">Major Mass</span><select className="border rounded px-2 py-1" value={majorMassNumber as any} onChange={e=>setMajorMassNumber(e.target.value?Number(e.target.value):('' as any))}><option value="">Select…</option><option value={1}>First</option><option value={2}>Second</option></select></label>)}
-            <label className="flex flex-col md:col-span-2"><span className="text-sm text-gray-600">Street</span><select className="border rounded px-2 py-1" value={streetId as any} onChange={e=>setStreetId(e.target.value?Number(e.target.value):('' as any))}><option value="">Select street</option>{streets.map((s:any)=>(<option key={s.id} value={s.id}>{s.name}</option>))}</select></label>
-            <div className="md:col-span-4"><button className="bg-green-700 text-white px-3 py-2 rounded disabled:opacity-50" disabled={!recorderName||!date||!massType||!streetId||(massType==='MAJOR'&&!majorMassNumber)} onClick={()=>setIntakeDone(true)}>Start Entry</button></div>
+          {/* Left Col: Info & Totals */}
+          <div className="lg:col-span-1 space-y-6">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+              <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">Batch Details</h3>
+              <div className="space-y-3">
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Recorder</span>
+                  <span className="font-medium text-gray-900">{recorderName}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Date</span>
+                  <span className="font-medium text-gray-900">{date}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Type</span>
+                  <Badge type="info">{massType}</Badge>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Entries</span>
+                  <Badge type="neutral">{entries.length}</Badge>
+                </div>
+              </div>
+              <button onClick={() => setIntakeDone(false)} className="mt-6 w-full py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50">
+                Edit Details
+              </button>
+            </div>
+
+            {/* Unpledged Amount Card */}
+            <div className="bg-white rounded-xl shadow-sm border-l-4 border-yellow-400 p-6">
+              <h3 className="font-bold text-gray-900 mb-2">
+                {massType === 'MAJOR' ? 'Loose / Unpledged Offering' : 'Total Collection Amount'}
+              </h3>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-bold">TEx</span>
+                <input
+                  type="number"
+                  value={unpledgedAmount}
+                  onChange={e => setUnpledgedAmount(e.target.value ? Number(e.target.value) : ('' as any))}
+                  className="w-full pl-12 pr-4 py-3 bg-yellow-50 border border-yellow-200 rounded-lg font-mono text-xl focus:ring-2 focus:ring-yellow-400 outline-none"
+                  placeholder="0.00"
+                />
+              </div>
+              {massType !== 'MAJOR' && (
+                <p className="text-xs text-gray-500 mt-2">For {massType}, you only need to enter this total amount.</p>
+              )}
+            </div>
+
+            {/* Submit Action */}
+            <div className="bg-[#5E936C] rounded-xl shadow-lg p-6 text-white">
+              <div className="flex justify-between items-end mb-2">
+                <span className="text-[#E8FFD7] font-medium">Grand Total</span>
+                <span className="text-3xl font-bold">{numberFmt(calculateTotal() + (Number(unpledgedAmount) || 0))}</span>
+              </div>
+              <div className="h-px bg-[#4a7a58] my-4" />
+              <button
+                onClick={handleSubmit}
+                disabled={submitting}
+                className="w-full py-3 bg-white text-[#5E936C] font-bold rounded-lg shadow-sm hover:bg-[#E8FFD7] transition-colors disabled:opacity-75"
+              >
+                {submitting ? 'Recording...' : 'Submit Batch'}
+              </button>
+            </div>
+          </div>
+
+          {/* Right Col: Entry Form & List */}
+          <div className="lg:col-span-2 space-y-6">
+            {massType === 'MAJOR' ? (
+              <>
+                {/* Entry Form */}
+                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                  <h3 className="font-bold text-lg text-gray-900 mb-4">Record Card Offering</h3>
+
+                  {/* Card Search */}
+                  <div className="relative mb-6">
+                    <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                    <input
+                      type="text"
+                      value={search}
+                      onChange={e => { setSearch(e.target.value); setSelectedCard(null); }}
+                      className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                      placeholder="Scan card or type code/name..."
+                      autoFocus
+                    />
+                    {/* Dropdown Results */}
+                    {search && !selectedCard && (cardsData?.offeringCards?.length || 0) > 0 && (
+                      <div className="absolute top-full left-0 right-0 mt-1 bg-white rounded-lg shadow-xl border border-gray-100 z-50 max-h-60 overflow-y-auto">
+                        {cardsData.offeringCards.map((c: any) => (
+                          <div
+                            key={c.id}
+                            onClick={() => { setSelectedCard(c); setSearch(c.code + (c.assignedToName ? ` - ${c.assignedToName}` : '')); }}
+                            className="p-3 hover:bg-blue-50 cursor-pointer border-b border-gray-50 last:border-0"
+                          >
+                            <div className="font-bold text-gray-800 flex justify-between">
+                              <span>{c.code}</span>
+                              <span className="text-xs bg-gray-100 px-2 py-0.5 rounded text-gray-600">{c.street}</span>
+                            </div>
+                            <div className="text-sm text-gray-600">{c.assignedToName || 'Unassigned'}</div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Amounts Grid */}
+                  <div className={`grid grid-cols-1 md:grid-cols-3 gap-4 transition-opacity ${selectedCard ? 'opacity-100' : 'opacity-50 pointer-events-none'}`}>
+                    <div>
+                      <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Ahadi</label>
+                      <input type="number" value={amtAhadi} onChange={e => setAmtAhadi(e.target.value)} className="w-full p-2 border rounded focus:ring-2 focus:ring-[#5E936C] outline-none" placeholder="0" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Shukrani</label>
+                      <input type="number" value={amtShukrani} onChange={e => setAmtShukrani(e.target.value)} className="w-full p-2 border rounded focus:ring-2 focus:ring-[#5E936C] outline-none" placeholder="0" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Majengo</label>
+                      <input type="number" value={amtMajengo} onChange={e => setAmtMajengo(e.target.value)} className="w-full p-2 border rounded focus:ring-2 focus:ring-[#5E936C] outline-none" placeholder="0" />
+                    </div>
+                  </div>
+
+                  <div className="mt-6 flex justify-end">
+                    <button
+                      onClick={handleAddEntry}
+                      disabled={!selectedCard}
+                      className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg disabled:opacity-50"
+                    >
+                      <FaPlus /> Add Entry
+                    </button>
+                  </div>
+                </div>
+
+                {/* Recent Entries List */}
+                <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                  <div className="p-4 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
+                    <h3 className="font-bold text-gray-700">Recorded Entries</h3>
+                    <span className="text-xs bg-gray-200 px-2 py-1 rounded-full text-gray-600">{entries.length} items</span>
+                  </div>
+                  <div className="max-h-[500px] overflow-y-auto">
+                    <table className="w-full text-left">
+                      <thead className="bg-gray-50 text-xs text-gray-500 uppercase sticky top-0">
+                        <tr>
+                          <th className="px-4 py-3">Card</th>
+                          <th className="px-4 py-3">Type</th>
+                          <th className="px-4 py-3 text-right">Amount</th>
+                          <th className="px-4 py-3 text-center">Action</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        {entries.slice().reverse().map((e, idx) => ( // Show newest first
+                          <tr key={idx} className="group hover:bg-gray-50">
+                            <td className="px-4 py-3 font-medium text-gray-800">{e.cardCode}</td>
+                            <td className="px-4 py-3 text-xs">
+                              <span className={`px-2 py-1 rounded-full ${e.entryType === 'AHADI' ? 'bg-blue-100 text-blue-800' : e.entryType === 'SHUKRANI' ? 'bg-purple-100 text-purple-800' : 'bg-orange-100 text-orange-800'}`}>
+                                {e.entryType}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-right font-mono">{numberFmt(e.amount)}</td>
+                            <td className="px-4 py-3 text-center">
+                              <button
+                                onClick={() => {
+                                  // to remove, we need original index. reversing makes it tricky. 
+                                  // better to filter by exact object ref or use original ID if present
+                                  // for now simple filter by index relative to original array
+                                  const originalIndex = entries.length - 1 - idx;
+                                  setEntries(prev => prev.filter((_, i) => i !== originalIndex));
+                                }}
+                                className="text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"
+                              >
+                                <FaTrash />
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                        {entries.length === 0 && (
+                          <tr><td colSpan={4} className="p-8 text-center text-gray-400 italic">No entries recorded yet.</td></tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="bg-blue-50 rounded-xl p-8 border border-blue-100 text-center">
+                <FaExclamationCircle className="mx-auto text-blue-400 mb-4" size={48} />
+                <h3 className="text-xl font-bold text-blue-800 mb-2">No Individual Cards Needed</h3>
+                <p className="text-blue-600">
+                  For <strong>{massType}</strong>, you do not need to record individual card entries.
+                  Simply enter the <strong>Total Collection Amount</strong> in the yellow box on the left.
+                </p>
+              </div>
+            )}
           </div>
         </div>
-      )}
-
-      {intakeDone && (
-        <>
-          <div className="bg-white shadow rounded p-4 mb-6">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="text-sm text-gray-700"><div><b>Recorder:</b> {recorderName}</div><div><b>Date:</b> {date}</div><div><b>Mass:</b> {massType}{massType==='MAJOR'&&majorMassNumber?` #${majorMassNumber}`:''}</div></div>
-              <div className="text-sm text-gray-700"><div><b>Street:</b> {streets.find((s:any)=>s.id===streetId)?.name||'-'}</div><div><b>Entries:</b> {totals.count} | Cards {totals.unique} · A {numberFmt(totals.a)} · S {numberFmt(totals.s)} · M {numberFmt(totals.m)}</div></div>
-              <div className="flex gap-2"><button className="border px-3 py-2 rounded" onClick={()=>setIntakeDone(false)}>Edit Intake</button><button className="bg-green-700 text-white px-3 py-2 rounded disabled:opacity-50" disabled={submitting||!entries.length} onClick={handleSubmit}>{submitting?'Submitting…':'Submit All'}</button></div>
-            </div>
-          </div>
-
-          <div className="bg-white shadow rounded p-4 mb-6">
-            <h2 className="text-lg font-semibold mb-3">Search Card / Name / Phone</h2>
-            <div className="flex items-center gap-3 mb-3"><input className="border rounded px-2 py-1 w-full" placeholder="Type code (e.g. 1 ⇒ this street only), name, or phone" value={search} onChange={e=>setSearch(e.target.value)} /><span className="text-xs text-gray-500">Auto-search</span></div>
-            <div className="flex flex-wrap gap-2">{cards.map((c:any)=>(<button key={c.id} className={`border rounded px-3 py-2 ${selectedCardId===c.id?'bg-green-50':''}`} onClick={()=>selectCard(c)}>{c.code}{c.assignedToName?` · ${c.assignedToName}`:''}{c.assignedPhone?` · ${c.assignedPhone}`:''}</button>))}{!cards.length&&<div className="text-gray-500">No cards found.</div>}</div>
-          </div>
-
-          <div className="bg-white shadow rounded p-4 mb-6">
-            <h2 className="text-lg font-semibold mb-3">Add Entries (All Types)</h2>
-            <div className="mb-2 text-sm text-gray-700">About to add for <b>{selectedCardCode || '-'}</b> on <b>{date}</b></div>
-            <form className="grid md:grid-cols-12 gap-3 items-end" onSubmit={(e)=>{e.preventDefault(); addEntry();}}>
-              <div className="md:col-span-4">
-                <label className="flex flex-col"><span className="text-sm text-gray-600">Ahadi</span><input type="number" className="border rounded px-2 py-1" value={amtAhadi as any} onChange={e=>setAmtAhadi(e.target.value?Number(e.target.value):('' as any))} /></label>
-                <div className="mt-2 flex flex-wrap gap-2 text-sm">
-                  {[50,100,200,500,1000].map(v=> (<button key={`a-${v}`} type="button" className="border px-2 py-1 rounded" onClick={()=>setAmtAhadi(v)}>{v.toLocaleString()}</button>))}
-                  <button type="button" className="border px-2 py-1 rounded" onClick={()=>setAmtAhadi('' as any)}>Clear</button>
-                </div>
-              </div>
-              <div className="md:col-span-4">
-                <label className="flex flex-col"><span className="text-sm text-gray-600">Shukrani</span><input type="number" className="border rounded px-2 py-1" value={amtShukrani as any} onChange={e=>setAmtShukrani(e.target.value?Number(e.target.value):('' as any))} /></label>
-                <div className="mt-2 flex flex-wrap gap-2 text-sm">
-                  {[50,100,200,500,1000].map(v=> (<button key={`s-${v}`} type="button" className="border px-2 py-1 rounded" onClick={()=>setAmtShukrani(v)}>{v.toLocaleString()}</button>))}
-                  <button type="button" className="border px-2 py-1 rounded" onClick={()=>setAmtShukrani('' as any)}>Clear</button>
-                </div>
-              </div>
-              <div className="md:col-span-4">
-                <label className="flex flex-col"><span className="text-sm text-gray-600">Majengo</span><input type="number" className="border rounded px-2 py-1" value={amtMajengo as any} onChange={e=>setAmtMajengo(e.target.value?Number(e.target.value):('' as any))} /></label>
-                <div className="mt-2 flex flex-wrap gap-2 text-sm">
-                  {[50,100,200,500,1000].map(v=> (<button key={`m-${v}`} type="button" className="border px-2 py-1 rounded" onClick={()=>setAmtMajengo(v)}>{v.toLocaleString()}</button>))}
-                  <button type="button" className="border px-2 py-1 rounded" onClick={()=>setAmtMajengo('' as any)}>Clear</button>
-                </div>
-              </div>
-              <div className="md:col-span-12">
-                <button className="bg-green-700 text-white px-3 py-2 rounded" type="submit">Add</button>
-              </div>
-            </form>
-          </div>
-
-          <div className="bg-white shadow rounded p-4">
-            <h2 className="text-lg font-semibold mb-3">Review</h2>
-            <div className="overflow-x-auto">
-              <table className="min-w-full text-sm">
-                <thead><tr className="text-left text-gray-600"><th className="p-2">Card</th><th className="p-2">Type</th><th className="p-2">Amount</th><th className="p-2">Date</th><th className="p-2">Actions</th></tr></thead>
-                <tbody>
-                  {entries.map((e,idx)=> (
-                    <tr key={idx} className="border-t"><td className="p-2">{e.cardCode}</td><td className="p-2">{e.entryType}</td><td className="p-2">{numberFmt(e.amount)}</td><td className="p-2">{e.date||date}</td><td className="p-2"><button className="border px-2 py-1 rounded" onClick={()=>removeEntry(idx)}>Remove</button></td></tr>
-                  ))}
-                  {!entries.length && (<tr><td className="p-2 text-gray-500" colSpan={5}>No entries added yet.</td></tr>)}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </>
       )}
     </div>
   );
 };
+
+const Badge = ({ type, children }: { type: string, children: React.ReactNode }) => {
+  const colors: any = {
+    info: 'bg-blue-100 text-blue-800',
+    neutral: 'bg-gray-100 text-gray-800',
+    warning: 'bg-yellow-100 text-yellow-800',
+    success: 'bg-[#E8FFD7] text-[#5E936C]'
+  };
+  return <span className={`px-2 py-1 rounded text-xs font-semibold ${colors[type] || colors.neutral}`}>{children}</span>;
+}
 
 export default OfferingEntryPage;

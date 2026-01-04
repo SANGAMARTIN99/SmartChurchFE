@@ -55,7 +55,7 @@ const AuthPage = () => {
         switch (role) {
           case 'PASTOR':
           case 'ASSISTANT_PASTOR':
-            return '/dashboard';
+            return '/pastor-dashboard';
           case 'CHURCH_MEMBER':
             return '/member-dashboard';
           case 'CHURCH_SECRETARY':
