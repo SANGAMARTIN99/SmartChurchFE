@@ -22,6 +22,7 @@ import OfferingEntryPage from '../pages/SECRETARY/OfferingEntry';
 import BlogFeed from '../pages/BLOG/BlogFeed';
 import BlogPostDetail from '../pages/BLOG/BlogPostDetail';
 import GetCard from '../pages/MEMBER/GetCard';
+import ProfilePage from '../pages/Profile';
 
 
 const AppRoutes = () => {
@@ -58,6 +59,7 @@ const AppRoutes = () => {
           {/* Blog Routes */}
           <Route path="/blog" element={<BlogFeed />} />
           <Route path="/blog/:id" element={<BlogPostDetail />} />
+          <Route path="/profile" element={<ProfilePage />} />
         </Route>
 
       </Routes>

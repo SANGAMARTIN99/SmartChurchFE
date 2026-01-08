@@ -36,6 +36,42 @@ const OfferingEntryPage: React.FC = () => {
   const [amtShukrani, setAmtShukrani] = useState<string>('');
   const [amtMajengo, setAmtMajengo] = useState<string>('');
 
+  const [activeField, setActiveField] = useState<'AHADI' | 'SHUKRANI' | 'MAJENGO' | null>(null);
+
+  const ahadiRef = React.useRef<HTMLInputElement>(null);
+  const shukraniRef = React.useRef<HTMLInputElement>(null);
+  const majengoRef = React.useRef<HTMLInputElement>(null);
+
+  // Focus Ahadi when card selected
+  useEffect(() => {
+    if (selectedCard) {
+      setActiveField('AHADI');
+      // small delay to ensure rendering
+      setTimeout(() => ahadiRef.current?.focus(), 50);
+    }
+  }, [selectedCard]);
+
+  const handleQuickAdd = (amount: number) => {
+    if (!activeField) return;
+    if (activeField === 'AHADI') setAmtAhadi(prev => String((Number(prev) || 0) + amount));
+    if (activeField === 'SHUKRANI') setAmtShukrani(prev => String((Number(prev) || 0) + amount));
+    if (activeField === 'MAJENGO') setAmtMajengo(prev => String((Number(prev) || 0) + amount));
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent, field: string) => {
+    if (e.key === 'Enter' || e.key === 'ArrowRight') {
+      e.preventDefault();
+      if (field === 'AHADI') shukraniRef.current?.focus();
+      else if (field === 'SHUKRANI') majengoRef.current?.focus();
+      else if (field === 'MAJENGO' && e.key === 'Enter') handleAddEntry(e as any); // submit on last enter
+    } else if (e.key === 'ArrowLeft') {
+      e.preventDefault();
+      if (field === 'SHUKRANI') ahadiRef.current?.focus();
+      else if (field === 'MAJENGO') shukraniRef.current?.focus();
+    }
+  };
+
+
   // --- QUERIES ---
   const { data: meta } = useQuery(GET_STREETS_AND_GROUPS);
   const streets = meta?.streets ?? [];
@@ -175,7 +211,7 @@ const OfferingEntryPage: React.FC = () => {
             value={recorderName}
             onChange={e => setRecorderName(e.target.value)}
             className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#5E936C] outline-none"
-            placeholder="e.g. John Doe"
+            placeholder="Full Name "
           />
         </div>
         <div>
@@ -335,9 +371,9 @@ const OfferingEntryPage: React.FC = () => {
                       autoFocus
                     />
                     {/* Dropdown Results */}
-                    {search && !selectedCard && (cardsData?.offeringCards?.length || 0) > 0 && (
+                    {search && !selectedCard && (cardsData?.offeringCards?.items?.length || 0) > 0 && (
                       <div className="absolute top-full left-0 right-0 mt-1 bg-white rounded-lg shadow-xl border border-gray-100 z-50 max-h-60 overflow-y-auto">
-                        {cardsData.offeringCards.map((c: any) => (
+                        {cardsData.offeringCards.items.map((c: any) => (
                           <div
                             key={c.id}
                             onClick={() => { setSelectedCard(c); setSearch(c.code + (c.assignedToName ? ` - ${c.assignedToName}` : '')); }}
@@ -355,18 +391,61 @@ const OfferingEntryPage: React.FC = () => {
                   </div>
 
                   {/* Amounts Grid */}
-                  <div className={`grid grid-cols-1 md:grid-cols-3 gap-4 transition-opacity ${selectedCard ? 'opacity-100' : 'opacity-50 pointer-events-none'}`}>
-                    <div>
-                      <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Ahadi</label>
-                      <input type="number" value={amtAhadi} onChange={e => setAmtAhadi(e.target.value)} className="w-full p-2 border rounded focus:ring-2 focus:ring-[#5E936C] outline-none" placeholder="0" />
+                  <div className={`transition-opacity ${selectedCard ? 'opacity-100' : 'opacity-50 pointer-events-none'}`}>
+
+                    {/* Quick Buttons */}
+                    <div className="flex flex-wrap gap-2 mb-4 justify-center">
+                      {[100, 500, 1000, 2000, 5000, 10000].map(amt => (
+                        <button
+                          key={amt}
+                          onClick={() => handleQuickAdd(amt)}
+                          className="bg-gray-100 hover:bg-[#E8FFD7] hover:text-[#5E936C] text-gray-700 font-bold py-1 px-3 rounded text-sm transition-colors border border-gray-200"
+                        >
+                          +{numberFmt(amt)}
+                        </button>
+                      ))}
                     </div>
-                    <div>
-                      <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Shukrani</label>
-                      <input type="number" value={amtShukrani} onChange={e => setAmtShukrani(e.target.value)} className="w-full p-2 border rounded focus:ring-2 focus:ring-[#5E936C] outline-none" placeholder="0" />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Majengo</label>
-                      <input type="number" value={amtMajengo} onChange={e => setAmtMajengo(e.target.value)} className="w-full p-2 border rounded focus:ring-2 focus:ring-[#5E936C] outline-none" placeholder="0" />
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div>
+                        <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Ahadi</label>
+                        <input
+                          ref={ahadiRef}
+                          type="number"
+                          value={amtAhadi}
+                          onFocus={() => setActiveField('AHADI')}
+                          onChange={e => setAmtAhadi(e.target.value)}
+                          onKeyDown={(e) => handleKeyDown(e, 'AHADI')}
+                          className={`w-full p-2 border rounded outline-none focus:ring-2 ${activeField === 'AHADI' ? 'ring-2 ring-[#5E936C] border-[#5E936C]' : 'focus:ring-[#5E936C]'}`}
+                          placeholder="0"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Shukrani</label>
+                        <input
+                          ref={shukraniRef}
+                          type="number"
+                          value={amtShukrani}
+                          onFocus={() => setActiveField('SHUKRANI')}
+                          onChange={e => setAmtShukrani(e.target.value)}
+                          onKeyDown={(e) => handleKeyDown(e, 'SHUKRANI')}
+                          className={`w-full p-2 border rounded outline-none focus:ring-2 ${activeField === 'SHUKRANI' ? 'ring-2 ring-[#5E936C] border-[#5E936C]' : 'focus:ring-[#5E936C]'}`}
+                          placeholder="0"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Majengo</label>
+                        <input
+                          ref={majengoRef}
+                          type="number"
+                          value={amtMajengo}
+                          onFocus={() => setActiveField('MAJENGO')}
+                          onChange={e => setAmtMajengo(e.target.value)}
+                          onKeyDown={(e) => handleKeyDown(e, 'MAJENGO')}
+                          className={`w-full p-2 border rounded outline-none focus:ring-2 ${activeField === 'MAJENGO' ? 'ring-2 ring-[#5E936C] border-[#5E936C]' : 'focus:ring-[#5E936C]'}`}
+                          placeholder="0"
+                        />
+                      </div>
                     </div>
                   </div>
 

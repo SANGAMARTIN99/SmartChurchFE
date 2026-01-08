@@ -11,6 +11,7 @@ export const ME_QUERY = gql`
       street { id name }
       groups { id name }
       role
+      profilePhoto
     }
   }
 `;
@@ -40,17 +41,20 @@ export const NUMBER_SUGGESTIONS = gql`
 export const GET_CARD_APPLICATIONS = gql`
   query CardApplications($status: String) {
     cardApplications(status: $status) {
-      id
-      fullName
-      phoneNumber
-      street
-      preferredNumber
-      note
-      pledgedAhadi
-      pledgedShukrani
-      pledgedMajengo
-      status
-      createdAt
+      items {
+        id
+        fullName
+        phoneNumber
+        street
+        preferredNumber
+        note
+        pledgedAhadi
+        pledgedShukrani
+        pledgedMajengo
+        status
+        createdAt
+      }
+      totalCount
     }
   }
 `;
@@ -355,21 +359,24 @@ export const GET_SECRETARY_DASHBOARD = gql`
 export const GET_OFFERING_CARDS = gql`
   query OfferingCards($streetId: Int, $isTaken: Boolean, $search: String) {
     offeringCards(streetId: $streetId, isTaken: $isTaken, search: $search) {
-      id
-      code
-      street
-      number
-      isTaken
-      assignedToName
-      assignedToId
-      assignedPhone
-      assignedYear
-      pledgedAhadi
-      pledgedShukrani
-      pledgedMajengo
-      progressAhadi
-      progressShukrani
-      progressMajengo
+      items {
+        id
+        code
+        street
+        number
+        isTaken
+        assignedToName
+        assignedToId
+        assignedPhone
+        assignedYear
+        pledgedAhadi
+        pledgedShukrani
+        pledgedMajengo
+        progressAhadi
+        progressShukrani
+        progressMajengo
+      }
+      totalCount
     }
   }
 `;

@@ -169,9 +169,16 @@ const CombinedNav = ({ children }: CombinedNavProps) => {
     }
   });
 
+  useEffect(() => {
+    if (error) {
+      console.error('ME_QUERY Error:', error);
+      clearAuthTokens();
+      navigate('/login');
+    }
+  }, [error, navigate]);
+
   if (error) {
-    console.error('ME_QUERY Error:', error);
-    return <div className="min-h-screen bg-gray-100 flex items-center justify-center">{t('auth_error')}</div>;
+    return null;
   }
 
   const handleLogout = async () => {

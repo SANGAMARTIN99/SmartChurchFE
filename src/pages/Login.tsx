@@ -3,6 +3,7 @@ import { useMutation, useQuery } from '@apollo/client';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { FaUser, FaLock, FaEnvelope, FaPhone, FaMapMarkerAlt, FaSignInAlt, FaUserPlus, FaEye, FaEyeSlash } from 'react-icons/fa';
+import { motion, AnimatePresence } from 'framer-motion';
 import { LOGIN_USER, REGISTER_USER } from '../api/mutations';
 import { GET_STREETS_AND_GROUPS } from '../api/queries';
 import Navbar from '../components/NavBar';
@@ -19,7 +20,7 @@ const AuthPage = () => {
 
   // Form states
   const [loginData, setLoginData] = useState({ email: '', password: '' });
-  
+
   interface RegisterData {
     fullName: string;
     email: string;
@@ -29,7 +30,7 @@ const AuthPage = () => {
     confirmPassword: string;
     groupIds: number[];
   }
-  
+
   const [registerData, setRegisterData] = useState<RegisterData>({
     fullName: '',
     email: '',
@@ -47,10 +48,9 @@ const AuthPage = () => {
   const [loginUser, { loading: loginLoading }] = useMutation(LOGIN_USER, {
     onCompleted: async (data) => {
       const { accessToken, refreshToken, member } = data.loginUser;
-      await setAuthToken(accessToken, refreshToken, member); // Ensure token is stored
+      await setAuthToken(accessToken, refreshToken, member);
       console.log('Stored accessToken:', accessToken);
 
-      // Determine dashboard path based on role
       const getDashboardPath = (role?: string) => {
         switch (role) {
           case 'PASTOR':
@@ -108,7 +108,6 @@ const AuthPage = () => {
     setRegisterData({ ...registerData, [name]: value });
   };
 
-
   const handleLoginSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!loginData.email || !loginData.password) {
@@ -120,7 +119,7 @@ const AuthPage = () => {
 
   const handleRegisterSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (registerData.password !== registerData.confirmPassword) {
       showMessage(t('passwords_not_match'), 'error');
       return;
@@ -146,292 +145,372 @@ const AuthPage = () => {
   };
 
   // Handle loading and error states
-  if (loading) return <div className="min-h-screen bg-gradient-to-br from-[#5E936C] to-[#93DA97] flex items-center justify-center">{t('loading')}</div>;
-  if (error) return <div className="min-h-screen bg-gradient-to-br from-[#5E936C] to-[#93DA97] flex items-center justify-center">{t('error', { message: error.message })}</div>;
+  if (loading) return (
+    <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-100 flex items-center justify-center">
+      <div className="flex flex-col items-center">
+        <svg className="animate-spin h-10 w-10 text-green-600 mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+        <p className="text-green-800 font-medium">{t('loading')}</p>
+      </div>
+    </div>
+  );
 
-  // Extract streets and groups from query data
+  if (error) return (
+    <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-100 flex items-center justify-center p-4">
+      <div className="bg-white p-6 rounded-xl shadow-lg border border-red-100 max-w-md w-full text-center">
+        <div className="text-red-500 text-5xl mb-4">!</div>
+        <p className="text-gray-800 font-medium mb-2">{t('error')}</p>
+        <p className="text-gray-500 text-sm">{error.message}</p>
+      </div>
+    </div>
+  );
+
   const streets = data?.streets || [];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#5E936C] to-[#93DA97] flex flex-col">
-      <nav><Navbar /></nav>
-      <div className="flex-grow flex items-center justify-center p-4 mt-16">
-        <div className="w-full max-w-6xl bg-white rounded-2xl shadow-xl overflow-hidden flex flex-col md:flex-row">
-          {/* Left Side - Image (hidden on mobile) */}
-          <div className="hidden md:block md:w-1/2 bg-[#E8FFD7] relative">
-            <div className="absolute inset-0 bg-[url('/pic2.jpg')] bg-cover bg-center opacity-90"></div>
-            <div className="absolute inset-0 bg-[#5E936C]/30 flex items-center justify-center">
-              <div className="text-center p-8 text-white">
-                <h2 className="text-4xl font-bold mb-4">{t('welcome')}</h2>
-                <p className="text-xl">
+    <div className="min-h-screen flex flex-col font-sans overflow-x-hidden bg-gray-50">
+      {/* Navbar - Let it handle its own positioning */}
+      <Navbar />
+
+      {/* Background Elements */}
+      <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none">
+        {/* Mobile Background Image with Overlay */}
+        <div className="absolute inset-0 bg-[url('/pic2.jpg')] bg-cover bg-center md:hidden">
+          <div className="absolute inset-0 bg-green-900/40 backdrop-blur-[2px]"></div>
+        </div>
+
+        {/* Desktop Gradient Background */}
+        <div className="absolute inset-0 bg-gradient-to-br from-[#f0fdf4] via-[#dcfce7] to-[#f0fdf4] hidden md:block"></div>
+
+        {/* Decorative Animated Blobs (Desktop) */}
+        <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-[#5E936C]/20 rounded-full blur-[120px] hidden md:block animate-pulse"></div>
+        <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-[#93DA97]/20 rounded-full blur-[120px] hidden md:block animate-pulse delay-1000"></div>
+      </div>
+
+      {/* Main Content - Add top padding for fixed navbar */}
+      <div className="flex-grow flex items-center justify-center p-4 py-8 pt-24 md:pt-32 relative z-10 w-full">
+        <motion.div
+          initial={{ opacity: 0, y: 20, scale: 0.98 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ duration: 0.5, ease: "easeOut" }}
+          className="w-full max-w-5xl bg-white/90 md:bg-white/80 backdrop-blur-xl rounded-3xl shadow-2xl overflow-hidden flex flex-col md:flex-row border border-white/60 ring-1 ring-black/5"
+        >
+          {/* Left Side - Image/Brand (Desktop only) */}
+          <div className="hidden md:block md:w-5/12 relative overflow-hidden group">
+            <div className="absolute inset-0 bg-[url('/pic2.jpg')] bg-cover bg-center transition-transform duration-1000 group-hover:scale-105"></div>
+            <div className="absolute inset-0 bg-gradient-to-t from-[#1a4731]/90 via-[#1a4731]/40 to-transparent flex flex-col justify-end p-10 text-white">
+              <motion.div
+                initial={{ y: 20, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ delay: 0.3, duration: 0.5 }}
+              >
+                <div className="w-12 h-1 bg-green-400 mb-6 rounded-full"></div>
+                <h2 className="text-4xl font-bold mb-4 drop-shadow-sm">{t('welcome')}</h2>
+                <p className="text-lg text-green-50 font-light leading-relaxed opacity-90">
                   {isLogin ? t('login_welcome') : t('register_welcome')}
                 </p>
-              </div>
+              </motion.div>
             </div>
           </div>
 
           {/* Right Side - Form */}
-          <div className="w-full md:w-1/2 p-8 md:p-12">
+          <div className="w-full md:w-7/12 p-6 sm:p-8 md:p-12 bg-white/60 md:bg-transparent">
+            {/* Mobile Welcome Header */}
+            <div className="md:hidden text-center mb-8">
+              <h2 className="text-3xl font-bold text-gray-800 mb-2">{t('welcome')}</h2>
+              <p className="text-gray-700 font-medium">{isLogin ? t('login_welcome') : t('register_welcome')}</p>
+            </div>
+
             {/* Toggle Buttons */}
-            <div className="flex mb-8 border-b border-gray-200">
+            <div className="flex p-1.5 bg-gray-200/50 rounded-2xl mb-8 relative max-w-sm mx-auto md:mx-0 border border-gray-200/50">
+              <motion.div
+                className="absolute bg-white shadow-md rounded-xl top-1.5 bottom-1.5"
+                initial={false}
+                animate={{
+                  left: isLogin ? '6px' : '50%',
+                  right: isLogin ? '50%' : '6px',
+                  width: 'calc(50% - 12px)'
+                }}
+                transition={{ type: "spring", stiffness: 300, damping: 30 }}
+              />
               <button
                 onClick={() => setIsLogin(true)}
-                className={`flex-1 py-3 font-medium text-lg flex items-center justify-center space-x-2 ${isLogin ? 'text-[#5E936C] border-b-2 border-[#5E936C]' : 'text-gray-500'}`}
+                className={`flex-1 relative z-10 py-2.5 text-sm font-semibold rounded-xl transition-colors duration-200 flex items-center justify-center gap-2 ${isLogin ? 'text-[#5E936C]' : 'text-gray-500 hover:text-gray-700'}`}
               >
-                <FaSignInAlt />
+                <FaSignInAlt className="text-lg" />
                 <span>{t('login')}</span>
               </button>
               <button
                 onClick={() => setIsLogin(false)}
-                className={`flex-1 py-3 font-medium text-lg flex items-center justify-center space-x-2 ${!isLogin ? 'text-[#5E936C] border-b-2 border-[#5E936C]' : 'text-gray-500'}`}
+                className={`flex-1 relative z-10 py-2.5 text-sm font-semibold rounded-xl transition-colors duration-200 flex items-center justify-center gap-2 ${!isLogin ? 'text-[#5E936C]' : 'text-gray-500 hover:text-gray-700'}`}
               >
-                <FaUserPlus />
+                <FaUserPlus className="text-lg" />
                 <span>{t('register')}</span>
               </button>
             </div>
 
             {/* Message Display */}
-            {message.text && (
-              <div className={`mb-6 p-4 rounded-lg ${message.type === 'error' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
-                {message.text}
-              </div>
-            )}
-
-            {/* Login Form */}
-            {isLogin ? (
-              <form onSubmit={handleLoginSubmit} className="space-y-6">
-                <div className="space-y-1">
-                  <label htmlFor="email" className="block text-gray-700 font-medium flex items-center">
-                    <FaEnvelope className="mr-2 text-[#5E936C]" />
-                    {t('email')}
-                  </label>
-                  <input
-                    type="email"
-                    id="email"
-                    name="email"
-                    value={loginData.email}
-                    onChange={handleLoginChange}
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#5E936C] focus:border-transparent"
-                    placeholder={t('email_placeholder')}
-                    required
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <label htmlFor="password" className="block text-gray-700 font-medium flex items-center">
-                    <FaLock className="mr-2 text-[#5E936C]" />
-                    {t('password')}
-                  </label>
-                  <div className="relative">
-                    <input
-                      type={showPassword ? 'text' : 'password'}
-                      id="password"
-                      name="password"
-                      value={loginData.password}
-                      onChange={handleLoginChange}
-                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#5E936C] focus:border-transparent"
-                      placeholder={t('password_placeholder')}
-                      required
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500"
-                    >
-                      {showPassword ? <FaEyeSlash /> : <FaEye />}
-                    </button>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <a href="/forgot-password" className="text-[#5E936C] hover:underline">{t('forgot_password')}</a>
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={loginLoading}
-                  className="w-full bg-[#5E936C] text-white py-3 px-4 rounded-lg font-medium hover:bg-[#4a7a58] transition-colors flex items-center justify-center"
+            <AnimatePresence mode="wait">
+              {message.text && (
+                <motion.div
+                  key="message"
+                  initial={{ opacity: 0, y: -10, height: 0 }}
+                  animate={{ opacity: 1, y: 0, height: 'auto' }}
+                  exit={{ opacity: 0, y: -10, height: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className={`mb-6 p-4 rounded-xl flex items-center text-sm font-medium border ${message.type === 'error'
+                      ? 'bg-red-50 text-red-600 border-red-100'
+                      : 'bg-green-50 text-green-600 border-green-100'
+                    }`}
                 >
-                  {loginLoading ? (
-                    <>
-                      <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                      {t('logging_in')}
-                    </>
-                  ) : (
-                    <>
-                      <FaSignInAlt className="mr-2" />
-                      {t('login')}
-                    </>
-                  )}
-                </button>
-              </form>
-            ) : (
-              <form onSubmit={handleRegisterSubmit} className="space-y-6">
-                <div className="space-y-1">
-                  <label htmlFor="fullName" className="block text-gray-700 font-medium flex items-center">
-                    <FaUser className="mr-2 text-[#5E936C]" />
-                    {t('full_name')}
-                  </label>
-                  <input
-                    type="text"
-                    id="fullName"
-                    name="fullName"
-                    value={registerData.fullName}
-                    onChange={handleRegisterChange}
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#5E936C] focus:border-transparent"
-                    placeholder={t('full_name_placeholder')}
-                    required
-                  />
-                </div>
+                  <span className="mr-2 text-lg">{message.type === 'error' ? '⚠️' : '✅'}</span>
+                  {message.text}
+                </motion.div>
+              )}
+            </AnimatePresence>
 
-                <div className="space-y-1">
-                  <label htmlFor="email" className="block text-gray-700 font-medium flex items-center">
-                    <FaEnvelope className="mr-2 text-[#5E936C]" />
-                    {t('email')}
-                  </label>
-                  <input
-                    type="email"
-                    id="email"
-                    name="email"
-                    value={registerData.email}
-                    onChange={handleRegisterChange}
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#5E936C] focus:border-transparent"
-                    placeholder={t('email_placeholder')}
-                    required
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <label htmlFor="phoneNumber" className="block text-gray-700 font-medium flex items-center">
-                    <FaPhone className="mr-2 text-[#5E936C]" />
-                    {t('phone_number')}
-                  </label>
-                  <input
-                    type="text"
-                    id="phoneNumber"
-                    name="phoneNumber"
-                    value={registerData.phoneNumber}
-                    onChange={handleRegisterChange}
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#5E936C] focus:border-transparent"
-                    placeholder={t('phone_placeholder')}
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <label htmlFor="streetId" className="block text-gray-700 font-medium flex items-center">
-                    <FaMapMarkerAlt className="mr-2 text-[#5E936C]" />
-                    {t('street')}
-                  </label>
-                  <select
-                    id="streetId"
-                    name="streetId"
-                    value={registerData.streetId}
-                    onChange={handleRegisterChange}
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#5E936C] focus:border-transparent"
-                    required
+            {/* Forms Container */}
+            <div className="min-h-[400px]">
+              <AnimatePresence mode="wait">
+                {isLogin ? (
+                  <motion.form
+                    key="login-form"
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: 20 }}
+                    transition={{ duration: 0.3, ease: "easeOut" }}
+                    onSubmit={handleLoginSubmit}
+                    className="space-y-6"
                   >
-                    <option value="">{t('select_street')}</option>
-                    {streets.map((street: any) => (
-                      <option key={street.id} value={street.id}>
-                        {street.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-semibold text-gray-700 ml-1 block">{t('email')}</label>
+                      <div className="relative group">
+                        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                          <FaEnvelope className="text-gray-400 group-focus-within:text-[#5E936C] transition-colors" />
+                        </div>
+                        <input
+                          type="email"
+                          name="email"
+                          value={loginData.email}
+                          onChange={handleLoginChange}
+                          className="block w-full pl-11 pr-4 py-3.5 bg-gray-50/50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#5E936C]/20 focus:border-[#5E936C] transition-all outline-none placeholder-gray-400 text-gray-800"
+                          placeholder="you@example.com"
+                          required
+                        />
+                      </div>
+                    </div>
 
-                <div className="space-y-1">
-                  <label htmlFor="password" className="block text-gray-700 font-medium flex items-center">
-                    <FaLock className="mr-2 text-[#5E936C]" />
-                    {t('password')}
-                  </label>
-                  <div className="relative">
-                    <input
-                      type={showPassword ? 'text' : 'password'}
-                      id="password"
-                      name="password"
-                      value={registerData.password}
-                      onChange={handleRegisterChange}
-                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#5E936C] focus:border-transparent"
-                      placeholder={t('password_placeholder')}
-                      required
-                    />
+                    <div className="space-y-2">
+                      <label className="text-sm font-semibold text-gray-700 ml-1 block">{t('password')}</label>
+                      <div className="relative group">
+                        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                          <FaLock className="text-gray-400 group-focus-within:text-[#5E936C] transition-colors" />
+                        </div>
+                        <input
+                          type={showPassword ? 'text' : 'password'}
+                          name="password"
+                          value={loginData.password}
+                          onChange={handleLoginChange}
+                          className="block w-full pl-11 pr-12 py-3.5 bg-gray-50/50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#5E936C]/20 focus:border-[#5E936C] transition-all outline-none placeholder-gray-400 text-gray-800"
+                          placeholder="••••••••"
+                          required
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword(!showPassword)}
+                          className="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-gray-600 transition-colors"
+                        >
+                          {showPassword ? <FaEyeSlash /> : <FaEye />}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-end">
+                      <a href="/forgot-password" className="text-sm font-medium text-[#5E936C] hover:text-[#4a7a58] transition-colors hover:underline">
+                        {t('forgot_password')}
+                      </a>
+                    </div>
+
                     <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500"
+                      type="submit"
+                      disabled={loginLoading}
+                      className="w-full bg-gradient-to-r from-[#5E936C] to-[#4a7a58] text-white py-3.5 px-4 rounded-xl font-bold shadow-lg shadow-[#5E936C]/30 hover:shadow-[#5E936C]/50 hover:scale-[1.01] active:scale-[0.98] transition-all duration-200 flex items-center justify-center disabled:opacity-70 disabled:cursor-not-allowed"
                     >
-                      {showPassword ? <FaEyeSlash /> : <FaEye />}
+                      {loginLoading ? (
+                        <>
+                          <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                          <span>{t('logging_in')}...</span>
+                        </>
+                      ) : (
+                        <>
+                          <span className="text-base">{t('login')}</span>
+                          <FaSignInAlt className="ml-2 text-sm" />
+                        </>
+                      )}
                     </button>
-                  </div>
-                </div>
+                  </motion.form>
+                ) : (
+                  <motion.form
+                    key="register-form"
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -20 }}
+                    transition={{ duration: 0.3, ease: "easeOut" }}
+                    onSubmit={handleRegisterSubmit}
+                    className="space-y-4"
+                  >
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <label className="text-sm font-semibold text-gray-700 ml-1 block">{t('full_name')}</label>
+                        <div className="relative group">
+                          <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                            <FaUser className="text-gray-400 group-focus-within:text-[#5E936C]" />
+                          </div>
+                          <input
+                            type="text"
+                            name="fullName"
+                            value={registerData.fullName}
+                            onChange={handleRegisterChange}
+                            className="block w-full pl-11 pr-4 py-3 bg-gray-50/50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#5E936C]/20 focus:border-[#5E936C] transition-all outline-none"
+                            required
+                          />
+                        </div>
+                      </div>
 
-                <div className="space-y-1">
-                  <label htmlFor="confirmPassword" className="block text-gray-700 font-medium flex items-center">
-                    <FaLock className="mr-2 text-[#5E936C]" />
-                    {t('confirm_password')}
-                  </label>
-                  <div className="relative">
-                    <input
-                      type={showConfirmPassword ? 'text' : 'password'}
-                      id="confirmPassword"
-                      name="confirmPassword"
-                      value={registerData.confirmPassword}
-                      onChange={handleRegisterChange}
-                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#5E936C] focus:border-transparent"
-                      placeholder={t('confirm_password_placeholder')}
-                      required
-                    />
+                      <div className="space-y-2">
+                        <label className="text-sm font-semibold text-gray-700 ml-1 block">{t('email')}</label>
+                        <div className="relative group">
+                          <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                            <FaEnvelope className="text-gray-400 group-focus-within:text-[#5E936C]" />
+                          </div>
+                          <input
+                            type="email"
+                            name="email"
+                            value={registerData.email}
+                            onChange={handleRegisterChange}
+                            className="block w-full pl-11 pr-4 py-3 bg-gray-50/50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#5E936C]/20 focus:border-[#5E936C] transition-all outline-none"
+                            required
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <label className="text-sm font-semibold text-gray-700 ml-1 block">{t('phone_number')}</label>
+                        <div className="relative group">
+                          <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                            <FaPhone className="text-gray-400 group-focus-within:text-[#5E936C]" />
+                          </div>
+                          <input
+                            type="text"
+                            name="phoneNumber"
+                            value={registerData.phoneNumber}
+                            onChange={handleRegisterChange}
+                            className="block w-full pl-11 pr-4 py-3 bg-gray-50/50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#5E936C]/20 focus:border-[#5E936C] transition-all outline-none"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <label className="text-sm font-semibold text-gray-700 ml-1 block">{t('street')}</label>
+                        <div className="relative group">
+                          <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                            <FaMapMarkerAlt className="text-gray-400 group-focus-within:text-[#5E936C]" />
+                          </div>
+                          <select
+                            name="streetId"
+                            value={registerData.streetId}
+                            onChange={handleRegisterChange}
+                            className="block w-full pl-11 pr-8 py-3 bg-gray-50/50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#5E936C]/20 focus:border-[#5E936C] transition-all outline-none appearance-none"
+                            required
+                          >
+                            <option value="">{t('select_street')}</option>
+                            {streets.map((street: any) => (
+                              <option key={street.id} value={street.id}>
+                                {street.name}
+                              </option>
+                            ))}
+                          </select>
+                          <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
+                            <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <label className="text-sm font-semibold text-gray-700 ml-1 block">{t('password')}</label>
+                        <div className="relative group">
+                          <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                            <FaLock className="text-gray-400 group-focus-within:text-[#5E936C]" />
+                          </div>
+                          <input
+                            type={showPassword ? 'text' : 'password'}
+                            name="password"
+                            value={registerData.password}
+                            onChange={handleRegisterChange}
+                            className="block w-full pl-11 pr-4 py-3 bg-gray-50/50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#5E936C]/20 focus:border-[#5E936C] transition-all outline-none"
+                            placeholder="Min 8 chars"
+                            required
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <label className="text-sm font-semibold text-gray-700 ml-1 block">{t('confirm_password')}</label>
+                        <div className="relative group">
+                          <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                            <FaLock className="text-gray-400 group-focus-within:text-[#5E936C]" />
+                          </div>
+                          <input
+                            type={showConfirmPassword ? 'text' : 'password'}
+                            name="confirmPassword"
+                            value={registerData.confirmPassword}
+                            onChange={handleRegisterChange}
+                            className="block w-full pl-11 pr-4 py-3 bg-gray-50/50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#5E936C]/20 focus:border-[#5E936C] transition-all outline-none"
+                            required
+                          />
+                        </div>
+                      </div>
+                    </div>
+
                     <button
-                      type="button"
-                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500"
+                      type="submit"
+                      disabled={registerLoading}
+                      className="w-full bg-gradient-to-r from-[#5E936C] to-[#4a7a58] text-white py-3.5 px-4 rounded-xl font-bold shadow-lg shadow-[#5E936C]/30 hover:shadow-[#5E936C]/50 hover:scale-[1.01] active:scale-[0.98] transition-all duration-200 flex items-center justify-center mt-2 disabled:opacity-70 disabled:cursor-not-allowed"
                     >
-                      {showConfirmPassword ? <FaEyeSlash /> : <FaEye />}
+                      {registerLoading ? (
+                        <>
+                          <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                          <span>{t('creating_account')}...</span>
+                        </>
+                      ) : (
+                        <>
+                          <span className="text-base">{t('register')}</span>
+                          <FaUserPlus className="ml-2 text-lg" />
+                        </>
+                      )}
                     </button>
-                  </div>
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={registerLoading}
-                  className="w-full bg-[#5E936C] text-white py-3 px-4 rounded-lg font-medium hover:bg-[#4a7a58] transition-colors flex items-center justify-center mt-6"
-                >
-                  {registerLoading ? (
-                    <>
-                      <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                      {t('creating_account')}
-                    </>
-                  ) : (
-                    <>
-                      <FaUserPlus className="mr-2" />
-                      {t('register')}
-                    </>
-                  )}
-                </button>
-              </form>
-            )}
-
-            <div className="mt-6 text-center">
-              <p className="text-gray-600">
-                {isLogin ? t('no_account') : t('have_account')}{' '}
-                <button
-                  onClick={() => setIsLogin(!isLogin)}
-                  className="text-[#5E936C] font-medium hover:underline"
-                >
-                  {isLogin ? t('register_here') : t('login_here')}
-                </button>
-              </p>
+                  </motion.form>
+                )}
+              </AnimatePresence>
             </div>
           </div>
-        </div>
+        </motion.div>
       </div>
-      <footer><Footer /></footer>
+      <div className="relative z-50">
+        <Footer />
+      </div>
     </div>
   );
 };

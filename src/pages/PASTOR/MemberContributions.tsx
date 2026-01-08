@@ -61,7 +61,7 @@ const MemberContributions: React.FC = () => {
   return (
     <div className="flex h-screen bg-[#E8FFD7] overflow-hidden">
       <div className="flex-1 flex flex-col overflow-hidden">
-        <main className="flex-1 overflow-y-auto p-4 md:p-6 bg-[#F7FCF5] mt-16">
+        <main className="flex-1 overflow-y-auto p-4 md:p-6 bg-[#F7FCF5] ">
           <div className="bg-white rounded-2xl shadow-lg p-6 mb-6 flex flex-col md:flex-row items-center justify-between">
             <div className="flex items-center mb-4 md:mb-0">
               <div className="bg-[#5E936C] p-3 rounded-full mr-4"><FaUsers className="text-2xl text-white" /></div>

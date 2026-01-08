@@ -104,8 +104,8 @@ const OfferingCardsPage: React.FC = () => {
   const { data: metaData } = useQuery(GET_STREETS_AND_GROUPS);
 
   // Derived Data
-  const applications = (appData?.cardApplications || []) as CardApplication[];
-  const cards = (cardsData?.offeringCards || []) as OfferingCard[];
+  const applications = (appData?.cardApplications?.items || []) as CardApplication[];
+  const cards = (cardsData?.offeringCards?.items || []) as OfferingCard[];
   const streets = metaData?.streets || [];
   const windowStatus = windowData?.registrationWindowStatus || { isOpen: false };
 

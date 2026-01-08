@@ -452,3 +452,34 @@ export const APPROVE_CARD_APPLICATION = gql`
     }
   }
 `;
+
+export const UPDATE_USER_PROFILE = gql`
+  mutation UpdateUserProfile(
+    $fullName: String
+    $phoneNumber: String
+    $email: String
+    $dateOfBirth: String
+    $gender: String
+    $bio: String
+  ) {
+    updateUserProfile(
+      input: {
+        fullName: $fullName
+        phoneNumber: $phoneNumber
+        email: $email
+        dateOfBirth: $dateOfBirth
+        gender: $gender
+        bio: $bio
+      }
+    ) {
+      ok
+      member {
+        id
+        fullName
+        phoneNumber
+        email
+        profilePhoto
+      }
+    }
+  }
+`;
