@@ -13,6 +13,7 @@ import {
   CartesianGrid, Tooltip, ResponsiveContainer, Legend
 } from 'recharts';
 import { useQuery } from '@apollo/client';
+import { useTranslation } from 'react-i18next';
 import {
   GET_OFFERING_STATS,
   GET_STREETS_AND_GROUPS,
@@ -73,6 +74,7 @@ interface OfferingType {
 }
 
 const OfferingsOverview = () => {
+  const { t } = useTranslation();
   const [activeView, setActiveView] = useState<'overview' | 'details' | 'trends' | 'reports'>('overview');
   const [] = useState(true);
   const [timeRange, setTimeRange] = useState<'week' | 'month' | 'quarter' | 'year'>('month');
@@ -203,11 +205,11 @@ const OfferingsOverview = () => {
   };
   const humanizeMass = (t: string) => {
     const x = (t || '').toLowerCase();
-    if (x === 'sunday') return 'Sunday Mass';
-    if (x.includes('morning')) return 'Morning Glory';
-    if (x.includes('evening')) return 'Evening Glory';
-    if (x.includes('seli')) return 'SELI Mass';
-    return 'Other';
+    if (x === 'sunday') return t('mass_sunday');
+    if (x.includes('morning')) return t('mass_morning');
+    if (x.includes('evening')) return t('mass_evening');
+    if (x.includes('seli')) return t('mass_seli');
+    return t('category_general'); // Fallback or 'Other'
   };
   const massTypeStats: MassTypeStats[] = (massData?.offeringsByMass || []).map((m: any) => {
     const key = (m.type || 'other').toLowerCase();
@@ -241,13 +243,13 @@ const OfferingsOverview = () => {
   };
   const humanizeType = (t: string) => {
     const x = (t || '').toLowerCase();
-    if (x === 'tithe') return 'Tithe';
-    if (x === 'special') return 'Special Offering';
-    if (x === 'pledge') return 'Pledge Payment';
-    if (x === 'ahadi') return 'Ahadi';
-    if (x === 'shukrani') return 'Shukrani';
-    if (x === 'majengo') return 'Majengo';
-    return 'General Contribution';
+    if (x === 'tithe') return t('offering_tithe');
+    if (x === 'special') return t('offering_special');
+    if (x === 'pledge') return t('offering_pledge');
+    if (x === 'ahadi') return t('offering_ahadi');
+    if (x === 'shukrani') return t('offering_shukrani');
+    if (x === 'majengo') return t('offering_majengo');
+    return t('category_general');
   };
   const offeringTypes = (typeData?.offeringsByType || []).map((t: any) => {
     const raw = (t.type || 'general');
@@ -260,8 +262,6 @@ const OfferingsOverview = () => {
       icon: typeIconMap[key] || <FaReceipt />,
     };
   });
-
-  // TODO: Replace with backend-provided monthly trend when available
 
   // Filter offerings based on selected filters
   const filteredOfferings = offerings.filter(offering => {
@@ -282,10 +282,6 @@ const OfferingsOverview = () => {
       currency: 'TZS'
     }).format(amount);
   };
-
-  // Format number with commas
-
-  // Toggle sidebar on mobile
 
   // Export to PDF/Excel
   const handleExport = (format: 'pdf' | 'excel') => {
@@ -325,8 +321,8 @@ const OfferingsOverview = () => {
                 <div className="bg-white rounded-2xl shadow-lg p-6">
                   <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                     <div>
-                      <h2 className="text-2xl font-bold text-[#5E936C]">Offerings Dashboard</h2>
-                      <p className="text-gray-600">Comprehensive overview of church offerings and financial health</p>
+                      <h2 className="text-2xl font-bold text-[#5E936C]">{t('offerings_dashboard_title')}</h2>
+                      <p className="text-gray-600">{t('offerings_dashboard_subtitle')}</p>
                     </div>
 
                     <div className="flex flex-wrap gap-3">
@@ -335,10 +331,10 @@ const OfferingsOverview = () => {
                         onChange={(e) => setTimeRange(e.target.value as any)}
                         className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#5E936C] focus:border-transparent"
                       >
-                        <option value="week">This Week</option>
-                        <option value="month">This Month</option>
-                        <option value="quarter">This Quarter</option>
-                        <option value="year">This Year</option>
+                        <option value="week">{t('this_week')}</option>
+                        <option value="month">{t('this_month')}</option>
+                        <option value="quarter">{t('this_quarter')}</option>
+                        <option value="year">{t('this_year')}</option>
                       </select>
 
                       <select
@@ -346,7 +342,7 @@ const OfferingsOverview = () => {
                         onChange={(e) => setSelectedStreet(e.target.value)}
                         className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#5E936C] focus:border-transparent"
                       >
-                        <option value="all">All Streets</option>
+                        <option value="all">{t('all_streets')}</option>
                         {streets.map(street => (
                           <option key={street.name} value={street.name}>{street.name}</option>
                         ))}
@@ -359,7 +355,7 @@ const OfferingsOverview = () => {
                           onChange={(e) => setDateFilter(prev => ({ ...prev, start: e.target.value }))}
                           className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#5E936C] focus:border-transparent"
                         />
-                        <span className="self-center text-gray-500">to</span>
+                        <span className="self-center text-gray-500">{t('to_label')}</span>
                         <input
                           type="date"
                           value={dateFilter.end}
@@ -373,7 +369,7 @@ const OfferingsOverview = () => {
                         className="bg-[#5E936C] text-white px-4 py-2 rounded-lg flex items-center"
                       >
                         <FaDownload className="mr-2" />
-                        Export
+                        {t('export_btn')}
                       </button>
                     </div>
                   </div>
@@ -387,7 +383,7 @@ const OfferingsOverview = () => {
                   >
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-gray-500">Total Offerings</p>
+                        <p className="text-gray-500">{t('total_offerings')}</p>
                         <h3 className="text-2xl md:text-3xl font-bold text-[#5E936C] break-words leading-tight">{formatCurrency(offeringStats.total)}</h3>
                       </div>
                       <div className="bg-[#E8FFD7] p-3 rounded-full">
@@ -396,7 +392,7 @@ const OfferingsOverview = () => {
                     </div>
                     <div className="mt-4 flex items-center text-sm text-green-500">
                       <BsGraphUp className="mr-1" />
-                      <span>{offeringStats.growthRate}% from last month</span>
+                      <span>{offeringStats.growthRate}% {t('from_last_month')}</span>
                     </div>
                   </motion.div>
 
@@ -406,7 +402,7 @@ const OfferingsOverview = () => {
                   >
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-gray-500">This Month</p>
+                        <p className="text-gray-500">{t('this_month')}</p>
                         <h3 className="text-2xl md:text-3xl font-bold text-[#5E936C] break-words leading-tight">{formatCurrency(offeringStats.monthly)}</h3>
                       </div>
                       <div className="bg-[#E8FFD7] p-3 rounded-full">
@@ -414,7 +410,7 @@ const OfferingsOverview = () => {
                       </div>
                     </div>
                     <div className="mt-4 flex items-center text-sm text-green-500">
-                      <span>{filteredOfferings.length} transactions</span>
+                      <span>{filteredOfferings.length} {t('transactions_label')}</span>
                     </div>
                   </motion.div>
 
@@ -424,7 +420,7 @@ const OfferingsOverview = () => {
                   >
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-gray-500">Avg per Member</p>
+                        <p className="text-gray-500">{t('avg_per_member')}</p>
                         <h3 className="text-2xl md:text-3xl font-bold text-[#5E936C] break-words leading-tight">{formatCurrency(offeringStats.averagePerMember)}</h3>
                       </div>
                       <div className="bg-[#E8FFD7] p-3 rounded-full">
@@ -432,7 +428,7 @@ const OfferingsOverview = () => {
                       </div>
                     </div>
                     <div className="mt-4 flex items-center text-sm text-blue-500">
-                      <span>Based on 600 members</span>
+                      <span>{t('based_on_members', { count: 600 })}</span>
                     </div>
                   </motion.div>
 
@@ -442,7 +438,7 @@ const OfferingsOverview = () => {
                   >
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-gray-500">Pledge Progress</p>
+                        <p className="text-gray-500">{t('pledge_progress')}</p>
                         <h3 className="text-2xl md:text-3xl font-bold text-[#5E936C] break-words leading-tight">{offeringStats.pledgedCollected}%</h3>
                       </div>
                       <div className="bg-[#E8FFD7] p-3 rounded-full">
@@ -450,7 +446,7 @@ const OfferingsOverview = () => {
                       </div>
                     </div>
                     <div className="mt-4 flex items-center text-sm text-green-500">
-                      <span>{formatCurrency(offeringStats.pledgedAmount)} pledged</span>
+                      <span>{formatCurrency(offeringStats.pledgedAmount)} {t('pledged_label')}</span>
                     </div>
                   </motion.div>
                 </div>
@@ -461,7 +457,7 @@ const OfferingsOverview = () => {
                   <div className="bg-white rounded-xl shadow-md p-6">
                     <h3 className="text-lg font-semibold text-[#5E936C] mb-4 flex items-center">
                       <FaChurch className="mr-2" />
-                      Offerings by Mass Type
+                      {t('offerings_by_mass_title')}
                     </h3>
                     <div className="space-y-4">
                       {massTypeStats.map((mass) => (
@@ -493,7 +489,7 @@ const OfferingsOverview = () => {
                   <div className="bg-white rounded-xl shadow-md p-6">
                     <h3 className="text-lg font-semibold text-[#5E936C] mb-4 flex items-center">
                       <GiMoneyStack className="mr-2" />
-                      Offerings by Type
+                      {t('offerings_by_type_title')}
                     </h3>
                     <div className="space-y-4">
                       {offeringTypes?.map((type: OfferingType) => (
@@ -526,7 +522,7 @@ const OfferingsOverview = () => {
                 <div className="bg-white rounded-xl shadow-md p-6">
                   <h3 className="text-lg font-semibold text-[#5E936C] mb-4 flex items-center">
                     <FaStreetView className="mr-2" />
-                    Street-wise Performance
+                    {t('street_performance_title')}
                   </h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
                     {streets.map(street => (
@@ -544,10 +540,10 @@ const OfferingsOverview = () => {
                             <FaArrowDown className="text-red-500 mr-1" />
                           )}
                           <span className={street.trend === 'up' ? 'text-green-500' : 'text-red-500'}>
-                            Avg: {formatCurrency(street.average)}
+                            {t('avg_label')}: {formatCurrency(street.average)}
                           </span>
                         </div>
-                        <p className="text-xs text-gray-500 mt-1">{street.memberCount} members</p>
+                        <p className="text-xs text-gray-500 mt-1">{street.memberCount} {t('members_label').toLowerCase()}</p>
                       </motion.div>
                     ))}
                   </div>
@@ -556,24 +552,24 @@ const OfferingsOverview = () => {
                 {/* Recent Transactions */}
                 <div className="bg-white rounded-xl shadow-md overflow-hidden">
                   <div className="p-6 border-b border-gray-200 flex justify-between items-center">
-                    <h3 className="text-lg font-semibold text-[#5E936C]">Recent Offerings</h3>
+                    <h3 className="text-lg font-semibold text-[#5E936C]">{t('recent_offerings')}</h3>
                     <button
                       onClick={() => setActiveView('details')}
                       className="text-[#5E936C] hover:text-[#4a7a58] text-sm"
                     >
-                      View All →
+                      {t('view_all_link')} →
                     </button>
                   </div>
                   <div className="overflow-x-auto">
                     <table className="w-full">
                       <thead>
                         <tr className="bg-gray-50">
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Member</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Street</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Mass</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('table_date')}</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('table_member')}</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('table_street')}</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('table_type')}</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('table_mass')}</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('table_amount')}</th>
                         </tr>
                       </thead>
                       <tbody className="bg-white divide-y divide-gray-200">
@@ -585,7 +581,7 @@ const OfferingsOverview = () => {
                             <td className="px-6 py-4 whitespace-nowrap">
                               <div className="text-sm font-medium text-gray-900">{offering.memberName}</div>
                               {offering.cardNumber && (
-                                <div className="text-sm text-gray-500">Card: {offering.cardNumber}</div>
+                                <div className="text-sm text-gray-500">{t('card_label')}: {offering.cardNumber}</div>
                               )}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
@@ -624,8 +620,8 @@ const OfferingsOverview = () => {
                     className="bg-white p-6 rounded-xl shadow-md border-l-4 border-[#5E936C] text-left hover:shadow-lg transition-shadow"
                   >
                     <FaChartLine className="text-3xl text-[#5E936C] mb-3" />
-                    <h4 className="font-semibold text-gray-800 mb-2">View Trends</h4>
-                    <p className="text-gray-600 text-sm">Analyze offering patterns over time</p>
+                    <h4 className="font-semibold text-gray-800 mb-2">{t('view_trends_btn')}</h4>
+                    <p className="text-gray-600 text-sm">{t('view_trends_desc')}</p>
                   </motion.button>
 
                   <motion.button
@@ -635,8 +631,8 @@ const OfferingsOverview = () => {
                     className="bg-white p-6 rounded-xl shadow-md border-l-4 border-[#93DA97] text-left hover:shadow-lg transition-shadow"
                   >
                     <FaChartBar className="text-3xl text-[#5E936C] mb-3" />
-                    <h4 className="font-semibold text-gray-800 mb-2">Generate Reports</h4>
-                    <p className="text-gray-600 text-sm">Create detailed offering reports</p>
+                    <h4 className="font-semibold text-gray-800 mb-2">{t('generate_reports_btn')}</h4>
+                    <p className="text-gray-600 text-sm">{t('generate_reports_desc')}</p>
                   </motion.button>
 
                   <motion.button
@@ -645,8 +641,8 @@ const OfferingsOverview = () => {
                     className="bg-white p-6 rounded-xl shadow-md border-l-4 border-[#4A8C5F] text-left hover:shadow-lg transition-shadow"
                   >
                     <FaPlus className="text-3xl text-[#5E936C] mb-3" />
-                    <h4 className="font-semibold text-gray-800 mb-2">Record Offering</h4>
-                    <p className="text-gray-600 text-sm">Add new offering entry</p>
+                    <h4 className="font-semibold text-gray-800 mb-2">{t('record_offering_btn')}</h4>
+                    <p className="text-gray-600 text-sm">{t('record_offering_desc')}</p>
                   </motion.button>
                 </div>
               </motion.div>
@@ -662,15 +658,15 @@ const OfferingsOverview = () => {
                 className="bg-white rounded-2xl shadow-lg p-6"
               >
                 <div className="flex justify-between items-center mb-6">
-                  <h2 className="text-2xl font-bold text-[#5E936C]">All Offerings</h2>
+                  <h2 className="text-2xl font-bold text-[#5E936C]">{t('all_offerings_title')}</h2>
                   <button
                     onClick={() => setActiveView('overview')}
                     className="text-gray-500 hover:text-gray-700"
                   >
-                    Back to Overview
+                    {t('back_to_overview')}
                   </button>
                 </div>
-                <p className="text-gray-600 mb-6">Detailed view of all offering transactions with advanced filtering options.</p>
+                <p className="text-gray-600 mb-6">{t('all_offerings_desc')}</p>
                 {/* Detailed table implementation would go here */}
               </motion.div>
             )}
@@ -684,19 +680,19 @@ const OfferingsOverview = () => {
                 className="bg-white rounded-2xl shadow-lg p-6"
               >
                 <div className="flex justify-between items-center mb-6">
-                  <h2 className="text-2xl font-bold text-[#5E936C]">Offering Trends</h2>
+                  <h2 className="text-2xl font-bold text-[#5E936C]">{t('offering_trends_title')}</h2>
                   <button
                     onClick={() => setActiveView('overview')}
                     className="text-gray-500 hover:text-gray-700"
                   >
-                    Back to Overview
+                    {t('back_to_overview')}
                   </button>
                 </div>
-                <p className="text-gray-600 mb-6">Visual analysis of offering patterns and growth trends over time.</p>
+                <p className="text-gray-600 mb-6">{t('trends_desc')}</p>
 
                 <div className="grid grid-cols-1 gap-8">
                   <div className="bg-gray-50 p-6 rounded-xl">
-                    <h3 className="text-lg font-semibold text-[#5E936C] mb-6">Monthly Revenue Trend</h3>
+                    <h3 className="text-lg font-semibold text-[#5E936C] mb-6">{t('monthly_revenue_trend')}</h3>
                     <div className="h-80">
                       <ResponsiveContainer width="100%" height="100%">
                         <AreaChart data={trendData?.offeringsTrend || []}>
@@ -720,7 +716,7 @@ const OfferingsOverview = () => {
                   </div>
 
                   <div className="bg-gray-50 p-6 rounded-xl">
-                    <h3 className="text-lg font-semibold text-[#5E936C] mb-6">Monthly Volume Comparison</h3>
+                    <h3 className="text-lg font-semibold text-[#5E936C] mb-6">{t('monthly_volume_comparison')}</h3>
                     <div className="h-80">
                       <ResponsiveContainer width="100%" height="100%">
                         <BarChart data={trendData?.offeringsTrend || []}>
@@ -750,15 +746,15 @@ const OfferingsOverview = () => {
                 className="bg-white rounded-2xl shadow-lg p-6"
               >
                 <div className="flex justify-between items-center mb-6">
-                  <h2 className="text-2xl font-bold text-[#5E936C]">Reports Generator</h2>
+                  <h2 className="text-2xl font-bold text-[#5E936C]">{t('reports_generator_title')}</h2>
                   <button
                     onClick={() => setActiveView('overview')}
                     className="text-gray-500 hover:text-gray-700"
                   >
-                    Back to Overview
+                    {t('back_to_overview')}
                   </button>
                 </div>
-                <p className="text-gray-600 mb-6">Generate detailed reports for specific time periods and categories.</p>
+                <p className="text-gray-600 mb-6">{t('reports_generator_desc')}</p>
                 {/* Report generation interface would go here */}
               </motion.div>
             )}

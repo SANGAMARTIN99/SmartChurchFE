@@ -304,9 +304,9 @@ export const GET_GROUPS = gql`
       category
       leader {
         id
-        fullName
+        name: fullName
         email
-        phone
+        phone: phoneNumber
       }
       meetingDays
       meetingTime
@@ -314,6 +314,35 @@ export const GET_GROUPS = gql`
       memberCount
       createdAt
       isActive
+    }
+  }
+`;
+
+export const GET_GROUP_DETAILS = gql`
+  query GroupDetails($id: ID!) {
+    group(id: $id) {
+      id
+      members {
+        id
+        name: fullName
+        email
+        phone: phoneNumber
+        street { name }
+        joinDate: createdAt
+      }
+    }
+  }
+`;
+
+export const GET_ALL_MEMBERS = gql`
+  query GetAllMembers($search: String) {
+    allMembers(search: $search) {
+      id
+      name: fullName
+      email
+      phone: phoneNumber
+      street { name }
+      joinDate: createdAt
     }
   }
 `;
@@ -414,6 +443,83 @@ export const MY_CARD_STATE = gql`
     myCardState {
       hasPendingApplication
       hasCurrentAssignment
+    }
+  }
+`;
+export const GET_MY_GROUPS = gql`
+  query MyGroups {
+    me {
+      id
+      groups {
+        id
+        name
+        description
+        category
+        leader {
+          id
+          fullName
+        }
+        memberCount
+        totalIncome
+        totalExpense
+        balance
+        financialRecords {
+          id
+          amount
+          transactionType
+          description
+          date
+        }
+      }
+      ledGroups {
+        id
+        name
+        description
+        category
+        memberCount
+        totalIncome
+        totalExpense
+        balance
+        members {
+            id
+            fullName
+            email
+            phoneNumber
+            profilePhoto
+        }
+        financialRecords {
+          id
+          amount
+          transactionType
+          description
+          date
+        }
+        applications {
+          id
+          member {
+            id
+            fullName
+            profilePhoto
+          }
+          status
+          note
+          createdAt
+        }
+      }
+    }
+    groups {
+        id
+        name
+        description
+        category
+        leader {
+            fullName
+        }
+        memberCount
+        myApplication {
+            id
+            status
+        }
     }
   }
 `;

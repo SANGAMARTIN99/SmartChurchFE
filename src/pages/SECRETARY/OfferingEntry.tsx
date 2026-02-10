@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useQuery, useMutation } from '@apollo/client';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaCheckCircle, FaTrash, FaPlus, FaSave, FaSearch, FaExclamationCircle } from 'react-icons/fa';
+import { useTranslation, Trans } from 'react-i18next';
 import { GET_STREETS_AND_GROUPS, GET_OFFERING_CARDS } from '../../api/queries';
 import { BULK_RECORD_OFFERING_ENTRIES } from '../../api/mutations';
 import { toast } from 'react-toastify';
@@ -17,6 +18,7 @@ interface EntryItem {
 const numberFmt = (n?: number | null) => (n ?? 0).toLocaleString();
 
 const OfferingEntryPage: React.FC = () => {
+  const { t } = useTranslation();
   // --- STATE: INTAKE SETUP ---
   const [recorderName, setRecorderName] = useState('');
   const [date, setDate] = useState<string>(new Date().toISOString().slice(0, 10));
@@ -126,7 +128,7 @@ const OfferingEntryPage: React.FC = () => {
   const handleAddEntry = (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedCard) {
-      toast.error('Please select a card first.');
+      toast.error(t('select_card_error'));
       return;
     }
 
@@ -136,7 +138,7 @@ const OfferingEntryPage: React.FC = () => {
     if (Number(amtMajengo) > 0) newItems.push({ cardId: selectedCard.id, cardCode: selectedCard.code, entryType: 'MAJENGO', amount: Number(amtMajengo), date });
 
     if (newItems.length === 0) {
-      toast.warn('Please enter at least one amount.');
+      toast.warn(t('enter_amount_error'));
       return;
     }
 
@@ -147,12 +149,12 @@ const OfferingEntryPage: React.FC = () => {
     setAmtMajengo('');
     setSelectedCard(null);
     setSearch(''); // Optional: clear search to be ready for next
-    toast.success(`Added ${newItems.length} entries for ${selectedCard.code}`);
+    toast.success(t('added_entries_success', { count: newItems.length, code: selectedCard.code }));
   };
 
   const [submitBatch, { loading: submitting }] = useMutation(BULK_RECORD_OFFERING_ENTRIES, {
     onCompleted: () => {
-      toast.success('Batch recorded successfully!');
+      toast.success(t('batch_success'));
       // Reset critical parts but keep some context if needed, usually full reset is safer
       setEntries([]);
       setUnpledgedAmount('');
@@ -166,11 +168,11 @@ const OfferingEntryPage: React.FC = () => {
 
   const handleSubmit = () => {
     if (!recorderName || !date || !massType) {
-      toast.error('Missing intake details.');
+      toast.error(t('missing_details_error'));
       return;
     }
     if (massType === 'MAJOR' && !majorMassNumber) {
-      toast.error('Please select First or Second mass.');
+      toast.error(t('select_service_error'));
       return;
     }
 
@@ -201,12 +203,12 @@ const OfferingEntryPage: React.FC = () => {
   const renderIntakeForm = () => (
     <div className="max-w-4xl mx-auto bg-white rounded-2xl shadow-xl overflow-hidden animate-fade-in-up">
       <div className="bg-[#5E936C] p-6">
-        <h2 className="text-2xl font-bold text-white">New Offering Batch</h2>
-        <p className="text-[#E8FFD7]">Configure the session details before recording.</p>
+        <h2 className="text-2xl font-bold text-white">{t('new_offering_batch')}</h2>
+        <p className="text-[#E8FFD7]">{t('configure_session')}</p>
       </div>
       <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-6">
         <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-2">Recorder Name</label>
+          <label className="block text-sm font-semibold text-gray-700 mb-2">{t('recorder_name')}</label>
           <input
             value={recorderName}
             onChange={e => setRecorderName(e.target.value)}
@@ -215,7 +217,7 @@ const OfferingEntryPage: React.FC = () => {
           />
         </div>
         <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-2">Date</label>
+          <label className="block text-sm font-semibold text-gray-700 mb-2">{t('date_label')}</label>
           <input
             type="date"
             value={date}
@@ -224,16 +226,16 @@ const OfferingEntryPage: React.FC = () => {
           />
         </div>
         <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-2">Mass Type</label>
+          <label className="block text-sm font-semibold text-gray-700 mb-2">{t('mass_type')}</label>
           <select
             value={massType}
             onChange={e => setMassType(e.target.value)}
             className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#5E936C] outline-none"
           >
-            <option value="MAJOR">Major (Sunday)</option>
-            <option value="MORNING_GLORY">Morning Glory</option>
-            <option value="EVENING_GLORY">Evening Glory</option>
-            <option value="SELI">Seli</option>
+            <option value="MAJOR">{t('major_sunday')}</option>
+            <option value="MORNING_GLORY">{t('morning_glory')}</option>
+            <option value="EVENING_GLORY">{t('evening_glory')}</option>
+            <option value="SELI">{t('seli')}</option>
           </select>
         </div>
 
@@ -241,31 +243,31 @@ const OfferingEntryPage: React.FC = () => {
         <AnimatePresence>
           {massType === 'MAJOR' && (
             <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">Service Number</label>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">{t('service_number')}</label>
               <select
                 value={majorMassNumber}
                 onChange={e => setMajorMassNumber(e.target.value ? Number(e.target.value) : ('' as any))}
                 className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#5E936C] outline-none"
               >
-                <option value="">Select...</option>
-                <option value="1">First Service</option>
-                <option value="2">Second Service</option>
+                <option value="">{t('select_option')}</option>
+                <option value="1">{t('first_service')}</option>
+                <option value="2">{t('second_service')}</option>
               </select>
             </motion.div>
           )}
         </AnimatePresence>
 
         <div className="md:col-span-2">
-          <label className="block text-sm font-semibold text-gray-700 mb-2">Target Street (for Batch)</label>
+          <label className="block text-sm font-semibold text-gray-700 mb-2">{t('target_street')}</label>
           <select
             value={streetId}
             onChange={e => setStreetId(e.target.value ? Number(e.target.value) : ('' as any))}
             className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#5E936C] outline-none"
           >
-            <option value="">Select Street...</option>
+            <option value="">{t('select_street_placeholder')}</option>
             {streets.map((s: any) => <option key={s.id} value={s.id}>{s.name}</option>)}
           </select>
-          <p className="text-xs text-gray-500 mt-1">Selecting a street helps filter cards and organize reports.</p>
+          <p className="text-xs text-gray-500 mt-1">{t('street_help_text')}</p>
         </div>
       </div>
       <div className="bg-gray-50 p-6 flex justify-end">
@@ -274,7 +276,7 @@ const OfferingEntryPage: React.FC = () => {
           onClick={() => setIntakeDone(true)}
           className="bg-[#5E936C] hover:bg-[#4a7a58] text-white font-bold py-3 px-8 rounded-lg shadow-md transition-all disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          Start Recording
+          {t('start_recording')}
         </button>
       </div>
     </div>
@@ -290,34 +292,34 @@ const OfferingEntryPage: React.FC = () => {
           {/* Left Col: Info & Totals */}
           <div className="lg:col-span-1 space-y-6">
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-              <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">Batch Details</h3>
+              <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">{t('batch_details')}</h3>
               <div className="space-y-3">
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Recorder</span>
+                  <span className="text-gray-600">{t('recorder')}</span>
                   <span className="font-medium text-gray-900">{recorderName}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Date</span>
+                  <span className="text-gray-600">{t('date_label')}</span>
                   <span className="font-medium text-gray-900">{date}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Type</span>
+                  <span className="text-gray-600">{t('type')}</span>
                   <Badge type="info">{massType}</Badge>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Entries</span>
+                  <span className="text-gray-600">{t('entries')}</span>
                   <Badge type="neutral">{entries.length}</Badge>
                 </div>
               </div>
               <button onClick={() => setIntakeDone(false)} className="mt-6 w-full py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50">
-                Edit Details
+                {t('edit_details')}
               </button>
             </div>
 
             {/* Unpledged Amount Card */}
             <div className="bg-white rounded-xl shadow-sm border-l-4 border-yellow-400 p-6">
               <h3 className="font-bold text-gray-900 mb-2">
-                {massType === 'MAJOR' ? 'Loose / Unpledged Offering' : 'Total Collection Amount'}
+                {massType === 'MAJOR' ? t('loose_offering') : t('total_collection')}
               </h3>
               <div className="relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-bold">TEx</span>
@@ -330,14 +332,14 @@ const OfferingEntryPage: React.FC = () => {
                 />
               </div>
               {massType !== 'MAJOR' && (
-                <p className="text-xs text-gray-500 mt-2">For {massType}, you only need to enter this total amount.</p>
+                <p className="text-xs text-gray-500 mt-2">{t('total_collection_help', { massType })}</p>
               )}
             </div>
 
             {/* Submit Action */}
             <div className="bg-[#5E936C] rounded-xl shadow-lg p-6 text-white">
               <div className="flex justify-between items-end mb-2">
-                <span className="text-[#E8FFD7] font-medium">Grand Total</span>
+                <span className="text-[#E8FFD7] font-medium">{t('grand_total')}</span>
                 <span className="text-3xl font-bold">{numberFmt(calculateTotal() + (Number(unpledgedAmount) || 0))}</span>
               </div>
               <div className="h-px bg-[#4a7a58] my-4" />
@@ -346,7 +348,7 @@ const OfferingEntryPage: React.FC = () => {
                 disabled={submitting}
                 className="w-full py-3 bg-white text-[#5E936C] font-bold rounded-lg shadow-sm hover:bg-[#E8FFD7] transition-colors disabled:opacity-75"
               >
-                {submitting ? 'Recording...' : 'Submit Batch'}
+                {submitting ? t('recording_status') : t('submit_batch')}
               </button>
             </div>
           </div>
@@ -357,7 +359,7 @@ const OfferingEntryPage: React.FC = () => {
               <>
                 {/* Entry Form */}
                 <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                  <h3 className="font-bold text-lg text-gray-900 mb-4">Record Card Offering</h3>
+                  <h3 className="font-bold text-lg text-gray-900 mb-4">{t('record_card_offering')}</h3>
 
                   {/* Card Search */}
                   <div className="relative mb-6">
@@ -367,7 +369,7 @@ const OfferingEntryPage: React.FC = () => {
                       value={search}
                       onChange={e => { setSearch(e.target.value); setSelectedCard(null); }}
                       className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                      placeholder="Scan card or type code/name..."
+                      placeholder={t('card_search_placeholder')}
                       autoFocus
                     />
                     {/* Dropdown Results */}
@@ -383,7 +385,7 @@ const OfferingEntryPage: React.FC = () => {
                               <span>{c.code}</span>
                               <span className="text-xs bg-gray-100 px-2 py-0.5 rounded text-gray-600">{c.street}</span>
                             </div>
-                            <div className="text-sm text-gray-600">{c.assignedToName || 'Unassigned'}</div>
+                            <div className="text-sm text-gray-600">{c.assignedToName || t('unassigned')}</div>
                           </div>
                         ))}
                       </div>
@@ -408,7 +410,7 @@ const OfferingEntryPage: React.FC = () => {
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <div>
-                        <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Ahadi</label>
+                        <label className="block text-xs font-bold text-gray-500 uppercase mb-1">{t('ahadi')}</label>
                         <input
                           ref={ahadiRef}
                           type="number"
@@ -421,7 +423,7 @@ const OfferingEntryPage: React.FC = () => {
                         />
                       </div>
                       <div>
-                        <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Shukrani</label>
+                        <label className="block text-xs font-bold text-gray-500 uppercase mb-1">{t('shukrani')}</label>
                         <input
                           ref={shukraniRef}
                           type="number"
@@ -434,7 +436,7 @@ const OfferingEntryPage: React.FC = () => {
                         />
                       </div>
                       <div>
-                        <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Majengo</label>
+                        <label className="block text-xs font-bold text-gray-500 uppercase mb-1">{t('majengo')}</label>
                         <input
                           ref={majengoRef}
                           type="number"
@@ -455,7 +457,7 @@ const OfferingEntryPage: React.FC = () => {
                       disabled={!selectedCard}
                       className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg disabled:opacity-50"
                     >
-                      <FaPlus /> Add Entry
+                      <FaPlus /> {t('add_entry')}
                     </button>
                   </div>
                 </div>
@@ -463,17 +465,17 @@ const OfferingEntryPage: React.FC = () => {
                 {/* Recent Entries List */}
                 <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
                   <div className="p-4 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
-                    <h3 className="font-bold text-gray-700">Recorded Entries</h3>
-                    <span className="text-xs bg-gray-200 px-2 py-1 rounded-full text-gray-600">{entries.length} items</span>
+                    <h3 className="font-bold text-gray-700">{t('recorded_entries')}</h3>
+                    <span className="text-xs bg-gray-200 px-2 py-1 rounded-full text-gray-600">{entries.length} {t('items')}</span>
                   </div>
                   <div className="max-h-[500px] overflow-y-auto">
                     <table className="w-full text-left">
                       <thead className="bg-gray-50 text-xs text-gray-500 uppercase sticky top-0">
                         <tr>
-                          <th className="px-4 py-3">Card</th>
-                          <th className="px-4 py-3">Type</th>
-                          <th className="px-4 py-3 text-right">Amount</th>
-                          <th className="px-4 py-3 text-center">Action</th>
+                          <th className="px-4 py-3">{t('card')}</th>
+                          <th className="px-4 py-3">{t('type')}</th>
+                          <th className="px-4 py-3 text-right">{t('amount')}</th>
+                          <th className="px-4 py-3 text-center">{t('action')}</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-100">
@@ -503,7 +505,7 @@ const OfferingEntryPage: React.FC = () => {
                           </tr>
                         ))}
                         {entries.length === 0 && (
-                          <tr><td colSpan={4} className="p-8 text-center text-gray-400 italic">No entries recorded yet.</td></tr>
+                          <tr><td colSpan={4} className="p-8 text-center text-gray-400 italic">{t('no_entries_yet')}</td></tr>
                         )}
                       </tbody>
                     </table>
@@ -513,10 +515,12 @@ const OfferingEntryPage: React.FC = () => {
             ) : (
               <div className="bg-blue-50 rounded-xl p-8 border border-blue-100 text-center">
                 <FaExclamationCircle className="mx-auto text-blue-400 mb-4" size={48} />
-                <h3 className="text-xl font-bold text-blue-800 mb-2">No Individual Cards Needed</h3>
+                <h3 className="text-xl font-bold text-blue-800 mb-2">{t('no_cards_needed')}</h3>
                 <p className="text-blue-600">
-                  For <strong>{massType}</strong>, you do not need to record individual card entries.
-                  Simply enter the <strong>Total Collection Amount</strong> in the yellow box on the left.
+                  <Trans i18nKey="no_cards_needed_desc" values={{ massType }}>
+                    For <strong>{massType}</strong>, you do not need to record individual card entries.
+                    Simply enter the <strong>Total Collection Amount</strong> in the yellow box on the left.
+                  </Trans>
                 </p>
               </div>
             )}

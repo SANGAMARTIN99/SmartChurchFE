@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { FaChurch, FaCalendarAlt, FaUsers, FaPray, FaArrowRight } from 'react-icons/fa';
 import { GiCrossedChains } from 'react-icons/gi';
 import { motion } from 'framer-motion';
+import { useTranslation } from 'react-i18next';
 import Navbar from '../components/NavBar';
 import Footer from '../components/Footer';
 
@@ -14,57 +15,58 @@ const churchImages = [
   { src: '/pic5.jpg', alt: 'Youth group', caption: 'Active youth ministry' },
 ];
 
-const choirData = [
-  { 
-    name: 'Kwaya Ya Vijana', 
-    description: 'The youth choir brings energy and contemporary worship styles to our services, engaging young members in musical ministry.',
-    image: '/pic6.jpg'
-  },
-  { 
-    name: 'Kwaya Ya Familia na Malezi', 
-    description: 'This family-focused choir combines voices from all generations, celebrating family unity through music.',
-    image: '/pic7.jpg'
-  },
-  { 
-    name: 'Kwaya Ya Imani', 
-    description: 'Known for their powerful renditions of traditional hymns, the Imani choir strengthens our faith through song.',
-    image: '/pic2.jpg'
-  },
-  { 
-    name: 'Kwaya Ya Mwimbieni', 
-    description: 'Specializing in praise and worship songs, this choir leads the congregation in joyful celebration.',
-    image: '/pic8.jpg'
-  },
-  { 
-    name: 'Kwaya Ya Watoto', 
-    description: 'Our children\'s choir nurtures young talents and teaches them to worship God through music.',
-    image: '/pic1.jpg'
-  },
-];
-
-const focusGroups = [
-  {
-    name: 'Baraza la Wazee',
-    description: 'The council of elders provides wisdom, guidance, and leadership to our church community.',
-    image: '/pic2.jpg'
-  },
-  {
-    name: 'Familia na Malezi',
-    description: 'This group supports families in child-rearing, marriage counseling, and building strong Christian homes.',
-    image: '/pic2.jpg'
-  }
-];
-
-const leaders = [
-  { name: 'Rev. John Mwambene', role: 'Senior Pastor', image: '/pic2.jpg' },
-  { name: 'Rev. Sarah Kileo', role: 'Associate Pastor', image: '/pic2.jpg' },
-  { name: 'Deacon Michael Ngowi', role: 'Head Deacon', image: '/pic2.jpg' },
-  { name: 'Elder Grace Mbowe', role: 'Women\'s Ministry Leader', image: '/pic2.jpg' },
-];
-
 const LandingPage = () => {
+  const { t } = useTranslation();
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isAutoPlaying, setIsAutoPlaying] = useState(true);
+
+  const choirData = useMemo(() => [
+    {
+      name: 'Kwaya Ya Vijana',
+      description: t('choir_vijana_desc'),
+      image: '/pic6.jpg'
+    },
+    {
+      name: 'Kwaya Ya Familia na Malezi',
+      description: t('choir_familia_desc'),
+      image: '/pic7.jpg'
+    },
+    {
+      name: 'Kwaya Ya Imani',
+      description: t('choir_imani_desc'),
+      image: '/pic2.jpg'
+    },
+    {
+      name: 'Kwaya Ya Mwimbieni',
+      description: t('choir_mwimbieni_desc'),
+      image: '/pic8.jpg'
+    },
+    {
+      name: 'Kwaya Ya Watoto',
+      description: t('choir_watoto_desc'),
+      image: '/pic1.jpg'
+    },
+  ], [t]);
+
+  const focusGroups = useMemo(() => [
+    {
+      name: 'Baraza la Wazee',
+      description: t('group_wazee_desc'),
+      image: '/pic2.jpg'
+    },
+    {
+      name: 'Familia na Malezi',
+      description: t('group_familia_desc'),
+      image: '/pic2.jpg'
+    }
+  ], [t]);
+
+  const leaders = useMemo(() => [
+    { name: 'Rev. John Mwambene', role: t('senior_pastor'), image: '/pic2.jpg' },
+    { name: 'Rev. Sarah Kileo', role: t('associate_pastor'), image: '/pic2.jpg' },
+    { name: 'Deacon Michael Ngowi', role: t('head_deacon'), image: '/pic2.jpg' },
+    { name: 'Elder Grace Mbowe', role: t('womens_ministry_leader'), image: '/pic2.jpg' },
+  ], [t]);
 
   // Auto-advance slideshow
   useEffect(() => {
@@ -75,7 +77,7 @@ const LandingPage = () => {
       }, 5000);
     }
     return () => clearInterval(interval);
-  }, [isAutoPlaying, churchImages.length]);
+  }, [isAutoPlaying]);
 
   const goToSlide = (index: number) => {
     setCurrentSlide(index);
@@ -95,7 +97,7 @@ const LandingPage = () => {
             <motion.div
               key={index}
               initial={{ opacity: 0 }}
-              animate={{ 
+              animate={{
                 opacity: index === currentSlide ? 1 : 0,
                 scale: index === currentSlide ? 1 : 1.05
               }}
@@ -108,17 +110,17 @@ const LandingPage = () => {
         </div>
 
         {/* Hero Content */}
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: 50 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.3 }}
           className="relative z-10 text-center px-4 text-[#E8FFD7]"
         >
           <h1 className="text-4xl md:text-6xl font-bold mb-4">
-            Welcome to KKKT Usharika wa Mkimbizi
+            {t('landing_welcome')}
           </h1>
           <p className="text-xl md:text-2xl mb-8 max-w-3xl mx-auto">
-            A vibrant Lutheran community in Iringa, Tanzania, dedicated to worship, fellowship, and service.
+            {t('landing_subtitle')}
           </p>
           <motion.a
             href="#services"
@@ -126,7 +128,7 @@ const LandingPage = () => {
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
           >
-            Explore Our Services
+            {t('explore_services')}
           </motion.a>
         </motion.div>
 
@@ -153,31 +155,29 @@ const LandingPage = () => {
             viewport={{ once: true }}
             className="text-center mb-12"
           >
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">About Our Church</h2>
+            <h2 className="text-3xl md:text-4xl font-bold mb-4">{t('about_title')}</h2>
             <div className="w-24 h-1 bg-[#5E936C] mx-auto mb-6"></div>
             <p className="max-w-4xl mx-auto text-lg">
-              KKKT Usharika wa Mkimbizi is a thriving Lutheran church located in Iringa Municipal District, Tanzania. 
-              With a congregation of approximately 600 members, we are committed to spreading the Gospel, fostering 
-              Christian fellowship, and serving our community with love and compassion.
+              {t('about_content')}
             </p>
           </motion.div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {[
-              { 
-                icon: <FaChurch className="text-4xl" />, 
-                title: "Our Mission", 
-                content: "To make disciples of all nations, baptizing them in the name of the Father, the Son, and the Holy Spirit." 
+              {
+                icon: <FaChurch className="text-4xl" />,
+                title: t('mission_title'),
+                content: t('mission_content')
               },
-              { 
-                icon: <GiCrossedChains className="text-4xl" />, 
-                title: "Our Vision", 
-                content: "A transformed community living in obedience to God's Word and manifesting His love to the world." 
+              {
+                icon: <GiCrossedChains className="text-4xl" />,
+                title: t('vision_title'),
+                content: t('vision_content')
               },
-              { 
-                icon: <FaUsers className="text-4xl" />, 
-                title: "Our Values", 
-                content: "Faith, Love, Unity, Service, and Integrity guide everything we do as a church family." 
+              {
+                icon: <FaUsers className="text-4xl" />,
+                title: t('values_title'),
+                content: t('values_content')
               }
             ].map((item, index) => (
               <motion.div
@@ -208,10 +208,10 @@ const LandingPage = () => {
             viewport={{ once: true }}
             className="text-center mb-12"
           >
-            <h2 className="text-3xl md:text-4xl font-bold mb-4 text-[#5E936C]">Our Services & Masses</h2>
+            <h2 className="text-3xl md:text-4xl font-bold mb-4 text-[#5E936C]">{t('services_title')}</h2>
             <div className="w-24 h-1 bg-[#93DA97] mx-auto mb-6"></div>
             <p className="max-w-4xl mx-auto text-lg">
-              Join us for worship, fellowship, and spiritual growth through our various services and activities.
+              {t('services_subtitle')}
             </p>
           </motion.div>
 
@@ -226,23 +226,23 @@ const LandingPage = () => {
             >
               <div className="flex items-center mb-4">
                 <FaChurch className="text-2xl text-[#5E936C] mr-3" />
-                <h3 className="text-xl font-bold">Sunday Masses</h3>
+                <h3 className="text-xl font-bold">{t('sunday_masses')}</h3>
               </div>
               <ul className="space-y-3">
                 <li className="flex justify-between">
-                  <span>First Mass</span>
+                  <span>{t('first_service')}</span>
                   <span className="font-medium">07:00 - 09:00</span>
                 </li>
                 <li className="flex justify-between">
-                  <span>Second Mass</span>
+                  <span>{t('second_service')}</span>
                   <span className="font-medium">09:30 - 12:00</span>
                 </li>
                 <li className="flex justify-between">
-                  <span>Sunday School</span>
-                  <span className="font-medium">During Masses</span>
+                  <span>{t('sunday_school')}</span>
+                  <span className="font-medium">{t('during_masses')}</span>
                 </li>
                 <li className="flex justify-between">
-                  <span>Fellowship</span>
+                  <span>{t('fellowship')}</span>
                   <span className="font-medium">14:00 - 16:00</span>
                 </li>
               </ul>
@@ -258,15 +258,15 @@ const LandingPage = () => {
             >
               <div className="flex items-center mb-4">
                 <FaCalendarAlt className="text-2xl text-[#93DA97] mr-3" />
-                <h3 className="text-xl font-bold">Daily Masses</h3>
+                <h3 className="text-xl font-bold">{t('daily_masses')}</h3>
               </div>
               <ul className="space-y-3">
                 <li className="flex justify-between">
-                  <span>Morning Glory</span>
+                  <span>{t('morning_glory')}</span>
                   <span className="font-medium">05:00 - 06:00</span>
                 </li>
                 <li className="flex justify-between">
-                  <span>Evening Glory</span>
+                  <span>{t('evening_glory')}</span>
                   <span className="font-medium">17:00 - 18:00</span>
                 </li>
               </ul>
@@ -282,15 +282,15 @@ const LandingPage = () => {
             >
               <div className="flex items-center mb-4">
                 <FaPray className="text-2xl text-[#5E936C] mr-3" />
-                <h3 className="text-xl font-bold">Weekly Fellowships</h3>
+                <h3 className="text-xl font-bold">{t('weekly_fellowships')}</h3>
               </div>
               <ul className="space-y-3">
                 <li className="flex justify-between">
-                  <span>Bible Study</span>
+                  <span>{t('bible_study')}</span>
                   <span className="font-medium">Thu 16:00 - 18:00</span>
                 </li>
                 <li className="flex justify-between">
-                  <span>Prayer Meeting</span>
+                  <span>{t('prayer_meeting')}</span>
                   <span className="font-medium">Tue 16:00 - 18:00</span>
                 </li>
                 <li className="flex justify-between">
@@ -317,10 +317,10 @@ const LandingPage = () => {
             viewport={{ once: true }}
             className="text-center mb-12"
           >
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">Our Choirs</h2>
+            <h2 className="text-3xl md:text-4xl font-bold mb-4">{t('choirs_title')}</h2>
             <div className="w-24 h-1 bg-[#5E936C] mx-auto mb-6"></div>
             <p className="max-w-4xl mx-auto text-lg">
-              Our choirs bring vibrant worship and musical excellence to our church services and community events.
+              {t('choirs_subtitle')}
             </p>
           </motion.div>
 
@@ -340,7 +340,7 @@ const LandingPage = () => {
                   <h3 className="text-xl font-bold mb-2 text-[#5E936C]">{choir.name}</h3>
                   <p className="mb-4">{choir.description}</p>
                   <a href="#" className="text-[#5E936C] font-medium flex items-center">
-                    Learn more <FaArrowRight className="ml-2" />
+                    {t('learn_more')} <FaArrowRight className="ml-2" />
                   </a>
                 </div>
               </motion.div>
@@ -359,10 +359,10 @@ const LandingPage = () => {
             viewport={{ once: true }}
             className="text-center mb-12"
           >
-            <h2 className="text-3xl md:text-4xl font-bold mb-4 text-[#5E936C]">Focus Groups</h2>
+            <h2 className="text-3xl md:text-4xl font-bold mb-4 text-[#5E936C]">{t('focus_groups_title')}</h2>
             <div className="w-24 h-1 bg-[#93DA97] mx-auto mb-6"></div>
             <p className="max-w-4xl mx-auto text-lg">
-              Our focus groups provide specialized ministries to meet the diverse needs of our congregation.
+              {t('focus_groups_subtitle')}
             </p>
           </motion.div>
 
@@ -381,7 +381,7 @@ const LandingPage = () => {
                   <h3 className="text-xl font-bold mb-2 text-[#5E936C]">{group.name}</h3>
                   <p className="mb-4">{group.description}</p>
                   <a href="#" className="text-[#5E936C] font-medium flex items-center">
-                    Join this group <FaArrowRight className="ml-2" />
+                    {t('join_group')} <FaArrowRight className="ml-2" />
                   </a>
                 </div>
               </motion.div>
@@ -400,10 +400,10 @@ const LandingPage = () => {
             viewport={{ once: true }}
             className="text-center mb-12"
           >
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">Our Leaders</h2>
+            <h2 className="text-3xl md:text-4xl font-bold mb-4">{t('leaders_title')}</h2>
             <div className="w-24 h-1 bg-[#5E936C] mx-auto mb-6"></div>
             <p className="max-w-4xl mx-auto text-lg">
-              Meet the dedicated leaders who shepherd our church community with wisdom and love.
+              {t('leaders_subtitle')}
             </p>
           </motion.div>
 
@@ -438,9 +438,9 @@ const LandingPage = () => {
             transition={{ duration: 0.8 }}
             viewport={{ once: true }}
           >
-            <h2 className="text-3xl md:text-4xl font-bold mb-6">Join Us This Sunday</h2>
+            <h2 className="text-3xl md:text-4xl font-bold mb-6">{t('join_us_title')}</h2>
             <p className="text-xl mb-8 max-w-3xl mx-auto">
-              Experience the love of Christ in our vibrant worship services and welcoming community.
+              {t('join_us_subtitle')}
             </p>
             <motion.a
               href="#contact"
@@ -448,7 +448,7 @@ const LandingPage = () => {
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
             >
-              Get Directions
+              {t('get_directions')}
             </motion.a>
           </motion.div>
         </div>

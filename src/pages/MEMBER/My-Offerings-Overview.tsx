@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { useMutation, useQuery } from '@apollo/client';
 import { format, parseISO } from 'date-fns';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useTranslation } from 'react-i18next';
 import {
   FaHandHoldingHeart, FaChartLine, FaList, FaDownload, FaSearch,
   FaCalendarAlt, FaCreditCard, FaCheckCircle, FaExclamationTriangle,
@@ -50,8 +51,10 @@ const PremiumAreaChart = ({
   w?: number;
   h?: number;
   color?: string;
+  t?: any;
 }) => {
-  if (!series.length) return <div className="h-48 flex items-center justify-center text-gray-400 font-medium">Not enough data for insights</div>;
+  const { t } = useTranslation();
+  if (!series.length) return <div className="h-48 flex items-center justify-center text-gray-400 font-medium">{t('not_enough_data')}</div>;
 
   const max = Math.max(1, ...series) * 1.1; // Add 10% headroom
   const stepX = w / (Math.max(series.length, 2) - 1);
@@ -117,7 +120,8 @@ const PremiumDonutChart = ({
   slices: { color: string; value: number; label: string }[];
   size?: number;
 }) => {
-  if (!slices.length) return <div className="text-gray-400">No data</div>;
+  const { t } = useTranslation();
+  if (!slices.length) return <div className="text-gray-400">{t('no_data')}</div>;
 
   const total = slices.reduce((s, x) => s + (x.value || 0), 0);
   let acc = 0;
@@ -160,7 +164,7 @@ const PremiumDonutChart = ({
         />
         {/* Inner Text */}
         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-          <span className="text-xs text-gray-400 font-medium uppercase tracking-widest">Total</span>
+          <span className="text-xs text-gray-400 font-medium uppercase tracking-widest">{t('total_label')}</span>
           <span className="text-lg font-bold text-gray-800">{currency(total)}</span>
         </div>
       </div>
@@ -211,6 +215,7 @@ const Modal: React.FC<{ open: boolean; title: string; onClose: () => void; child
 };
 
 const MyOfferingsOverview: React.FC = () => {
+  const { t } = useTranslation();
   const [view, setView] = useState<ViewMode>('basic');
   const [q, setQ] = useState('');
   const [dateRange, setDateRange] = useState<{ start: string; end: string }>(() => {
@@ -252,7 +257,7 @@ const MyOfferingsOverview: React.FC = () => {
       setRequestError(null);
       refetchMyCard && refetchMyCard();
     },
-    onError: (err) => setRequestError(err.message || 'Failed to submit request')
+    onError: (err) => setRequestError(err.message || t('submit_request_fail'))
   });
 
   const { data: streetsData } = useQuery(GET_STREETS_AND_GROUPS);
@@ -396,13 +401,13 @@ const MyOfferingsOverview: React.FC = () => {
                 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
                 className="text-3xl md:text-4xl font-extrabold tracking-tight flex items-center gap-3"
               >
-                <FaHandHoldingHeart className="text-green-200" /> My Offerings
+                <FaHandHoldingHeart className="text-green-200" /> {t('my_offerings_title')}
               </motion.h1>
               <motion.p
                 initial={{ opacity: 0 }} animate={{ opacity: 1 }} delay={0.1}
                 className="text-green-100 mt-2 text-lg font-light"
               >
-                Track your stewardship and faithfulness.
+                {t('track_stewardship')}
               </motion.p>
             </div>
 
@@ -414,11 +419,11 @@ const MyOfferingsOverview: React.FC = () => {
                   onClick={() => setRequestOpen(true)}
                   className="px-5 py-2.5 rounded-xl bg-white text-[#2f5c3a] font-bold shadow-lg hover:shadow-xl transition-all flex items-center gap-2 text-sm"
                 >
-                  <FaCreditCard /> Request Card
+                  <FaCreditCard /> {t('request_card')}
                 </motion.button>
               ) : (
                 <div className="px-4 py-2 rounded-xl bg-white/20 backdrop-blur border border-white/30 text-white text-sm font-medium flex items-center gap-2">
-                  {hasPendingApp ? <><FaExclamationTriangle className="text-amber-300" /> App Pending</> : <><FaCheckCircle className="text-green-300" /> Active Card</>}
+                  {hasPendingApp ? <><FaExclamationTriangle className="text-amber-300" /> {t('app_pending')}</> : <><FaCheckCircle className="text-green-300" /> {t('active_card')}</>}
                 </div>
               )}
             </div>
@@ -431,9 +436,9 @@ const MyOfferingsOverview: React.FC = () => {
         {/* KPI Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
           {[
-            { label: 'Total Given', value: currency(total), icon: <IoWalletOutline />, color: 'from-green-500 to-emerald-600', sub: 'Selected Period' },
-            { label: 'Transactions', value: mine.length, icon: <FaList />, color: 'from-blue-500 to-indigo-600', sub: 'Count' },
-            { label: 'Average', value: currency(avg), icon: <IoStatsChart />, color: 'from-amber-500 to-orange-600', sub: 'Per Offering' }
+            { label: t('total_given'), value: currency(total), icon: <IoWalletOutline />, color: 'from-green-500 to-emerald-600', sub: t('selected_period') },
+            { label: t('transactions'), value: mine.length, icon: <FaList />, color: 'from-blue-500 to-indigo-600', sub: t('count_label') },
+            { label: t('average_label'), value: currency(avg), icon: <IoStatsChart />, color: 'from-amber-500 to-orange-600', sub: t('per_offering') }
           ].map((stat, i) => (
             <motion.div
               key={stat.label}
@@ -458,8 +463,8 @@ const MyOfferingsOverview: React.FC = () => {
             {/* View Switcher */}
             <div className="bg-gray-100/80 p-1 rounded-xl flex w-full md:w-auto">
               {[
-                { id: 'basic', icon: <FaList />, label: 'Transactions' },
-                { id: 'analytics', icon: <FaChartLine />, label: 'Analytics' }
+                { id: 'basic', icon: <FaList />, label: t('transactions') },
+                { id: 'analytics', icon: <FaChartLine />, label: t('analytics_view') }
               ].map((v) => (
                 <button
                   key={v.id}
@@ -480,7 +485,7 @@ const MyOfferingsOverview: React.FC = () => {
                 <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm" />
                 <input
                   type="text"
-                  placeholder="Search..."
+                  placeholder={t('search_placeholder')}
                   value={q}
                   onChange={e => setQ(e.target.value)}
                   className="pl-9 pr-4 py-2 bg-gray-50 border-0 rounded-xl text-sm focus:ring-2 focus:ring-green-500/20 w-full"
@@ -516,17 +521,17 @@ const MyOfferingsOverview: React.FC = () => {
                 <table className="w-full text-left">
                   <thead>
                     <tr className="bg-gray-50/50 border-b border-gray-100 text-xs font-bold text-gray-500 uppercase tracking-wider">
-                      <th className="px-6 py-4">Date</th>
-                      <th className="px-6 py-4">Type</th>
-                      <th className="px-6 py-4 hidden sm:table-cell">Mass / Service</th>
+                      <th className="px-6 py-4">{t('date_label')}</th>
+                      <th className="px-6 py-4">{t('type')}</th>
+                      <th className="px-6 py-4 hidden sm:table-cell">{t('mass_service')}</th>
                       <th className="px-6 py-4 text-right">Amount</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-50">
                     {recentLoading ? (
-                      <tr><td colSpan={4} className="p-10 text-center text-gray-400">Loading...</td></tr>
+                      <tr><td colSpan={4} className="p-10 text-center text-gray-400">{t('loading')}</td></tr>
                     ) : paginatedData.length === 0 ? (
-                      <tr><td colSpan={4} className="p-10 text-center text-gray-400">No records found for this period.</td></tr>
+                      <tr><td colSpan={4} className="p-10 text-center text-gray-400">{t('no_records_period')}</td></tr>
                     ) : (
                       paginatedData.map((o) => (
                         <tr key={o.id} className="hover:bg-green-50/30 transition-colors group">
@@ -559,20 +564,20 @@ const MyOfferingsOverview: React.FC = () => {
               {/* Footer / Pagination */}
               <div className="px-6 py-4 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-4 bg-gray-50/30">
                 <span className="text-sm text-gray-500">
-                  Showing {paginatedData.length} of {mine.length} transactions
+                  {t('showing_transactions', { count: paginatedData.length, total: mine.length })}
                 </span>
                 <div className="flex gap-2">
                   <button
                     onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}
                     className="px-4 py-2 text-sm border bg-white rounded-lg disabled:opacity-50 hover:bg-gray-50"
                   >
-                    Previous
+                    {t('previous')}
                   </button>
                   <button
                     onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}
                     className="px-4 py-2 text-sm border bg-white rounded-lg disabled:opacity-50 hover:bg-gray-50"
                   >
-                    Next
+                    {t('next')}
                   </button>
                 </div>
               </div>
@@ -589,8 +594,8 @@ const MyOfferingsOverview: React.FC = () => {
               <div className="bg-white p-6 rounded-2xl shadow-xl shadow-green-900/5 border border-white lg:col-span-2">
                 <div className="mb-6 flex items-center justify-between">
                   <div>
-                    <h3 className="text-lg font-bold text-gray-800">Giving Trend</h3>
-                    <p className="text-sm text-gray-500">Last 6 Months History</p>
+                    <h3 className="text-lg font-bold text-gray-800">{t('giving_trend')}</h3>
+                    <p className="text-sm text-gray-500">{t('history_6_months')}</p>
                   </div>
                   <div className="p-2 bg-green-50 rounded-lg text-green-700"><FaChartLine /></div>
                 </div>
@@ -601,7 +606,7 @@ const MyOfferingsOverview: React.FC = () => {
 
               {/* Pie Chart Card */}
               <div className="bg-white p-6 rounded-2xl shadow-xl shadow-green-900/5 border border-white">
-                <h3 className="text-lg font-bold text-gray-800 mb-6">Distribution by Type</h3>
+                <h3 className="text-lg font-bold text-gray-800 mb-6">{t('distribution_type')}</h3>
                 <div className="flex justify-center py-4">
                   <PremiumDonutChart slices={typeSlices} />
                 </div>
@@ -612,17 +617,17 @@ const MyOfferingsOverview: React.FC = () => {
                 <div className="absolute top-0 right-0 p-12 bg-white opacity-5 rounded-full blur-3xl transform translate-x-10 -translate-y-10"></div>
                 <div className="absolute bottom-0 left-0 p-8 bg-black opacity-10 rounded-full blur-2xl transform -translate-x-4 translate-y-4"></div>
 
-                <h3 className="text-lg font-bold text-green-100 mb-6 flex items-center gap-2 relative z-10"><MdDashboard /> Quick Insights</h3>
+                <h3 className="text-lg font-bold text-green-100 mb-6 flex items-center gap-2 relative z-10"><MdDashboard /> {t('quick_insights')}</h3>
                 <div className="space-y-4 relative z-10">
                   <div className="flex items-center justify-between border-b border-green-700 pb-3">
-                    <span className="text-green-200 text-sm">Most Frequent</span>
+                    <span className="text-green-200 text-sm">{t('most_frequent')}</span>
                     <span className="font-semibold capitalize">{(() => {
                       const count = mine.reduce((acc, curr) => ({ ...acc, [curr.type]: (acc[curr.type] || 0) + 1 }), {} as Record<string, number>);
                       return Object.entries(count).sort((a, b) => b[1] - a[1])[0]?.[0] || '-';
                     })()}</span>
                   </div>
                   <div className="flex items-center justify-between border-b border-green-700 pb-3">
-                    <span className="text-green-200 text-sm">Top Month</span>
+                    <span className="text-green-200 text-sm">{t('top_month')}</span>
                     <span className="font-semibold">{(() => {
                       const max = Math.max(...monthlyTrendData.series);
                       const idx = monthlyTrendData.series.indexOf(max);
@@ -637,7 +642,7 @@ const MyOfferingsOverview: React.FC = () => {
       </main>
 
       {/* Offerings Request Modal */}
-      <Modal open={requestOpen} title="Request Offering Card" onClose={() => setRequestOpen(false)}>
+      <Modal open={requestOpen} title={t('request_offering_card')} onClose={() => setRequestOpen(false)}>
         <form onSubmit={async (e) => {
           e.preventDefault();
           await createApplication({
@@ -658,26 +663,26 @@ const MyOfferingsOverview: React.FC = () => {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-1">
-                <label className="text-xs font-bold text-gray-500 uppercase">Full Name</label>
+                <label className="text-xs font-bold text-gray-500 uppercase">{t('full_name')}</label>
                 <input className="w-full bg-gray-50 border-0 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-green-500" value={fullName} onChange={e => setFullName(e.target.value)} />
               </div>
               <div className="space-y-1">
-                <label className="text-xs font-bold text-gray-500 uppercase">Phone</label>
+                <label className="text-xs font-bold text-gray-500 uppercase">{t('phone_number')}</label>
                 <input className="w-full bg-gray-50 border-0 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-green-500" value={phoneNumber} onChange={e => setPhoneNumber(e.target.value)} />
               </div>
               <div className="space-y-1 md:col-span-2">
-                <label className="text-xs font-bold text-gray-500 uppercase">Street</label>
+                <label className="text-xs font-bold text-gray-500 uppercase">{t('street')}</label>
                 <select className="w-full bg-gray-50 border-0 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-green-500" value={streetId as any} onChange={e => setStreetId(e.target.value ? Number(e.target.value) : '')}>
-                  <option value="">Select your street...</option>
+                  <option value="">{t('select_street')}</option>
                   {streets.map((s: any) => <option key={s.id} value={s.id}>{s.name}</option>)}
                 </select>
               </div>
             </div>
 
             <div className="border-t border-gray-100 pt-4">
-              <h4 className="text-sm font-bold text-[#2f5c3a] mb-3">Pledges (Optional)</h4>
+              <h4 className="text-sm font-bold text-[#2f5c3a] mb-3">{t('pledges_optional')}</h4>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                {[{ l: 'Ahadi', v: pledgeAhadi, s: setPledgeAhadi }, { l: 'Shukrani', v: pledgeShukrani, s: setPledgeShukrani }, { l: 'Majengo', v: pledgeMajengo, s: setPledgeMajengo }].map((f, i) => (
+                {[{ l: t('ahadi'), v: pledgeAhadi, s: setPledgeAhadi }, { l: t('shukrani'), v: pledgeShukrani, s: setPledgeShukrani }, { l: t('majengo'), v: pledgeMajengo, s: setPledgeMajengo }].map((f, i) => (
                   <div key={i} className="space-y-1">
                     <label className="text-[10px] font-bold text-gray-400 uppercase">{f.l}</label>
                     <div className="relative">
@@ -691,13 +696,13 @@ const MyOfferingsOverview: React.FC = () => {
 
             {/* Number Preference with Suggestions */}
             <div className="bg-blue-50/50 p-4 rounded-xl border border-blue-100">
-              <label className="text-xs font-bold text-blue-800 uppercase mb-2 block">Preferred Card #</label>
+              <label className="text-xs font-bold text-blue-800 uppercase mb-2 block">{t('preferred_card_num')}</label>
               <div className="flex gap-2">
-                <input type="number" className="w-24 bg-white border-0 rounded-lg p-2 text-sm ring-1 ring-blue-200 focus:ring-2 focus:ring-blue-500" value={preferredNumber as any} onChange={e => setPreferredNumber(e.target.value ? Number(e.target.value) : '' as any)} placeholder="e.g 101" />
+                <input type="number" className="w-24 bg-white border-0 rounded-lg p-2 text-sm ring-1 ring-blue-200 focus:ring-2 focus:ring-blue-500" value={preferredNumber as any} onChange={e => setPreferredNumber(e.target.value ? Number(e.target.value) : '' as any)} placeholder={t('e_g_101')} />
                 {suggestionsData?.numberSuggestions && (
                   <div className="flex-1 flex flex-wrap gap-2 items-center text-xs">
                     {suggestionsData.numberSuggestions.exactAvailable ?
-                      <span className="text-green-600 font-medium flex items-center gap-1"><FaCheckCircle /> Available</span> :
+                      <span className="text-green-600 font-medium flex items-center gap-1"><FaCheckCircle /> {t('available_status')}</span> :
                       (suggestionsData.numberSuggestions.suggestions || []).map((s: any) => (
                         <button type="button" key={s.number} onClick={() => setPreferredNumber(s.number)} className="bg-white px-2 py-1 rounded shadow-sm hover:text-blue-600 border border-blue-100 transition">{s.number}</button>
                       ))
@@ -708,13 +713,13 @@ const MyOfferingsOverview: React.FC = () => {
             </div>
 
             <div className="text-xs text-gray-500 leading-relaxed bg-gray-50 p-3 rounded-lg">
-              By submitting this request, you confirm your details for the {new Date().getFullYear()} fiscal year. {windowStatus?.registrationWindowStatus?.isOpen && "Registration is currently OPEN."}
+              {t('submission_disclaimer', { year: new Date().getFullYear() })} {windowStatus?.registrationWindowStatus?.isOpen && t('reg_open')}
             </div>
 
             <div className="flex justify-end gap-3 pt-2">
-              <button type="button" onClick={() => setRequestOpen(false)} className="px-4 py-2 rounded-lg text-gray-600 hover:bg-gray-100 text-sm font-medium">Cancel</button>
+              <button type="button" onClick={() => setRequestOpen(false)} className="px-4 py-2 rounded-lg text-gray-600 hover:bg-gray-100 text-sm font-medium">{t('cancel')}</button>
               <button type="submit" disabled={requesting} className="px-6 py-2 rounded-lg bg-[#2f5c3a] text-white hover:bg-[#1f4229] shadow-lg shadow-green-900/10 text-sm font-bold transition-all">
-                {requesting ? 'Sending...' : 'Submit Request'}
+                {requesting ? t('sending') : t('submit_request')}
               </button>
             </div>
           </div>

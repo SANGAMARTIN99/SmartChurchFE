@@ -3,14 +3,17 @@ import {
   FaBullhorn, FaCalendarAlt, FaPlus, FaEdit, FaTrash, FaEye,
   FaSearch, FaFilter, FaClock, FaMapMarkerAlt, FaUsers, FaShare,
   FaExclamationCircle, FaInfoCircle, FaCheckCircle, FaTimes,
-  FaPaperclip, FaFilePdf, FaCloudUploadAlt, FaCalendarTimes, FaCheck
+  FaPaperclip, FaFilePdf, FaCloudUploadAlt, FaCalendarTimes, FaCheck,
+  FaThumbtack, FaBell, FaCalendarPlus
 } from 'react-icons/fa';
 import { motion, AnimatePresence } from 'framer-motion';
 import { format, isToday, isTomorrow, parseISO } from 'date-fns';
 import { useQuery, useMutation } from '@apollo/client';
+import { useTranslation } from 'react-i18next';
 import { GET_ANNOUNCEMENTS } from '../../api/queries';
 import { CREATE_ANNOUNCEMENT, UPDATE_ANNOUNCEMENT, DELETE_ANNOUNCEMENT } from '../../api/mutations';
 import { getAccessToken } from '../../utils/auth';
+import { ENDPOINT } from '../../api/environment';
 
 // --- Toast Component ---
 const Toast = ({ message, type, onClose }: { message: string, type: 'success' | 'error', onClose: () => void }) => {
@@ -45,6 +48,7 @@ interface Announcement {
   content: string;
   category: string;
   isPinned: boolean;
+  priority?: boolean; // Mapped from isPinned
   targetGroup: { id: string, name: string } | null;
   eventDate: string | null;
   eventTime: string | null;
@@ -65,6 +69,7 @@ interface Category {
 }
 
 const AnnouncementsPage = () => {
+  const { t } = useTranslation();
   const [activeView, setActiveView] = useState<'list' | 'create' | 'preview'>('list');
   const [selectedAnnouncement, setSelectedAnnouncement] = useState<Announcement | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -78,12 +83,28 @@ const AnnouncementsPage = () => {
   const [attachmentFile, setAttachmentFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
 
-  const categories: Category[] = [
-    { id: 'events', name: 'Events', color: '#5E936C', bgColor: '#F0F9F1', borderColor: '#E1F2E4', icon: <FaCalendarAlt /> },
-    { id: 'services', name: 'Service', color: '#4A90E2', bgColor: '#F0F7FF', borderColor: '#E1EFFF', icon: <FaInfoCircle /> },
-    { id: 'community', name: 'Community', color: '#F5A623', bgColor: '#FFF9F0', borderColor: '#FFF1E1', icon: <FaUsers /> },
-    { id: 'urgent', name: 'Urgent', color: '#E53E3E', bgColor: '#FFF5F5', borderColor: '#FED7D7', icon: <FaExclamationCircle /> },
-    { id: 'general', name: 'General', color: '#6B7280', bgColor: '#F9FAFB', borderColor: '#F3F4F6', icon: <FaBullhorn /> }
+  const [formData, setFormData] = useState({
+    title: '',
+    content: '',
+    category: 'general',
+    isPinned: false,
+    priority: false,
+    targetGroupId: '',
+    eventDate: '',
+    eventTime: '',
+    location: '',
+    expiresAt: '',
+    attachmentUrl: '',
+    pdfFile: null as File | null,
+    existingPdfUrl: ''
+  });
+
+  const categories = [
+    { id: 'general', icon: FaBullhorn, label: t('category_general'), color: 'bg-blue-100 text-blue-600' },
+    { id: 'events', icon: FaCalendarAlt, label: t('category_events'), color: 'bg-purple-100 text-purple-600' },
+    { id: 'service', icon: FaClock, label: t('category_service'), color: 'bg-orange-100 text-orange-600' },
+    { id: 'urgent', icon: FaExclamationCircle, label: t('category_urgent'), color: 'bg-red-100 text-red-600' },
+    { id: 'community', icon: FaUsers, label: t('category_community'), color: 'bg-green-100 text-green-600' },
   ];
 
   const { data, loading } = useQuery(GET_ANNOUNCEMENTS, {
@@ -104,18 +125,15 @@ const AnnouncementsPage = () => {
   const totalCount = data?.totalAnnouncements || 0;
   const totalPages = Math.ceil(totalCount / pageSize);
 
-  const [formData, setFormData] = useState({
-    title: '',
-    content: '',
-    category: 'general',
-    isPinned: false,
-    targetGroupId: '',
-    eventDate: '',
-    eventTime: '',
-    location: '',
-    expiresAt: '', // Date + Time string
-    attachmentUrl: ''
-  });
+  // Handlers and Mapped Variables
+  const isCreating = activeView === 'create';
+  const setIsCreating = (val: boolean) => {
+    if (!val) { resetForm(); }
+    setActiveView(val ? 'create' : 'list');
+  };
+  const editingId = selectedAnnouncement?.id;
+  const uploading = isUploading;
+  const publishing = creating || updating;
 
   // --- Handlers ---
   const showToast = (message: string, type: 'success' | 'error') => setToast({ message, type });
@@ -123,11 +141,19 @@ const AnnouncementsPage = () => {
   const resetForm = () => {
     setFormData({
       title: '', content: '', category: 'general', isPinned: false,
-      targetGroupId: '', eventDate: '', eventTime: '', location: '',
-      expiresAt: '', attachmentUrl: ''
+      priority: false, targetGroupId: '', eventDate: '', eventTime: '', location: '',
+      expiresAt: '', attachmentUrl: '', pdfFile: null, existingPdfUrl: ''
     });
     setAttachmentFile(null);
     setSelectedAnnouncement(null);
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setAttachmentFile(file);
+      setFormData(prev => ({ ...prev, pdfFile: file }));
+    }
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -210,7 +236,10 @@ const AnnouncementsPage = () => {
       eventTime: ann.eventTime || '',
       location: ann.location || '',
       expiresAt: ann.expiresAt ? format(parseISO(ann.expiresAt), "yyyy-MM-dd'T'HH:mm") : '', // Format for datetime-local
-      attachmentUrl: ann.attachmentUrl || ''
+      attachmentUrl: ann.attachmentUrl || '',
+      priority: ann.priority || false,
+      pdfFile: null,
+      existingPdfUrl: ann.attachmentUrl || ''
     });
     setActiveView('create');
   };
@@ -234,165 +263,247 @@ const AnnouncementsPage = () => {
 
       <div className="max-w-7xl mx-auto px-4 md:px-8 py-8 md:py-12">
         {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12">
-          <div>
-            <h1 className="text-4xl font-black text-[#1a3c2b] flex items-center gap-3">
-              Announcement Board
-            </h1>
-            <p className="text-gray-500 font-medium mt-2">Manage church communications and events</p>
-          </div>
-          <button
-            onClick={() => { resetForm(); setActiveView(activeView === 'create' ? 'list' : 'create'); }}
-            className={`px-8 py-4 rounded-2xl font-black text-sm uppercase tracking-widest transition-all shadow-xl flex items-center gap-3 ${activeView === 'create' ? 'bg-gray-200 text-gray-600' : 'bg-[#1a3c2b] text-white hover:bg-[#2d5c43] shadow-green-900/20'}`}
+        <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-6">
+          <motion.div
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
           >
-            {activeView === 'create' ? <><FaTimes /> Cancel</> : <><FaPlus /> New Announcement</>}
-          </button>
+            <h1 className="text-4xl font-extrabold text-[#1A2E1F] flex items-center gap-3">
+              <FaBullhorn className="text-[#5E936C]" />
+              {t('announcements_title')}
+            </h1>
+            <p className="text-gray-500 mt-2 font-medium">{t('announcements_subtitle')}</p>
+          </motion.div>
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => setIsCreating(true)}
+            className="px-6 py-3 bg-[#5E936C] text-white rounded-2xl font-bold shadow-lg shadow-[#5E936C]/20 hover:bg-[#1A2E1F] transition-all flex items-center gap-2"
+          >
+            <FaPlus /> {t('new_announcement_btn')}
+          </motion.button>
         </div>
 
-        {/* Content */}
-        <AnimatePresence mode="wait">
-          {activeView === 'create' ? (
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}>
-              <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                {/* Left: Main Content */}
-                <div className="lg:col-span-2 space-y-6">
-                  <div className="bg-white rounded-[2rem] p-8 shadow-sm border border-gray-100">
-                    <h3 className="font-bold text-[#1a3c2b] mb-6 flex items-center gap-2"><div className="w-1.5 h-5 bg-[#5E936C] rounded-full" /> Core Details</h3>
+        {/* Create/Edit Form */}
+        <AnimatePresence>
+          {(isCreating || editingId) && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              className="mb-12 overflow-hidden"
+            >
+              <div className="bg-white rounded-[2.5rem] shadow-xl border border-gray-100 p-8 relative overflow-hidden">
+                <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-[#5E936C] to-[#93DA97]"></div>
 
-                    <div className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-6">
+                  {/* Left Column: Inputs */}
+                  <div className="space-y-6">
+                    <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
+                      <FaEdit className="text-[#5E936C]" /> {t('core_details')}
+                    </h3>
+
+                    <div className="space-y-4">
                       <div>
-                        <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 block">Category</label>
+                        <label className="block text-sm font-bold text-gray-700 mb-2 ml-1">{t('category_label')}</label>
                         <div className="flex flex-wrap gap-2">
-                          {categories.map(cat => (
-                            <button type="button" key={cat.id} onClick={() => setFormData(prev => ({ ...prev, category: cat.id }))} className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all border ${formData.category === cat.id ? `bg-[${cat.bgColor}] border-[${cat.borderColor}] ring-2 ring-offset-1` : 'bg-gray-50 border-gray-100 text-gray-400'}`} style={{ backgroundColor: formData.category === cat.id ? cat.bgColor : undefined, color: formData.category === cat.id ? cat.color : undefined, borderColor: formData.category === cat.id ? cat.borderColor : undefined }}>
-                              {cat.name}
+                          {['events', 'services', 'community', 'urgent', 'general'].map(cat => (
+                            <button
+                              type="button"
+                              key={cat}
+                              onClick={() => setFormData({ ...formData, category: cat })}
+                              className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all ${formData.category === cat
+                                ? 'bg-[#5E936C] text-white shadow-md'
+                                : 'bg-gray-50 text-gray-500 hover:bg-[#E8FFD7] hover:text-[#5E936C]'
+                                }`}
+                            >
+                              {t(`category_${cat}`)}
                             </button>
                           ))}
                         </div>
                       </div>
 
                       <div>
-                        <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 block">Headline Title</label>
-                        <input name="title" value={formData.title} onChange={handleInputChange} placeholder="e.g. Sunday Service Time Change" className="w-full px-6 py-4 bg-gray-50 rounded-2xl border-none focus:ring-2 focus:ring-[#5E936C] outline-none text-lg font-bold text-[#1a3c2b]" required />
+                        <label className="block text-sm font-bold text-gray-700 mb-2 ml-1">{t('headline_title')}</label>
+                        <input
+                          type="text"
+                          value={formData.title}
+                          onChange={e => setFormData({ ...formData, title: e.target.value })}
+                          className="w-full p-4 bg-gray-50 rounded-2xl border-none focus:ring-2 focus:ring-[#5E936C] font-bold text-gray-800 placeholder-gray-300"
+                          placeholder={t('enter_title_placeholder')}
+                        />
                       </div>
 
                       <div>
-                        <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 block">Message Content</label>
-                        <textarea name="content" value={formData.content} onChange={handleInputChange} rows={6} placeholder="Write your announcement details here..." className="w-full px-6 py-4 bg-gray-50 rounded-2xl border-none focus:ring-2 focus:ring-[#5E936C] outline-none font-medium text-gray-600 resize-none" required />
+                        <label className="block text-sm font-bold text-gray-700 mb-2 ml-1">{t('message_content')}</label>
+                        <textarea
+                          value={formData.content}
+                          onChange={e => setFormData({ ...formData, content: e.target.value })}
+                          className="w-full p-4 bg-gray-50 rounded-2xl border-none focus:ring-2 focus:ring-[#5E936C] font-medium text-gray-600 placeholder-gray-300 h-32 resize-none"
+                          placeholder={t('content_placeholder')}
+                        />
                       </div>
                     </div>
                   </div>
 
-                  <div className="bg-white rounded-[2rem] p-8 shadow-sm border border-gray-100">
-                    <h3 className="font-bold text-[#1a3c2b] mb-6 flex items-center gap-2"><div className="w-1.5 h-5 bg-[#5E936C] rounded-full" /> Attachments & Metadata</h3>
+                  {/* Right Column: Meta & Actions */}
+                  <div className="space-y-6">
+                    <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
+                      <FaCalendarPlus className="text-[#5E936C]" /> {t('attachments_metadata')}
+                    </h3>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      {/* PDF Upload */}
-                      <div className="bg-gray-50 rounded-2xl p-6 border border-gray-100 border-dashed">
-                        <label className="flex flex-col items-center justify-center cursor-pointer h-full">
-                          <FaFilePdf className={`text-4xl mb-3 ${attachmentFile || formData.attachmentUrl ? 'text-red-500' : 'text-gray-300'}`} />
-                          <span className="text-sm font-bold text-gray-600">{attachmentFile ? attachmentFile.name : formData.attachmentUrl ? 'PDF Attached (Click to Change)' : 'Attach PDF Document'}</span>
-                          <input type="file" accept=".pdf" className="hidden" onChange={(e) => { if (e.target.files?.[0]) setAttachmentFile(e.target.files[0]); }} />
-                        </label>
-                      </div>
-
-                      {/* Expiration */}
-                      <div>
-                        <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 block">Auto-Expire At</label>
-                        <div className="relative">
-                          <FaCalendarTimes className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
-                          <input type="datetime-local" name="expiresAt" value={formData.expiresAt} onChange={handleInputChange} className="w-full pl-10 pr-4 py-4 bg-gray-50 rounded-2xl border-none focus:ring-2 focus:ring-[#5E936C] font-bold text-gray-700" />
-                        </div>
-                        <p className="text-[10px] text-gray-400 mt-2 ml-1">Announcement effectively disappears after this time.</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Right: Event Details & Push */}
-                <div className="space-y-6">
-                  <div className="bg-white rounded-[2rem] p-8 shadow-sm border border-gray-100">
-                    <h3 className="font-bold text-[#1a3c2b] mb-6 flex items-center gap-2"><div className="w-1.5 h-5 bg-[#5E936C] rounded-full" /> Event Details (Optional)</h3>
-                    <div className="space-y-4">
-                      <div>
-                        <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 block">Date</label>
-                        <input type="date" name="eventDate" value={formData.eventDate} onChange={handleInputChange} className="w-full px-5 py-3 bg-gray-50 rounded-xl font-bold text-gray-700" />
-                      </div>
-                      <div>
-                        <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 block">Time</label>
-                        <input type="time" name="eventTime" value={formData.eventTime} onChange={handleInputChange} className="w-full px-5 py-3 bg-gray-50 rounded-xl font-bold text-gray-700" />
-                      </div>
-                      <div>
-                        <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 block">Location</label>
-                        <div className="relative">
-                          <FaMapMarkerAlt className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
-                          <input type="text" name="location" value={formData.location} onChange={handleInputChange} placeholder="e.g. Main Hall" className="w-full pl-10 pr-4 py-3 bg-gray-50 rounded-xl font-bold text-gray-700" />
+                    <div className="bg-[#F7FCF5] p-6 rounded-[2rem] space-y-4 border border-[#E8FFD7]">
+                      {/* File Upload */}
+                      <div className="relative group">
+                        <input
+                          type="file"
+                          accept=".pdf"
+                          onChange={handleFileChange}
+                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                        />
+                        <div className={`p-4 rounded-2xl border-2 border-dashed transition-all flex items-center justify-center gap-3 ${formData.pdfFile || formData.existingPdfUrl
+                          ? 'border-[#5E936C] bg-[#E8FFD7]/50 text-[#5E936C]'
+                          : 'border-gray-200 bg-white text-gray-400 group-hover:border-[#5E936C] group-hover:text-[#5E936C]'
+                          }`}>
+                          <FaFilePdf className="text-xl" />
+                          <span className="font-bold text-sm">
+                            {formData.pdfFile ? formData.pdfFile.name : (formData.existingPdfUrl ? t('pdf_attached_change') : t('attach_pdf_doc'))}
+                          </span>
                         </div>
                       </div>
-                    </div>
-                  </div>
 
-                  <div className="bg-[#E8FFD7] rounded-[2rem] p-8">
-                    <div className="flex items-center gap-3 mb-4">
-                      <input type="checkbox" name="isPinned" checked={formData.isPinned} onChange={handleInputChange} className="w-5 h-5 text-[#5E936C] rounded focus:ring-[#5E936C]" />
-                      <label className="font-bold text-[#1a3c2b]">Pin to Top</label>
-                    </div>
-                    <button type="submit" disabled={isUploading || creating || updating} className="w-full py-4 bg-[#1a3c2b] text-white rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-[#2d5c43] shadow-lg shadow-green-900/10 flex items-center justify-center gap-2">
-                      {isUploading ? 'Uploading...' : creating || updating ? 'Publishing...' : <><FaCheckCircle /> {selectedAnnouncement ? 'Save Changes' : 'Publish Now'}</>}
-                    </button>
-                  </div>
-                </div>
-
-              </form>
-            </motion.div>
-          ) : (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-8">
-              {/* Filters */}
-              <div className="flex overflow-x-auto pb-4 gap-2 scrollbar-hide">
-                <button onClick={() => setSelectedCategory('all')} className={`px-5 py-2 rounded-xl text-xs font-black uppercase tracking-wider whitespace-nowrap transition-all ${selectedCategory === 'all' ? 'bg-[#1a3c2b] text-white' : 'bg-white text-gray-500 hover:bg-gray-100'}`}>All Posts</button>
-                {categories.map(cat => (
-                  <button key={cat.id} onClick={() => setSelectedCategory(cat.id)} style={{ color: selectedCategory === cat.id ? 'white' : cat.color, backgroundColor: selectedCategory === cat.id ? cat.color : 'white' }} className={`px-5 py-2 rounded-xl text-xs font-black uppercase tracking-wider whitespace-nowrap transition-all shadow-sm`}>
-                    {cat.name}
-                  </button>
-                ))}
-              </div>
-
-              {/* Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {announcements.map((ann, idx) => {
-                  const cat = getCategoryInfo(ann.category);
-                  return (
-                    <div key={ann.id} className="bg-white rounded-[2rem] p-8 shadow-sm border border-gray-100 relative group hover:shadow-xl transition-all h-full flex flex-col">
-                      {ann.isPinned && <div className="absolute top-6 right-6 text-amber-500 bg-amber-50 p-2 rounded-lg text-lg"><FaPaperclip /></div>}
-                      <div className="flex items-center gap-3 mb-4">
-                        <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: cat.bgColor, color: cat.color }}>{cat.icon}</div>
-                        <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">{cat.name}</span>
+                      {/* Expiry Date */}
+                      <div>
+                        <label className="block text-xs font-bold text-gray-500 mb-2 uppercase tracking-wide">{t('auto_expire_at')}</label>
+                        <input
+                          type="datetime-local"
+                          value={formData.expiresAt}
+                          onChange={e => setFormData({ ...formData, expiresAt: e.target.value })}
+                          className="w-full p-3 bg-white rounded-xl border border-gray-200 text-sm font-bold text-gray-700 focus:outline-none focus:border-[#5E936C]"
+                        />
+                        <p className="text-[10px] text-gray-400 mt-1 pl-1">{t('auto_expire_desc')}</p>
                       </div>
-                      <h3 className="text-xl font-bold text-[#1a3c2b] mb-3 leading-tight">{ann.title}</h3>
-                      <p className="text-gray-500 text-sm line-clamp-3 mb-6 flex-1">{ann.content}</p>
 
-                      {(ann.attachmentUrl) && (
-                        <div className="mb-6">
-                          <a href={ann.attachmentUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 p-3 bg-red-50 text-red-600 rounded-xl text-xs font-bold hover:bg-red-100 transition">
-                            <FaFilePdf /> View Attachment
-                          </a>
-                        </div>
+                      {/* Event Details (Optional) */}
+                      {formData.category === 'events' && (
+                        <motion.div
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: 'auto' }}
+                          exit={{ opacity: 0, height: 0 }}
+                          className="animate-fade-in space-y-3 pt-2 border-t border-gray-100 overflow-hidden"
+                        >
+                          <p className="text-[10px] uppercase font-black text-[#5E936C] tracking-widest">{t('event_details_opt')}</p>
+                          <div className="grid grid-cols-2 gap-2">
+                            <input type="date" value={formData.eventDate} onChange={e => setFormData({ ...formData, eventDate: e.target.value })} className="p-2 bg-white rounded-lg text-xs font-bold border border-gray-200" placeholder={t('date_label')} />
+                            <input type="time" value={formData.eventTime} onChange={e => setFormData({ ...formData, eventTime: e.target.value })} className="p-2 bg-white rounded-lg text-xs font-bold border border-gray-200" placeholder={t('time_label')} />
+                          </div>
+                          <input type="text" value={formData.location} onChange={e => setFormData({ ...formData, location: e.target.value })} className="w-full p-2 bg-white rounded-lg text-xs font-bold border border-gray-200" placeholder={t('location_label')} />
+                        </motion.div>
                       )}
+                    </div>
 
-                      <div className="pt-6 border-t border-gray-50 flex items-center justify-between">
-                        <span className="text-xs font-bold text-gray-400">{format(parseISO(ann.createdAt), 'MMM dd')}</span>
-                        <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <button onClick={() => handleEdit(ann)} className="w-8 h-8 rounded-full bg-gray-100 text-gray-600 flex items-center justify-center hover:bg-[#5E936C] hover:text-white"><FaEdit /></button>
-                          <button onClick={() => handleDelete(ann.id)} className="w-8 h-8 rounded-full bg-red-50 text-red-500 flex items-center justify-center hover:bg-red-500 hover:text-white"><FaTrash /></button>
-                        </div>
+                    <div className="flex items-center justify-between pt-2">
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={formData.priority}
+                          onChange={e => setFormData({ ...formData, priority: e.target.checked })}
+                          className="w-5 h-5 rounded text-[#5E936C] focus:ring-[#5E936C]"
+                        />
+                        <span className="text-sm font-bold text-gray-700">{t('pin_to_top')}</span>
+                      </label>
+
+                      <div className="flex gap-3">
+                        <button
+                          onClick={resetForm}
+                          className="px-4 py-2 text-gray-400 font-bold hover:text-gray-600"
+                        >
+                          {t('cancel_btn')}
+                        </button>
+                        <button
+                          onClick={handleSubmit}
+                          disabled={uploading || publishing}
+                          className="px-6 py-2 bg-[#1A2E1F] text-white rounded-xl font-bold hover:bg-[#5E936C] transition-all disabled:opacity-50 flex items-center gap-2"
+                        >
+                          {uploading ? t('uploading') : (publishing ? t('publishing_btn') : (editingId ? t('save_changes') : t('publish_now_btn')))}
+                        </button>
                       </div>
                     </div>
-                  );
-                })}
+                  </div>
+                </div>
               </div>
             </motion.div>
           )}
         </AnimatePresence>
+
+        {/* List */}
+        <div className="space-y-6">
+          <h2 className="text-xl font-black text-[#1A2E1F] flex items-center gap-2">
+            <FaThumbtack className="text-[#5E936C]" /> {t('all_posts')}
+          </h2>
+
+          {loading ? (
+            <div className="text-center py-12 text-gray-400">{t('loading_yours')}</div>
+          ) : (
+            <div className="grid gap-6">
+              {(data?.announcements || []).map((ann: any) => (
+                <motion.div
+                  key={ann.id}
+                  layout
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className={`bg-white rounded-[2rem] p-6 shadow-sm border border-gray-100 relative group overflow-hidden ${ann.priority ? 'ring-2 ring-[#5E936C]/20' : ''}`}
+                >
+                  {ann.priority && (
+                    <div className="absolute top-0 right-0 bg-[#5E936C] text-white px-4 py-1 rounded-bl-2xl text-[10px] font-black uppercase tracking-widest">
+                      {t('pin_to_top')}
+                    </div>
+                  )}
+
+                  <div className="flex justify-between items-start z-10 relative">
+                    <div className="flex items-start gap-4">
+                      <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-2xl shadow-inner ${ann.category === 'urgent' ? 'bg-red-100 text-red-500' :
+                        ann.category === 'events' ? 'bg-purple-100 text-purple-500' :
+                          'bg-[#E8FFD7] text-[#5E936C]'
+                        }`}>
+                        {ann.category === 'urgent' ? <FaBell /> : ann.category === 'events' ? <FaCalendarAlt /> : <FaBullhorn />}
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-3 mb-1">
+                          <span className="text-[10px] font-black uppercase tracking-widest text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">{t(`category_${ann.category}`)}</span>
+                          <span className="text-xs font-bold text-gray-300">{new Date(ann.createdAt).toLocaleDateString()}</span>
+                        </div>
+                        <h3 className="text-lg font-bold text-[#1A2E1F]">{ann.title}</h3>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button onClick={() => handleEdit(ann)} className="p-2 bg-gray-50 text-gray-400 rounded-xl hover:bg-[#E8FFD7] hover:text-[#5E936C] transition-colors"><FaEdit /></button>
+                      <button onClick={() => handleDelete(ann.id)} className="p-2 bg-gray-50 text-gray-400 rounded-xl hover:bg-red-50 hover:text-red-500 transition-colors"><FaTrash /></button>
+                    </div>
+                  </div>
+
+                  <p className="mt-4 text-gray-600 leading-relaxed pl-[4.5rem] pr-8 line-clamp-2">
+                    {ann.content}
+                  </p>
+
+                  {ann.attachmentUrl && (
+                    <div className="mt-4 pl-[4.5rem]">
+                      <a
+                        href={ann.attachmentUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gray-50 text-gray-600 text-xs font-bold hover:bg-[#E8FFD7] hover:text-[#5E936C] transition-colors"
+                      >
+                        <FaFilePdf /> {t('view_attachment')}
+                      </a>
+                    </div>
+                  )}
+                </motion.div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

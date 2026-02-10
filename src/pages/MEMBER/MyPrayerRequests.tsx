@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { useQuery, useMutation } from '@apollo/client';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useTranslation } from 'react-i18next';
 import {
   FaPrayingHands, FaUsers, FaUserTie, FaUserFriends, FaShareAlt,
   FaPlus, FaLock, FaUnlock, FaHistory, FaExclamationCircle, FaCheckCircle, FaPaperPlane
@@ -20,15 +21,9 @@ type PrayerItem = {
 type RecipientKey = 'PASTOR' | 'ASSISTANT_PASTOR' | 'EVANGELIST' | 'PRAYER_TEAM' | 'MEMBER';
 type RecipientOption = { key: RecipientKey; label: string; icon: React.ReactNode; description: string };
 
-const recipientOptions: RecipientOption[] = [
-  { key: 'PASTOR', label: 'Pastor', icon: <FaUserTie />, description: 'Send directly to the Pastor' },
-  { key: 'ASSISTANT_PASTOR', label: 'Assistant Pastor', icon: <FaUserTie />, description: 'Send to the Assistant Pastor' },
-  { key: 'EVANGELIST', label: 'Evangelist', icon: <FaUserFriends />, description: 'Reach out to the Evangelist team' },
-  { key: 'PRAYER_TEAM', label: 'Prayer Team', icon: <FaUsers />, description: 'Share with the dedicated prayer team' },
-  { key: 'MEMBER', label: 'Specific Member', icon: <FaUsers />, description: 'Connect with a specific member' },
-];
 
 const MyPrayerRequests: React.FC = () => {
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<'compose' | 'mine' | 'community'>('compose');
   const [text, setText] = useState('');
   const [isPublic, setIsPublic] = useState(false);
@@ -61,6 +56,14 @@ const MyPrayerRequests: React.FC = () => {
   const myPrayers = useMemo(() => (myName ? prayers.filter((p) => p.member === myName) : []), [prayers, myName]);
   const communityPrayers = useMemo(() => (myName ? prayers.filter((p) => p.member !== myName) : prayers), [prayers, myName]);
 
+  const recipientOptions: RecipientOption[] = [
+    { key: 'PASTOR', label: t('recip_pastor'), icon: <FaUserTie />, description: t('recip_pastor_desc') },
+    { key: 'ASSISTANT_PASTOR', label: t('recip_assistant'), icon: <FaUserTie />, description: t('recip_assistant_desc') },
+    { key: 'EVANGELIST', label: t('recip_evangelist'), icon: <FaUserFriends />, description: t('recip_evangelist_desc') },
+    { key: 'PRAYER_TEAM', label: t('recip_prayer_team'), icon: <FaUsers />, description: t('recip_prayer_team_desc') },
+    { key: 'MEMBER', label: t('recip_member'), icon: <FaUsers />, description: t('recip_member_desc') },
+  ];
+
   const resetForm = () => {
     setText('');
     setIsPublic(false);
@@ -73,14 +76,15 @@ const MyPrayerRequests: React.FC = () => {
     setSubmitError(null);
     setSubmitSuccess(null);
     if (!myId) {
-      setSubmitError('You must be signed in to send a prayer request.');
+      setSubmitError(t('signin_required'));
       return;
     }
     if (!text.trim()) {
-      setSubmitError('Please write your prayer first.');
+      setSubmitError(t('write_prayer_error'));
       return;
     }
 
+    // Note: The composed text is internal for now, if backend supports separate fields, we should use them
     const composed = `[To: ${recipient}${recipient === 'MEMBER' && specificMember ? ` (${specificMember})` : ''}]\n${text}`;
 
     setSubmitting(true);
@@ -94,11 +98,11 @@ const MyPrayerRequests: React.FC = () => {
           },
         },
       });
-      setSubmitSuccess('Prayer sent successfully.');
+      setSubmitSuccess(t('prayer_sent_success'));
       resetForm();
       setActiveTab('mine');
     } catch (err: any) {
-      const msg = err?.message || 'Failed to send prayer.';
+      const msg = err?.message || t('fail_send_prayer');
       setSubmitError(msg);
     } finally {
       setSubmitting(false);
@@ -210,10 +214,10 @@ const MyPrayerRequests: React.FC = () => {
           >
             <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-white tracking-tight drop-shadow-sm flex items-center gap-3">
               <FaPrayingHands className="text-green-200 opacity-90" />
-              Prayer Requests
+              {t('prayer_requests_title')}
             </h1>
             <p className="text-green-100 text-lg mt-2 max-w-2xl font-light">
-              Share your burdens, celebrate your victories, and join in prayer with your community.
+              {t('prayer_requests_subtitle')}
             </p>
           </motion.div>
         </main>
@@ -227,9 +231,9 @@ const MyPrayerRequests: React.FC = () => {
             {/* Tabs */}
             <div className="flex gap-2 mb-6 overflow-x-auto pb-2 scrollbar-hide">
               {[
-                { id: 'compose', label: 'Compose New', icon: <FaPlus /> },
-                { id: 'mine', label: 'My Prayers', icon: <FaHistory /> },
-                { id: 'community', label: 'Community', icon: <FaShareAlt /> },
+                { id: 'compose', label: t('compose_new'), icon: <FaPlus /> },
+                { id: 'mine', label: t('my_prayers'), icon: <FaHistory /> },
+                { id: 'community', label: t('community_prayers'), icon: <FaShareAlt /> },
               ].map((tab) => (
                 <button
                   key={tab.id}
@@ -268,7 +272,7 @@ const MyPrayerRequests: React.FC = () => {
                   <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between bg-gradient-to-r from-green-50/50 to-transparent">
                     <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2">
                       <span className="w-8 h-8 rounded-lg bg-green-100 text-green-700 flex items-center justify-center text-sm"><FaPaperPlane /></span>
-                      New Prayer Request
+                      {t('new_request_title')}
                     </h2>
                   </div>
 
@@ -282,21 +286,21 @@ const MyPrayerRequests: React.FC = () => {
                           onClick={() => setIsPublic(false)}
                           className={`relative z-10 px-4 py-1.5 text-xs font-semibold rounded-md transition-colors ${!isPublic ? 'text-gray-800' : 'text-gray-500'}`}
                         >
-                          <span className="flex items-center gap-1.5"><FaLock size={10} /> Private</span>
+                          <span className="flex items-center gap-1.5"><FaLock size={10} /> {t('private_label')}</span>
                         </button>
                         <button
                           type="button"
                           onClick={() => setIsPublic(true)}
                           className={`relative z-10 px-4 py-1.5 text-xs font-semibold rounded-md transition-colors ${isPublic ? 'text-green-700' : 'text-gray-500'}`}
                         >
-                          <span className="flex items-center gap-1.5"><FaUnlock size={10} /> Public</span>
+                          <span className="flex items-center gap-1.5"><FaUnlock size={10} /> {t('public_label')}</span>
                         </button>
                       </div>
                     </div>
 
                     {/* Recipient Grid */}
                     <div className="mb-8">
-                      <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Send To</label>
+                      <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">{t('send_to_label')}</label>
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                         {recipientOptions.map((opt) => (
                           <button
@@ -329,20 +333,20 @@ const MyPrayerRequests: React.FC = () => {
                             value={specificMember}
                             onChange={(e) => setSpecificMember(e.target.value)}
                             className="w-full p-4 bg-gray-50 border-0 rounded-xl focus:ring-2 focus:ring-green-500/20 focus:bg-white transition-all text-sm placeholder:text-gray-400"
-                            placeholder="Enter the specific member's name..."
+                            placeholder={t('enter_member_name')}
                           />
                         </motion.div>
                       )}
                     </div>
 
                     <div className="mb-6">
-                      <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Your Prayer</label>
+                      <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">{t('your_prayer_label')}</label>
                       <textarea
                         value={text}
                         onChange={(e) => setText(e.target.value)}
                         rows={6}
                         className="w-full p-4 text-gray-700 bg-gray-50 border-0 rounded-xl focus:ring-2 focus:ring-green-500/20 focus:bg-white transition-all resize-none placeholder:text-gray-400"
-                        placeholder="Pour out your heart here..."
+                        placeholder={t('prayer_placeholder')}
                       />
                     </div>
 
@@ -372,7 +376,7 @@ const MyPrayerRequests: React.FC = () => {
                           }
                          `}
                       >
-                        {submitting ? 'Sending...' : 'Send Prayer'}
+                        {submitting ? t('sending_btn') : t('send_prayer_btn')}
                       </button>
                     </div>
                   </form>
@@ -382,11 +386,11 @@ const MyPrayerRequests: React.FC = () => {
               {activeTab === 'mine' && (
                 <div className="bg-white/50 backdrop-blur-sm rounded-2xl p-1">
                   {prayersLoading ? (
-                    <div className="p-12 text-center text-gray-400">Loading your prayers...</div>
+                    <div className="p-12 text-center text-gray-400">{t('loading_yours')}</div>
                   ) : prayersError ? (
-                    <div className="p-12 text-center text-red-400">Unable to load prayers.</div>
+                    <div className="p-12 text-center text-red-400">{t('error_yours')}</div>
                   ) : (
-                    <PrayerList items={myPrayers} emptyLabel="You haven't shared any prayers yet." />
+                    <PrayerList items={myPrayers} emptyLabel={t('empty_yours')} />
                   )}
                 </div>
               )}
@@ -394,11 +398,11 @@ const MyPrayerRequests: React.FC = () => {
               {activeTab === 'community' && (
                 <div className="bg-white/50 backdrop-blur-sm rounded-2xl p-1">
                   {prayersLoading ? (
-                    <div className="p-12 text-center text-gray-400">Loading community prayers...</div>
+                    <div className="p-12 text-center text-gray-400">{t('loading_community')}</div>
                   ) : prayersError ? (
-                    <div className="p-12 text-center text-red-400">Unable to load community prayers.</div>
+                    <div className="p-12 text-center text-red-400">{t('error_community')}</div>
                   ) : (
-                    <PrayerList items={communityPrayers} emptyLabel="No community prayers to show." />
+                    <PrayerList items={communityPrayers} emptyLabel={t('empty_community')} />
                   )}
                 </div>
               )}
@@ -412,12 +416,12 @@ const MyPrayerRequests: React.FC = () => {
               animate={{ opacity: 1, x: 0 }}
               className="bg-white rounded-2xl shadow-xl shadow-green-900/5 p-6 border border-white"
             >
-              <h2 className="text-sm font-bold text-gray-400 uppercase tracking-widest mb-4">Tips for Sharing</h2>
+              <h2 className="text-sm font-bold text-gray-400 uppercase tracking-widest mb-4">{t('tips_title')}</h2>
               <ul className="space-y-4">
                 {[
-                  { text: 'Keep it clear and concise.', color: 'bg-blue-100 text-blue-600' },
-                  { text: 'Use "Private" for sensitive matters.', color: 'bg-amber-100 text-amber-600' },
-                  { text: 'Be specific so we can pray effectively.', color: 'bg-green-100 text-green-600' }
+                  { text: t('tip_concise'), color: 'bg-blue-100 text-blue-600' },
+                  { text: t('tip_private'), color: 'bg-amber-100 text-amber-600' },
+                  { text: t('tip_specific'), color: 'bg-green-100 text-green-600' }
                 ].map((tip, i) => (
                   <li key={i} className="flex items-start gap-3 text-sm text-gray-600">
                     <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5 ${tip.color}`}>{i + 1}</span>
@@ -436,15 +440,15 @@ const MyPrayerRequests: React.FC = () => {
               {/* Pattern overlay */}
               <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(circle, #ffffff 1px, transparent 1px)', backgroundSize: '16px 16px' }}></div>
 
-              <h2 className="text-sm font-bold text-green-200 uppercase tracking-widest mb-4 relative z-10">Prayer Stats</h2>
+              <h2 className="text-sm font-bold text-green-200 uppercase tracking-widest mb-4 relative z-10">{t('prayer_stats_title')}</h2>
               <div className="grid grid-cols-2 gap-4 relative z-10">
                 <div className="bg-white/10 backdrop-blur-md rounded-xl p-4 text-center border border-white/10">
                   <div className="text-3xl font-bold">{myPrayers.length}</div>
-                  <div className="text-[10px] text-green-200 uppercase tracking-wider mt-1">My Prayers</div>
+                  <div className="text-[10px] text-green-200 uppercase tracking-wider mt-1">{t('my_prayers')}</div>
                 </div>
                 <div className="bg-white/10 backdrop-blur-md rounded-xl p-4 text-center border border-white/10">
                   <div className="text-3xl font-bold">{prayers.length}</div>
-                  <div className="text-[10px] text-green-200 uppercase tracking-wider mt-1">Total Active</div>
+                  <div className="text-[10px] text-green-200 uppercase tracking-wider mt-1">{t('total_active_label')}</div>
                 </div>
               </div>
             </motion.div>

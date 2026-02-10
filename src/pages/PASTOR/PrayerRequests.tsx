@@ -113,9 +113,9 @@ const PrayerRequests = () => {
           >
             <h1 className="text-4xl font-extrabold text-[#1A2E1F] flex items-center gap-3">
               <FaPray className="text-[#5E936C]" />
-              {t('PrayerRequests')}
+              {t('prayer_requests_title')}
             </h1>
-            <p className="text-gray-500 mt-2 font-medium">Interceding for the flock with love and faithfulness ({totalCount} requests).</p>
+            <p className="text-gray-500 mt-2 font-medium">{t('interceding_message', { count: totalCount })}</p>
           </motion.div>
         </div>
 
@@ -125,7 +125,7 @@ const PrayerRequests = () => {
             <FaSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
             <input
               type="text"
-              placeholder="Search by name or request content..."
+              placeholder={t('search_placeholder_prayer')}
               className="w-full pl-12 pr-4 py-3 bg-gray-50 rounded-2xl focus:ring-2 focus:ring-[#5E936C] border-none text-gray-700 placeholder-gray-400"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -139,11 +139,11 @@ const PrayerRequests = () => {
                   key={f}
                   onClick={() => setStatusFilter(f)}
                   className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${statusFilter === f
-                      ? 'bg-[#5E936C] text-white shadow-md'
-                      : 'text-gray-500 hover:text-[#5E936C]'
+                    ? 'bg-[#5E936C] text-white shadow-md'
+                    : 'text-gray-500 hover:text-[#5E936C]'
                     }`}
                 >
-                  {f === '' ? 'All' : t(f.toLowerCase())}
+                  {f === '' ? t('filter_all') : t(f.toLowerCase())}
                 </button>
               ))}
             </div>
@@ -154,12 +154,12 @@ const PrayerRequests = () => {
         {loading ? (
           <div className="flex flex-col items-center justify-center py-20">
             <div className="animate-spin rounded-full h-12 w-12 border-4 border-[#5E936C] border-t-transparent"></div>
-            <p className="mt-4 text-gray-500 animate-pulse font-medium">Seeking heavens for requests...</p>
+            <p className="mt-4 text-gray-500 animate-pulse font-medium">{t('seeking_heavens')}</p>
           </div>
         ) : requests.length === 0 ? (
           <div className="text-center py-20 bg-white rounded-3xl border-2 border-dashed border-gray-200">
             <FaPray className="text-6xl text-gray-200 mx-auto mb-4" />
-            <p className="text-gray-400 text-lg font-medium">No prayer requests found matching your filters.</p>
+            <p className="text-gray-400 text-lg font-medium">{t('no_requests_found')}</p>
           </div>
         ) : (
           <>
@@ -206,10 +206,10 @@ const PrayerRequests = () => {
                     <div className="flex items-center justify-between pt-4 border-t border-gray-50 relative z-10">
                       <div className="flex items-center gap-1 text-gray-400 text-xs font-semibold">
                         <FaCommentDots className="text-[#5E936C]" />
-                        {pr.replies?.length || 0} Replies
+                        {pr.replies?.length || 0} {t('replies_label')}
                       </div>
                       <button className="flex items-center gap-1 text-[#5E936C] text-xs font-bold hover:gap-2 transition-all">
-                        Respond <FaChevronRight className="text-[10px]" />
+                        {t('respond_label')} <FaChevronRight className="text-[10px]" />
                       </button>
                     </div>
                   </motion.div>
@@ -234,8 +234,8 @@ const PrayerRequests = () => {
                       key={p}
                       onClick={() => setCurrentPage(p)}
                       className={`w-12 h-12 rounded-2xl font-bold transition-all ${currentPage === p
-                          ? 'bg-[#5E936C] text-white shadow-lg scale-110'
-                          : 'bg-white text-gray-500 hover:bg-gray-50 border border-gray-100'
+                        ? 'bg-[#5E936C] text-white shadow-lg scale-110'
+                        : 'bg-white text-gray-500 hover:bg-gray-50 border border-gray-100'
                         }`}
                     >
                       {p}
@@ -312,7 +312,7 @@ const PrayerRequests = () => {
                 <div className="space-y-6">
                   <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
                     <FaCommentDots className="text-[#5E936C]" />
-                    Pastoral Responses
+                    {t('pastoral_responses_title')}
                   </h3>
 
                   <div className="space-y-4">
@@ -338,7 +338,7 @@ const PrayerRequests = () => {
                       ))
                     ) : (
                       <div className="text-center py-8 bg-gray-50 rounded-3xl border border-dashed border-gray-200">
-                        <p className="text-gray-400 text-sm font-medium">No responses yet. Be the first to intercede.</p>
+                        <p className="text-gray-400 text-sm font-medium">{t('no_responses')}</p>
                       </div>
                     )}
                   </div>
@@ -350,7 +350,7 @@ const PrayerRequests = () => {
                 <div className="flex flex-col gap-3">
                   <div className="relative group">
                     <textarea
-                      placeholder="Type a word of encouragement or intercession..."
+                      placeholder={t('type_encouragement_placeholder')}
                       className="w-full h-32 p-5 bg-gray-50 rounded-[2rem] focus:ring-4 focus:ring-[#E8FFD7] border-none text-gray-700 placeholder-gray-400 resize-none font-medium transition-all"
                       value={replyText}
                       onChange={(e) => setReplyText(e.target.value)}
@@ -369,7 +369,7 @@ const PrayerRequests = () => {
                       }}
                       className="flex-1 py-4 bg-[#E8FFD7] text-[#5E936C] rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-[#d4f5bc] transition-all flex items-center justify-center gap-2 border border-[#d4f5bc]"
                     >
-                      <FaCheckCircle /> Mark as Prayed
+                      <FaCheckCircle /> {t('mark_prayed_btn')}
                     </button>
                     <button
                       disabled={!replyText.trim() || replying}
@@ -390,7 +390,7 @@ const PrayerRequests = () => {
                       }}
                       className="flex-[2] py-4 bg-[#5E936C] text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-[#1A2E1F] transition-all flex items-center justify-center gap-2 disabled:opacity-50 shadow-lg shadow-[#5E936C]/20"
                     >
-                      {replying ? <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full" /> : 'Direct Reply'}
+                      {replying ? <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full" /> : t('direct_reply_btn')}
                     </button>
                   </div>
                 </div>

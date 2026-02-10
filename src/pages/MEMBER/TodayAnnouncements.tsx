@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useQuery } from '@apollo/client';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useTranslation } from 'react-i18next';
 import {
   FaBullhorn, FaSearch, FaThumbtack, FaCalendarAlt,
   FaMapMarkerAlt, FaFilePdf, FaClock, FaTimes, FaFilter,
@@ -47,6 +48,7 @@ type QueryVars = {
 
 // --- Secure PDF Viewer ---
 const SecurePDFViewer = ({ url, title, onClose }: { url: string; title: string; onClose: () => void }) => {
+  const { t } = useTranslation();
   const [numPages, setNumPages] = useState<number | null>(null);
 
   function onDocumentLoadSuccess({ numPages }: { numPages: number }) {
@@ -66,7 +68,7 @@ const SecurePDFViewer = ({ url, title, onClose }: { url: string; title: string; 
           <div className="p-2 bg-gray-800 rounded-lg"><FaLock className="text-amber-500 text-xs" /></div>
           <div>
             <h3 className="font-bold text-sm leading-none">{title}</h3>
-            <span className="text-[10px] text-gray-400">Secure Read-Only Mode • No Download</span>
+            <span className="text-[10px] text-gray-400">{t('secure_read_mode')}</span>
           </div>
         </div>
         <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-full transition"><FaTimes /></button>
@@ -81,14 +83,14 @@ const SecurePDFViewer = ({ url, title, onClose }: { url: string; title: string; 
             loading={
               <div className="flex flex-col items-center justify-center h-64 text-white gap-4">
                 <div className="w-8 h-8 border-4 border-white/30 border-t-white rounded-full animate-spin" />
-                <span className="font-bold text-sm tracking-widest uppercase opacity-70">Loading Document...</span>
+                <span className="font-bold text-sm tracking-widest uppercase opacity-70">{t('loading_doc')}</span>
               </div>
             }
             error={
               <div className="flex flex-col items-center justify-center h-64 text-red-400 gap-2">
                 <FaLock className="text-4xl opacity-50 mb-2" />
-                <p className="font-bold">Unable to load secure document.</p>
-                <p className="text-sm opacity-70">Please check your connection or contact admin.</p>
+                <p className="font-bold">{t('doc_load_error_title')}</p>
+                <p className="text-sm opacity-70">{t('doc_load_error_msg')}</p>
               </div>
             }
             className="flex flex-col items-center gap-6"
@@ -113,6 +115,7 @@ const SecurePDFViewer = ({ url, title, onClose }: { url: string; title: string; 
 
 // --- Page Component ---
 const TodayAnnouncements: React.FC = () => {
+  const { t } = useTranslation();
   const [page, setPage] = useState(1);
   const pageSize = 9;
 
@@ -139,12 +142,12 @@ const TodayAnnouncements: React.FC = () => {
   const totalPages = Math.ceil(totalCount / pageSize);
 
   const categories = [
-    { id: 'all', label: 'All', color: 'bg-gray-100 text-gray-600' },
-    { id: 'urgent', label: 'Urgent', color: 'bg-red-100 text-red-600' },
-    { id: 'events', label: 'Events', color: 'bg-green-100 text-green-600' },
-    { id: 'services', label: 'Services', color: 'bg-blue-100 text-blue-600' },
-    { id: 'community', label: 'Community', color: 'bg-purple-100 text-purple-600' },
-    { id: 'general', label: 'General', color: 'bg-gray-100 text-gray-500' },
+    { id: 'all', label: t('all_cat'), color: 'bg-gray-100 text-gray-600' },
+    { id: 'urgent', label: t('urgent_cat'), color: 'bg-red-100 text-red-600' },
+    { id: 'events', label: t('events_cat'), color: 'bg-green-100 text-green-600' },
+    { id: 'services', label: t('services_cat'), color: 'bg-blue-100 text-blue-600' },
+    { id: 'community', label: t('community_cat'), color: 'bg-purple-100 text-purple-600' },
+    { id: 'general', label: t('general_cat'), color: 'bg-gray-100 text-gray-500' },
   ];
 
   const getCategoryTheme = (cat: string) => categories.find(c => c.id === cat) || categories[5];
@@ -175,9 +178,9 @@ const TodayAnnouncements: React.FC = () => {
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div>
             <h1 className="text-2xl md:text-3xl font-black text-[#1a3c2b] flex items-center gap-2">
-              <FaBullhorn className="text-[#5E936C]" /> Announcements
+              <FaBullhorn className="text-[#5E936C]" /> {t('Announcements')}
             </h1>
-            <p className="text-sm font-bold text-gray-400 mt-1">Found {totalCount} updates for you</p>
+            <p className="text-sm font-bold text-gray-400 mt-1">{t('found_updates', { count: totalCount })}</p>
           </div>
 
           <div className="flex flex-col md:flex-row gap-3 w-full md:w-auto">
@@ -186,7 +189,7 @@ const TodayAnnouncements: React.FC = () => {
               <FaSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
               <input
                 type="text"
-                placeholder="Search..."
+                placeholder={t('search_placeholder')}
                 value={search}
                 onChange={(e) => { setSearch(e.target.value); setPage(1); }}
                 className="w-full md:w-64 pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#5E936C] outline-none font-bold text-gray-600 text-sm"
@@ -221,8 +224,8 @@ const TodayAnnouncements: React.FC = () => {
         ) : announcements.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-gray-400">
             <FaFilter className="text-4xl mb-4 opacity-50" />
-            <p className="font-bold">No announcements found matching your criteria.</p>
-            <button onClick={() => { setSearch(''); setFilterCategory('all'); }} className="mt-4 text-[#5E936C] font-bold hover:underline">Clear Filters</button>
+            <p className="font-bold">{t('no_match_criteria')}</p>
+            <button onClick={() => { setSearch(''); setFilterCategory('all'); }} className="mt-4 text-[#5E936C] font-bold hover:underline">{t('clear_filters')}</button>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -264,12 +267,12 @@ const TodayAnnouncements: React.FC = () => {
                     <div className="flex flex-wrap gap-2 mb-4">
                       {(ann.eventDate || ann.location) && (
                         <div className="flex items-center gap-2 text-[10px] font-bold text-gray-500 bg-gray-50 px-2 py-1 rounded-md">
-                          <FaMapMarkerAlt /> {ann.location || 'Event'}
+                          <FaMapMarkerAlt /> {ann.location || t('events_cat')}
                         </div>
                       )}
                       {ann.attachmentUrl && (
                         <div className="flex items-center gap-2 text-[10px] font-bold text-red-500 bg-red-50 px-2 py-1 rounded-md">
-                          <FaFilePdf /> Document
+                          <FaFilePdf /> {t('document_label')}
                         </div>
                       )}
                     </div>
@@ -281,13 +284,13 @@ const TodayAnnouncements: React.FC = () => {
                       onClick={() => setSelectedAnnouncement(ann)}
                       className="flex-1 py-3 bg-gray-50 rounded-xl text-xs font-black uppercase tracking-wider text-gray-600 hover:bg-[#1a3c2b] hover:text-white transition-colors"
                     >
-                      Read More
+                      {t('read_more')}
                     </button>
                     {ann.attachmentUrl && (
                       <button
                         onClick={() => setPdfToView({ url: ann.attachmentUrl!, title: ann.title })}
                         className="px-4 py-3 bg-red-50 rounded-xl text-red-600 hover:bg-red-500 hover:text-white transition-colors"
-                        title="View PDF"
+                        title={t('view_pdf')}
                       >
                         <FaEye />
                       </button>
@@ -311,7 +314,7 @@ const TodayAnnouncements: React.FC = () => {
             </button>
 
             <div className="text-sm font-bold text-gray-400">
-              Page <span className="text-[#1a3c2b]">{page}</span> of {totalPages}
+              {t('page_of', { current: page, total: totalPages })}
             </div>
 
             <button
@@ -341,7 +344,7 @@ const TodayAnnouncements: React.FC = () => {
               <div className="p-8 pb-0 flex items-start justify-between">
                 <div>
                   <span className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest bg-gray-100 text-gray-500`}>
-                    {selectedAnnouncement.category}
+                    {getCategoryTheme(selectedAnnouncement.category).label}
                   </span>
                   <h2 className="text-2xl md:text-3xl font-black text-[#1a3c2b] mt-4 mb-2">
                     {selectedAnnouncement.title}
@@ -362,10 +365,10 @@ const TodayAnnouncements: React.FC = () => {
                       className="w-full py-4 bg-red-50 border border-red-100 rounded-2xl flex items-center justify-center gap-3 text-red-600 font-bold hover:bg-red-500 hover:text-white transition-all group"
                     >
                       <FaLock />
-                      <span>View Secure Document</span>
+                      <span>{t('view_secure_doc')}</span>
                       <FaEye className="opacity-50 group-hover:opacity-100" />
                     </button>
-                    <p className="text-center text-[10px] text-gray-400 mt-2">Document is read-only protected</p>
+                    <p className="text-center text-[10px] text-gray-400 mt-2">{t('doc_protected')}</p>
                   </div>
                 )}
               </div>

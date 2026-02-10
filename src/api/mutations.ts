@@ -483,3 +483,107 @@ export const UPDATE_USER_PROFILE = gql`
     }
   }
 `;
+
+export const CREATE_GROUP = gql`
+  mutation CreateGroup($input: GroupInput!) {
+  createGroup(input: $input) {
+      group {
+      id
+      name
+      description
+      category
+        leader {
+        id
+        fullName
+      }
+      memberCount
+    }
+  }
+}
+`;
+
+export const UPDATE_GROUP = gql`
+  mutation UpdateGroup($id: ID!, $input: GroupInput!) {
+  updateGroup(id: $id, input: $input) {
+      group {
+      id
+      name
+      description
+      category
+        leader {
+        id
+        fullName
+      }
+      meetingDays
+      meetingTime
+      location
+      memberCount
+      isActive
+    }
+  }
+}
+`;
+
+export const DELETE_GROUP = gql`
+  mutation DeleteGroup($id: ID!) {
+  deleteGroup(id: $id) {
+    success
+  }
+}
+`;
+
+export const ADD_GROUP_MEMBER = gql`
+  mutation AddGroupMember($groupId: ID!, $memberId: ID!) {
+    addGroupMember(groupId: $groupId, memberId: $memberId) {
+      success
+      group {
+        id
+        memberCount
+      }
+    }
+  }
+`;
+
+export const APPLY_TO_GROUP = gql`
+  mutation ApplyToGroup($groupId: ID!, $note: String) {
+    applyToGroup(groupId: $groupId, note: $note) {
+      success
+      message
+    }
+  }
+`;
+
+export const REVIEW_GROUP_APPLICATION = gql`
+  mutation ReviewGroupApplication($applicationId: ID!, $status: String!, $reviewNote: String) {
+    reviewGroupApplication(applicationId: $applicationId, status: $status, reviewNote: $reviewNote) {
+      success
+      message
+    }
+  }
+`;
+
+export const ADD_GROUP_FINANCIAL_RECORD = gql`
+  mutation AddGroupFinancialRecord($groupId: ID!, $amount: Float!, $transactionType: String!, $description: String!, $date: Date) {
+    addGroupFinancialRecord(groupId: $groupId, amount: $amount, transactionType: $transactionType, description: $description, date: $date) {
+      success
+    }
+  }
+`;
+
+export const REMOVE_GROUP_MEMBER = gql`
+  mutation RemoveGroupMember($groupId: ID!, $memberId: ID!) {
+    removeGroupMember(groupId: $groupId, memberId: $memberId) {
+      success
+      message
+    }
+  }
+`;
+
+export const BROADCAST_GROUP_ANNOUNCEMENT = gql`
+  mutation BroadcastGroupAnnouncement($groupId: ID!, $title: String!, $message: String!) {
+    broadcastGroupAnnouncement(groupId: $groupId, title: $title, message: $message) {
+      success
+      messageOut
+    }
+  }
+`;

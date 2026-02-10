@@ -1,15 +1,16 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation } from '@apollo/client';
 import { FaUser, FaEnvelope, FaPhone, FaBirthdayCake, FaTransgender, FaCamera, FaSave, FaSpinner, FaInfoCircle } from 'react-icons/fa';
 import { toast } from 'react-toastify';
 import { motion } from 'framer-motion';
+import { useTranslation } from 'react-i18next';
 import { ME_QUERY } from '../api/queries';
 import { UPDATE_USER_PROFILE } from '../api/mutations';
 import { ENDPOINT } from '../api/environment';
 import { getAccessToken } from '../utils/auth';
 
 const ProfilePage: React.FC = () => {
+    const { t } = useTranslation();
     const { data, loading, error, refetch } = useQuery(ME_QUERY);
     const [updateProfile, { loading: updating }] = useMutation(UPDATE_USER_PROFILE);
 
@@ -50,11 +51,11 @@ const ProfilePage: React.FC = () => {
                     ...formData
                 }
             });
-            toast.success('Profile updated successfully!');
+            toast.success(t('profile_updated_success'));
             refetch();
         } catch (err) {
             console.error(err);
-            toast.error('Failed to update profile.');
+            toast.error(t('profile_update_failed'));
         }
     };
 
@@ -68,11 +69,11 @@ const ProfilePage: React.FC = () => {
 
         // Validate file type/size
         if (!file.type.startsWith('image/')) {
-            toast.error('Please upload an image file');
+            toast.error(t('upload_image_error'));
             return;
         }
         if (file.size > 5 * 1024 * 1024) { // 5MB limit
-            toast.error('File size should be less than 5MB');
+            toast.error(t('file_size_error'));
             return;
         }
 
@@ -96,14 +97,14 @@ const ProfilePage: React.FC = () => {
             });
 
             if (response.ok) {
-                toast.success('Profile photo updated!');
+                toast.success(t('photo_updated_success'));
                 refetch(); // Reload user data to get new photo URL
             } else {
                 throw new Error('Upload failed');
             }
         } catch (err) {
             console.error(err);
-            toast.error('Failed to upload photo. Please try again.');
+            toast.error(t('photo_upload_failed'));
         } finally {
             setUploadingPhoto(false);
         }
@@ -117,7 +118,7 @@ const ProfilePage: React.FC = () => {
 
     if (error) return (
         <div className="flex justify-center items-center min-h-screen bg-[#F7FCF5] text-red-600">
-            Error loading profile.
+            {t('profile_load_error')}
         </div>
     );
 
@@ -197,23 +198,23 @@ const ProfilePage: React.FC = () => {
                     <div className="md:col-span-1 space-y-6">
                         <div className="bg-white rounded-2xl shadow-lg p-6">
                             <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
-                                <FaInfoCircle className="text-[#5E936C]" /> Account Info
+                                <FaInfoCircle className="text-[#5E936C]" /> {t('account_info')}
                             </h3>
                             <div className="space-y-4">
                                 <div>
-                                    <label className="text-xs text-gray-500 uppercase tracking-wide">Member Since</label>
+                                    <label className="text-xs text-gray-500 uppercase tracking-wide">{t('member_since')}</label>
                                     <p className="font-medium text-gray-700">January 2024</p>
                                 </div>
                                 <div>
-                                    <label className="text-xs text-gray-500 uppercase tracking-wide">Status</label>
+                                    <label className="text-xs text-gray-500 uppercase tracking-wide">{t('status')}</label>
                                     <p className="font-medium text-green-600 flex items-center gap-1">
-                                        <span className="w-2 h-2 bg-green-500 rounded-full"></span> Active
+                                        <span className="w-2 h-2 bg-green-500 rounded-full"></span> {t('active')}
                                     </p>
                                 </div>
                                 <div>
-                                    <label className="text-xs text-gray-500 uppercase tracking-wide">Group</label>
+                                    <label className="text-xs text-gray-500 uppercase tracking-wide">{t('group')}</label>
                                     <p className="font-medium text-gray-700">
-                                        {data.me.groups?.map((g: any) => g.name).join(', ') || 'No Group'}
+                                        {data.me.groups?.map((g: any) => g.name).join(', ') || t('no_group')}
                                     </p>
                                 </div>
                             </div>
@@ -224,14 +225,14 @@ const ProfilePage: React.FC = () => {
                     <div className="md:col-span-2">
                         <div className="bg-white rounded-2xl shadow-lg p-6 md:p-8">
                             <div className="flex items-center justify-between mb-6">
-                                <h2 className="text-xl font-bold text-gray-800">Personal Details</h2>
+                                <h2 className="text-xl font-bold text-gray-800">{t('personal_details')}</h2>
                                 <button
                                     onClick={handleSubmit}
                                     disabled={updating}
                                     className="bg-[#5E936C] text-white px-6 py-2 rounded-xl hover:bg-[#4a7a58] transition-colors flex items-center gap-2 shadow-md disabled:opacity-50"
                                 >
                                     {updating ? <FaSpinner className="animate-spin" /> : <FaSave />}
-                                    Save Changes
+                                    {t('save_changes')}
                                 </button>
                             </div>
 
@@ -239,7 +240,7 @@ const ProfilePage: React.FC = () => {
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     {/* Full Name */}
                                     <div className="space-y-2">
-                                        <label className="text-sm font-medium text-gray-700">Full Name</label>
+                                        <label className="text-sm font-medium text-gray-700">{t('full_name')}</label>
                                         <div className="relative">
                                             <FaUser className="absolute left-3 top-3 text-gray-400" />
                                             <input
@@ -248,14 +249,14 @@ const ProfilePage: React.FC = () => {
                                                 value={formData.fullName}
                                                 onChange={handleChange}
                                                 className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#5E936C] focus:border-transparent outline-none transition-all"
-                                                placeholder="John Doe"
+                                                placeholder={t('full_name_placeholder')}
                                             />
                                         </div>
                                     </div>
 
                                     {/* Email */}
                                     <div className="space-y-2">
-                                        <label className="text-sm font-medium text-gray-700">Email Address</label>
+                                        <label className="text-sm font-medium text-gray-700">{t('email_address')}</label>
                                         <div className="relative">
                                             <FaEnvelope className="absolute left-3 top-3 text-gray-400" />
                                             <input
@@ -264,7 +265,7 @@ const ProfilePage: React.FC = () => {
                                                 value={formData.email}
                                                 onChange={handleChange}
                                                 className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#5E936C] focus:border-transparent outline-none transition-all bg-gray-50"
-                                                placeholder="john@example.com"
+                                                placeholder={t('email_placeholder')}
                                                 readOnly // Email changing usually requires verification
                                             />
                                         </div>
@@ -272,7 +273,7 @@ const ProfilePage: React.FC = () => {
 
                                     {/* Phone */}
                                     <div className="space-y-2">
-                                        <label className="text-sm font-medium text-gray-700">Phone Number</label>
+                                        <label className="text-sm font-medium text-gray-700">{t('phone_number')}</label>
                                         <div className="relative">
                                             <FaPhone className="absolute left-3 top-3 text-gray-400" />
                                             <input
@@ -281,14 +282,14 @@ const ProfilePage: React.FC = () => {
                                                 value={formData.phoneNumber}
                                                 onChange={handleChange}
                                                 className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#5E936C] focus:border-transparent outline-none transition-all"
-                                                placeholder="+255..."
+                                                placeholder={t('phone_placeholder')}
                                             />
                                         </div>
                                     </div>
 
                                     {/* Date of Birth (New Field) */}
                                     <div className="space-y-2">
-                                        <label className="text-sm font-medium text-gray-700">Date of Birth</label>
+                                        <label className="text-sm font-medium text-gray-700">{t('date_of_birth')}</label>
                                         <div className="relative">
                                             <FaBirthdayCake className="absolute left-3 top-3 text-gray-400" />
                                             <input
@@ -303,7 +304,7 @@ const ProfilePage: React.FC = () => {
 
                                     {/* Gender (New Field) */}
                                     <div className="space-y-2">
-                                        <label className="text-sm font-medium text-gray-700">Gender</label>
+                                        <label className="text-sm font-medium text-gray-700">{t('gender')}</label>
                                         <div className="relative">
                                             <FaTransgender className="absolute left-3 top-3 text-gray-400" />
                                             <select
@@ -312,9 +313,9 @@ const ProfilePage: React.FC = () => {
                                                 onChange={handleChange}
                                                 className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#5E936C] focus:border-transparent outline-none transition-all appearance-none bg-white"
                                             >
-                                                <option value="">Select Gender</option>
-                                                <option value="Male">Male</option>
-                                                <option value="Female">Female</option>
+                                                <option value="">{t('select_gender')}</option>
+                                                <option value="Male">{t('male')}</option>
+                                                <option value="Female">{t('female')}</option>
                                             </select>
                                         </div>
                                     </div>
@@ -322,14 +323,14 @@ const ProfilePage: React.FC = () => {
 
                                 {/* Bio / About */}
                                 <div className="space-y-2">
-                                    <label className="text-sm font-medium text-gray-700">About Me</label>
+                                    <label className="text-sm font-medium text-gray-700">{t('about_me')}</label>
                                     <textarea
                                         name="bio"
                                         value={formData.bio}
                                         onChange={handleChange}
                                         rows={4}
                                         className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#5E936C] focus:border-transparent outline-none transition-all resize-none"
-                                        placeholder="Share a bit about yourself..."
+                                        placeholder={t('bio_placeholder')}
                                     />
                                 </div>
                             </form>

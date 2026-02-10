@@ -2,7 +2,7 @@ import { useState } from 'react';
 import {
   FaUsers, FaCalendarAlt, FaChartLine, FaBook,
   FaPrayingHands, FaMoneyBillWave,
-  FaPlus, FaDownload, FaFilePdf
+  FaPlus, FaFilePdf
 } from 'react-icons/fa';
 import { GiCrossedChains } from 'react-icons/gi';
 import { BsGraphUp, BsThreeDotsVertical } from 'react-icons/bs';
@@ -12,6 +12,7 @@ import {
   CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
 import { useQuery, useMutation } from '@apollo/client';
+import { useTranslation } from 'react-i18next';
 import {
   GET_DASHBOARD_STATS,
   GET_RECENT_MEMBERS,
@@ -68,6 +69,7 @@ interface OfferingStats {
 }
 
 const PastorDashboard = () => {
+  const { t } = useTranslation();
   const [activeTab] = useState('overview');
   const [showEventModal, setShowEventModal] = useState(false);
 
@@ -155,14 +157,14 @@ const PastorDashboard = () => {
           {activeTab === 'overview' && (
             <div className="space-y-6">
               <div className="flex justify-between items-center">
-                <h2 className="text-2xl font-bold text-[#5E936C]">Church Overview</h2>
+                <h2 className="text-2xl font-bold text-[#5E936C]">{t('church_overview')}</h2>
                 <div className="flex space-x-2">
                   <button
                     onClick={() => handleExportDownload('/api/export/dashboard/pdf/', 'annual_church_report.pdf', { year: new Date().getFullYear() })}
                     className="bg-[#5E936C] text-white px-4 py-2 rounded-lg flex items-center hover:bg-[#4a7a58] transition-colors"
                   >
                     <FaFilePdf className="mr-2" />
-                    Annual Report (PDF)
+                    {t('annual_report_pdf')}
                   </button>
                 </div>
               </div>
@@ -176,7 +178,7 @@ const PastorDashboard = () => {
                   <div className="absolute top-0 right-0 w-16 h-16 bg-[#5E936C] opacity-10 rounded-full -m-4"></div>
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-gray-500">Total Members</p>
+                      <p className="text-gray-500">{t('total_members')}</p>
                       <h3 className="text-3xl font-bold text-[#5E936C]">{dashboardStats.totalMembers}</h3>
                     </div>
                     <div className="bg-[#E8FFD7] p-3 rounded-full">
@@ -185,7 +187,7 @@ const PastorDashboard = () => {
                   </div>
                   <div className="mt-4 flex items-center text-sm text-green-500">
                     <BsGraphUp className="mr-1" />
-                    <span>{dashboardStats.newMembersThisMonth} new this month</span>
+                    <span>{dashboardStats.newMembersThisMonth} {t('new_this_month')}</span>
                   </div>
                 </motion.div>
 
@@ -196,7 +198,7 @@ const PastorDashboard = () => {
                   <div className="absolute top-0 right-0 w-16 h-16 bg-[#93DA97] opacity-10 rounded-full -m-4"></div>
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-gray-500">This Week's Offerings</p>
+                      <p className="text-gray-500">{t('this_weeks_offerings')}</p>
                       <h3 className="text-3xl font-bold text-[#5E936C]">{formatCurrency(offeringStats.thisWeek)}</h3>
                     </div>
                     <div className="bg-[#E8FFD7] p-3 rounded-full">
@@ -207,12 +209,12 @@ const PastorDashboard = () => {
                     {offeringStats.trend === 'up' ? (
                       <>
                         <BsGraphUp className="mr-1" />
-                        <span>{calculateChange(offeringStats.thisWeek, offeringStats.lastWeek)}% from last week</span>
+                        <span>{calculateChange(offeringStats.thisWeek, offeringStats.lastWeek)}% {t('from_last_week')}</span>
                       </>
                     ) : (
                       <>
                         <BsGraphUp className="mr-1 transform rotate-180" />
-                        <span>{calculateChange(offeringStats.thisWeek, offeringStats.lastWeek)}% from last week</span>
+                        <span>{calculateChange(offeringStats.thisWeek, offeringStats.lastWeek)}% {t('from_last_week')}</span>
                       </>
                     )}
                   </div>
@@ -225,7 +227,7 @@ const PastorDashboard = () => {
                   <div className="absolute top-0 right-0 w-16 h-16 bg-[#5E936C] opacity-10 rounded-full -m-4"></div>
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-gray-500">Active Groups</p>
+                      <p className="text-gray-500">{t('active_groups')}</p>
                       <h3 className="text-3xl font-bold text-[#5E936C]">{dashboardStats.activeGroups}</h3>
                     </div>
                     <div className="bg-[#E8FFD7] p-3 rounded-full">
@@ -234,9 +236,9 @@ const PastorDashboard = () => {
                   </div>
                   <div className="mt-4">
                     <div className="flex space-x-2">
-                      <span className="px-2 py-1 bg-[#E8FFD7] text-[#5E936C] text-xs rounded-full">Youth</span>
-                      <span className="px-2 py-1 bg-[#E8FFD7] text-[#5E936C] text-xs rounded-full">Women</span>
-                      <span className="px-2 py-1 bg-[#E8FFD7] text-[#5E936C] text-xs rounded-full">Elders</span>
+                      <span className="px-2 py-1 bg-[#E8FFD7] text-[#5E936C] text-xs rounded-full">{t('groups_youth')}</span>
+                      <span className="px-2 py-1 bg-[#E8FFD7] text-[#5E936C] text-xs rounded-full">{t('groups_women')}</span>
+                      <span className="px-2 py-1 bg-[#E8FFD7] text-[#5E936C] text-xs rounded-full">{t('groups_elders')}</span>
                     </div>
                   </div>
                 </motion.div>
@@ -248,7 +250,7 @@ const PastorDashboard = () => {
                   <div className="absolute top-0 right-0 w-16 h-16 bg-[#93DA97] opacity-10 rounded-full -m-4"></div>
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-gray-500">Prayer Requests</p>
+                      <p className="text-gray-500">{t('prayer_requests_count')}</p>
                       <h3 className="text-3xl font-bold text-[#5E936C]">{dashboardStats.prayerRequests}</h3>
                     </div>
                     <div className="bg-[#E8FFD7] p-3 rounded-full">
@@ -256,7 +258,7 @@ const PastorDashboard = () => {
                     </div>
                   </div>
                   <div className="mt-4 flex items-center text-sm text-blue-500">
-                    <span>{dashboardStats.newPrayerRequestsToday} new today</span>
+                    <span>{dashboardStats.newPrayerRequestsToday} {t('new_today')}</span>
                   </div>
                 </motion.div>
               </div>
@@ -264,7 +266,7 @@ const PastorDashboard = () => {
               {/* Charts and Detailed Stats */}
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="lg:col-span-2 bg-white rounded-xl shadow-md p-6">
-                  <h3 className="text-lg font-medium text-[#5E936C] mb-4">Offerings Trend</h3>
+                  <h3 className="text-lg font-medium text-[#5E936C] mb-4">{t('offerings_trend')}</h3>
                   <div className="h-64 rounded-lg">
                     <ResponsiveContainer width="100%" height="100%">
                       <AreaChart data={trendData?.offeringsTrend || []}>
@@ -279,7 +281,7 @@ const PastorDashboard = () => {
                         <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `${value / 1000}k`} />
                         <Tooltip
                           contentStyle={{ backgroundColor: '#fff', border: 'none', borderRadius: '8px', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                          formatter={(value: number) => [formatCurrency(value), 'Offerings']}
+                          formatter={(value: number) => [formatCurrency(value), t('Offerings')]}
                         />
                         <Area type="monotone" dataKey="value" stroke="#5E936C" fillOpacity={1} fill="url(#colorValue)" />
                       </AreaChart>
@@ -288,7 +290,7 @@ const PastorDashboard = () => {
                 </div>
 
                 <div className="bg-white rounded-xl shadow-md p-6">
-                  <h3 className="text-lg font-medium text-[#5E936C] mb-4">Membership Growth</h3>
+                  <h3 className="text-lg font-medium text-[#5E936C] mb-4">{t('membership_growth')}</h3>
                   <div className="h-64 rounded-lg">
                     <ResponsiveContainer width="100%" height="100%">
                       <LineChart data={growthData?.membershipGrowth || []}>
@@ -310,8 +312,8 @@ const PastorDashboard = () => {
                 {/* Recent Members */}
                 <div className="bg-white rounded-xl shadow-md overflow-hidden">
                   <div className="bg-[#5E936C] text-white px-6 py-4 flex items-center justify-between">
-                    <h3 className="text-lg font-medium">Recent Members</h3>
-                    <a href="#" className="text-sm hover:underline">View All</a>
+                    <h3 className="text-lg font-medium">{t('recent_members')}</h3>
+                    <a href="#" className="text-sm hover:underline">{t('view_all')}</a>
                   </div>
                   <div className="divide-y divide-gray-100">
                     {recentMembers.map((member) => (
@@ -322,7 +324,7 @@ const PastorDashboard = () => {
                           </div>
                           <div className="ml-4">
                             <h4 className="font-medium text-gray-900">{member.fullName}</h4>
-                            <p className="text-sm text-gray-500">{member.street} • Joined {member.joinedDate}</p>
+                            <p className="text-sm text-gray-500">{member.street} • {t('joined_date', { date: member.joinedDate })}</p>
                           </div>
                         </div>
                       </div>
@@ -333,12 +335,12 @@ const PastorDashboard = () => {
                 {/* Upcoming Events */}
                 <div className="bg-white rounded-xl shadow-md overflow-hidden">
                   <div className="bg-[#5E936C] text-white px-6 py-4 flex items-center justify-between">
-                    <h3 className="text-lg font-medium">Upcoming Events</h3>
+                    <h3 className="text-lg font-medium">{t('upcoming_events')}</h3>
                     <button
                       onClick={() => setShowEventModal(true)}
                       className="text-sm bg-white text-[#5E936C] px-3 py-1 rounded-md hover:bg-gray-100"
                     >
-                      <FaPlus className="inline mr-1" /> Add Event
+                      <FaPlus className="inline mr-1" /> {t('add_event')}
                     </button>
                   </div>
                   <div className="divide-y divide-gray-100">
@@ -351,7 +353,7 @@ const PastorDashboard = () => {
                             </div>
                             <div className="ml-4">
                               <h4 className="font-medium text-gray-900">{event.title}</h4>
-                              <p className="text-sm text-gray-500">{event.date} at {event.time}</p>
+                              <p className="text-sm text-gray-500">{event.date} {t('event_at')} {event.time}</p>
                             </div>
                           </div>
                           <button className="text-gray-400 hover:text-gray-600">
@@ -366,7 +368,7 @@ const PastorDashboard = () => {
 
               {/* Quick Actions */}
               <div className="bg-white rounded-xl shadow-md p-6">
-                <h3 className="text-lg font-medium text-[#5E936C] mb-4">Quick Actions</h3>
+                <h3 className="text-lg font-medium text-[#5E936C] mb-4">{t('quick_actions')}</h3>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <motion.button
                     whileHover={{ scale: 1.05 }}
@@ -374,7 +376,7 @@ const PastorDashboard = () => {
                     className="bg-[#E8FFD7] hover:bg-[#d4f5c1] text-[#5E936C] p-4 rounded-lg flex flex-col items-center transition-all"
                   >
                     <FaBook className="text-2xl mb-2" />
-                    <span>Add Sermon</span>
+                    <span>{t('add_sermon')}</span>
                   </motion.button>
                   <motion.button
                     whileHover={{ scale: 1.05 }}
@@ -383,7 +385,7 @@ const PastorDashboard = () => {
                     className="bg-[#E8FFD7] hover:bg-[#d4f5c1] text-[#5E936C] p-4 rounded-lg flex flex-col items-center transition-all"
                   >
                     <FaCalendarAlt className="text-2xl mb-2" />
-                    <span>Create Event</span>
+                    <span>{t('create_event')}</span>
                   </motion.button>
                   <motion.button
                     whileHover={{ scale: 1.05 }}
@@ -391,7 +393,7 @@ const PastorDashboard = () => {
                     className="bg-[#E8FFD7] hover:bg-[#d4f5c1] text-[#5E936C] p-4 rounded-lg flex flex-col items-center transition-all"
                   >
                     <FaUsers className="text-2xl mb-2" />
-                    <span>Add Member</span>
+                    <span>{t('add_member')}</span>
                   </motion.button>
                   <motion.button
                     whileHover={{ scale: 1.05 }}
@@ -399,7 +401,7 @@ const PastorDashboard = () => {
                     className="bg-[#E8FFD7] hover:bg-[#d4f5c1] text-[#5E936C] p-4 rounded-lg flex flex-col items-center transition-all"
                   >
                     <FaChartLine className="text-2xl mb-2" />
-                    <span>Generate Report</span>
+                    <span>{t('generate_report')}</span>
                   </motion.button>
                 </div>
               </div>
@@ -427,21 +429,21 @@ const PastorDashboard = () => {
               className="bg-white rounded-xl shadow-xl w-full max-w-md"
             >
               <div className="p-6">
-                <h3 className="text-xl font-bold text-[#5E936C] mb-4">Create New Event</h3>
+                <h3 className="text-xl font-bold text-[#5E936C] mb-4">{t('create_new_event')}</h3>
                 <form>
                   <div className="mb-4">
-                    <label className="block text-gray-700 mb-2">Event Title</label>
+                    <label className="block text-gray-700 mb-2">{t('event_title')}</label>
                     <input type="text" className="w-full p-2 border rounded-lg" />
                   </div>
                   <div className="mb-4">
-                    <label className="block text-gray-700 mb-2">Date & Time</label>
+                    <label className="block text-gray-700 mb-2">{t('date_and_time')}</label>
                     <div className="flex space-x-2">
                       <input type="date" className="flex-1 p-2 border rounded-lg" />
                       <input type="time" className="flex-1 p-2 border rounded-lg" />
                     </div>
                   </div>
                   <div className="mb-4">
-                    <label className="block text-gray-700 mb-2">Description</label>
+                    <label className="block text-gray-700 mb-2">{t('description')}</label>
                     <textarea className="w-full p-2 border rounded-lg" rows={3}></textarea>
                   </div>
                   <div className="flex justify-end space-x-3">
@@ -450,13 +452,13 @@ const PastorDashboard = () => {
                       onClick={() => setShowEventModal(false)}
                       className="px-4 py-2 text-gray-600 hover:text-gray-800"
                     >
-                      Cancel
+                      {t('cancel_btn')}
                     </button>
                     <button
                       type="submit"
                       className="bg-[#5E936C] text-white px-4 py-2 rounded-lg hover:bg-[#4a7a58]"
                     >
-                      Create Event
+                      {t('create_event')}
                     </button>
                   </div>
                 </form>

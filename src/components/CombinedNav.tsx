@@ -51,6 +51,7 @@ const LOGOUT_MUTATION = gql`
 
 // Countdown Toast Component
 const CountdownToast = ({ endAt }: { endAt: string }) => {
+  const { t } = useTranslation();
   const [timeLeft, setTimeLeft] = useState('');
 
   useEffect(() => {
@@ -58,7 +59,7 @@ const CountdownToast = ({ endAt }: { endAt: string }) => {
       const end = new Date(endAt);
       const now = new Date();
       if (now >= end) {
-        setTimeLeft('Closed');
+        setTimeLeft(t('reg_window_closed'));
         clearInterval(timer);
         return;
       }
@@ -71,13 +72,13 @@ const CountdownToast = ({ endAt }: { endAt: string }) => {
       setTimeLeft(formatted.join(' '));
     }, 1000);
     return () => clearInterval(timer);
-  }, [endAt]);
+  }, [endAt, t]);
 
   return (
     <div>
-      <h4 className="font-bold">Registration Window Open!</h4>
-      <p>Hurry! Closing in: {timeLeft}</p>
-      <Link to="/get-card" className="underline text-sm mt-1 block text-yellow-200">Click to Register</Link>
+      <h4 className="font-bold">{t('reg_window_open_title')}</h4>
+      <p>{t('reg_window_closing_in', { time: timeLeft })}</p>
+      <Link to="/get-card" className="underline text-sm mt-1 block text-yellow-200">{t('click_to_register')}</Link>
     </div>
   );
 };
@@ -90,34 +91,33 @@ interface SidebarItem {
 }
 
 const sidebarItems: SidebarItem[] = [
-  { name: 'Dashboard', icon: FaTachometerAlt, href: '/dashboard', roles: ['PASTOR', 'ASSISTANT_PASTOR'] },
-  { name: 'Dashboard', icon: FaTachometerAlt, href: '/member-dashboard', roles: ['CHURCH_MEMBER'] },
-  { name: 'Dashboard', icon: FaTachometerAlt, href: '/secretaryDashboard', roles: ['CHURCH_SECRETARY'] },
-  { name: 'Dashboard', icon: FaTachometerAlt, href: '/evangelist-dashboard', roles: ['EVANGELIST'] },
-  { name: 'Word of the Day', icon: FaBook, href: '/word-of-the-day', roles: ['PASTOR', 'ASSISTANT_PASTOR', 'EVANGELIST'] },
-  { name: 'The Word of the Day', icon: FaTachometerAlt, href: '/member-word-of-the-day', roles: ['CHURCH_MEMBER', 'CHURCH_SECRETARY'] },
-  { name: 'Prayer Requests', icon: FaPray, href: '/prayer-requests', roles: ['PASTOR', 'ASSISTANT_PASTOR', 'EVANGELIST'] },
-  { name: 'My Prayer Requests', icon: FaTachometerAlt, href: '/member-prayer-requests', roles: ['CHURCH_MEMBER'] },
-  { name: 'Announcements', icon: FaBullhorn, href: '/announcements', roles: ['PASTOR', 'ASSISTANT_PASTOR', 'EVANGELIST', 'CHURCH_SECRETARY'] },
-  { name: 'Todays-Announcements', icon: FaTachometerAlt, href: '/my-announcements', roles: ['CHURCH_MEMBER'] },
-  { name: 'Offerings Overview', icon: FaDonate, href: '/offerings', roles: ['PASTOR', 'ASSISTANT_PASTOR'] },
-  { name: 'Group Management', icon: FaUsers, href: '/group-management', roles: ['PASTOR', 'ASSISTANT_PASTOR', 'EVANGELIST', 'CHURCH_SECRETARY'] },
-  { name: 'Member Contributions', icon: FaFileAlt, href: '/contributions', roles: ['PASTOR'] },
-  { name: 'Blog', icon: FaRss, href: '/blog', roles: ['PASTOR', 'ASSISTANT_PASTOR', 'EVANGELIST', 'CHURCH_SECRETARY', 'CHURCH_MEMBER'] },
-  { name: 'Service Schedule', icon: FaCalendarAlt, href: '/services', roles: ['PASTOR', 'ASSISTANT_PASTOR', 'EVANGELIST'] },
-  { name: 'Notifications Center', icon: FaBell, href: '/notifications', roles: ['PASTOR'] },
-  { name: 'Analytics Dashboard', icon: FaChartBar, href: '/analytics', roles: ['PASTOR'] },
-  { name: 'Offering Cards ', icon: FaFileAlt, href: '/offering-cards', roles: ['CHURCH_SECRETARY'] },
-  { name: 'Offerings Entry', icon: FaDonate, href: '/offering-entry', roles: ['CHURCH_SECRETARY'] },
-  { name: 'Member Records', icon: FaUser, href: '/member-records', roles: ['CHURCH_SECRETARY'] },
-  { name: 'Export Reports', icon: FaFileExport, href: '/reports', roles: ['CHURCH_SECRETARY'] },
-  { name: 'Member Directory', icon: FaUsers, href: '/directory', roles: ['ASSISTANT_PASTOR', 'CHURCH_SECRETARY'] },
-  { name: 'Community Events Calendar', icon: FaCalendarAlt, href: '/events', roles: ['EVANGELIST'] },
-  { name: 'My Offerings', icon: FaDonate, href: '/my-offerings-overview', roles: ['CHURCH_MEMBER', 'CHURCH_SECRETARY', 'PASTOR', 'ASSISTANT_PASTOR', 'EVANGELIST',] },
-  { name: 'My Profile', icon: FaUser, href: '/profile', roles: ['CHURCH_MEMBER'] },
-  { name: 'My Groups', icon: FaUsers, href: '/my-groups', roles: ['CHURCH_MEMBER'] },
-  { name: 'RSVP to Events', icon: FaCalendarAlt, href: '/rsvp', roles: ['CHURCH_MEMBER'] },
-  { name: 'Notifications Settings', icon: FaBell, href: '/notifications-settings', roles: ['CHURCH_MEMBER'] },
+  { name: 'sidebar_dashboard', icon: FaTachometerAlt, href: '/pastor-dashboard', roles: ['PASTOR', 'ASSISTANT_PASTOR'] },
+  { name: 'sidebar_dashboard', icon: FaTachometerAlt, href: '/member-dashboard', roles: ['CHURCH_MEMBER'] },
+  { name: 'sidebar_dashboard', icon: FaTachometerAlt, href: '/secretaryDashboard', roles: ['CHURCH_SECRETARY'] },
+  { name: 'sidebar_dashboard', icon: FaTachometerAlt, href: '/evangelist-dashboard', roles: ['EVANGELIST'] },
+  { name: 'sidebar_word_of_day', icon: FaBook, href: '/word-of-the-day', roles: ['PASTOR', 'ASSISTANT_PASTOR', 'EVANGELIST'] },
+  { name: 'sidebar_word_of_day', icon: FaTachometerAlt, href: '/member-word-of-the-day', roles: ['CHURCH_MEMBER', 'CHURCH_SECRETARY'] },
+  { name: 'sidebar_prayer_requests', icon: FaPray, href: '/prayer-requests', roles: ['PASTOR', 'ASSISTANT_PASTOR', 'EVANGELIST'] },
+  { name: 'sidebar_my_prayer_requests', icon: FaTachometerAlt, href: '/member-prayer-requests', roles: ['CHURCH_MEMBER'] },
+  { name: 'sidebar_announcements', icon: FaBullhorn, href: '/announcements', roles: ['PASTOR', 'ASSISTANT_PASTOR', 'EVANGELIST', 'CHURCH_SECRETARY'] },
+  { name: 'sidebar_todays_announcements', icon: FaTachometerAlt, href: '/my-announcements', roles: ['CHURCH_MEMBER'] },
+  { name: 'sidebar_offerings_overview', icon: FaDonate, href: '/offerings', roles: ['PASTOR', 'ASSISTANT_PASTOR'] },
+  { name: 'sidebar_group_management', icon: FaUsers, href: '/group-management', roles: ['PASTOR', 'ASSISTANT_PASTOR', 'EVANGELIST', 'CHURCH_SECRETARY'] },
+  { name: 'sidebar_member_contributions', icon: FaFileAlt, href: '/contributions', roles: ['PASTOR'] },
+  { name: 'sidebar_blog', icon: FaRss, href: '/blog', roles: ['PASTOR', 'ASSISTANT_PASTOR', 'EVANGELIST', 'CHURCH_SECRETARY', 'CHURCH_MEMBER'] },
+  { name: 'sidebar_service_schedule', icon: FaCalendarAlt, href: '/services', roles: ['PASTOR', 'ASSISTANT_PASTOR', 'EVANGELIST'] },
+  { name: 'sidebar_notifications_center', icon: FaBell, href: '/notifications', roles: ['PASTOR'] },
+  { name: 'sidebar_analytics_dashboard', icon: FaChartBar, href: '/analytics', roles: ['PASTOR'] },
+  { name: 'sidebar_offering_cards', icon: FaFileAlt, href: '/offering-cards', roles: ['CHURCH_SECRETARY'] },
+  { name: 'sidebar_offerings_entry', icon: FaDonate, href: '/offering-entry', roles: ['CHURCH_SECRETARY'] },
+  { name: 'sidebar_member_records', icon: FaUser, href: '/member-records', roles: ['CHURCH_SECRETARY'] },
+  { name: 'sidebar_export_reports', icon: FaFileExport, href: '/reports', roles: ['CHURCH_SECRETARY'] },
+  { name: 'sidebar_member_directory', icon: FaUsers, href: '/directory', roles: ['ASSISTANT_PASTOR', 'CHURCH_SECRETARY'] },
+  { name: 'sidebar_community_events', icon: FaCalendarAlt, href: '/events', roles: ['EVANGELIST'] },
+  { name: 'sidebar_my_offerings', icon: FaDonate, href: '/my-offerings-overview', roles: ['CHURCH_MEMBER', 'CHURCH_SECRETARY', 'PASTOR', 'ASSISTANT_PASTOR', 'EVANGELIST',] },
+  { name: 'sidebar_my_groups', icon: FaUsers, href: '/my-groups', roles: ['CHURCH_MEMBER'] },
+  { name: 'sidebar_rsvp_events', icon: FaCalendarAlt, href: '/rsvp', roles: ['CHURCH_MEMBER'] },
+  { name: 'sidebar_notif_settings', icon: FaBell, href: '/notifications-settings', roles: ['CHURCH_MEMBER'] },
 ];
 
 interface CombinedNavProps {
@@ -220,16 +220,11 @@ const CombinedNav = ({ children }: CombinedNavProps) => {
   // }
 
   if (!data?.me) {
-    return <div className="min-h-screen bg-gray-100 flex items-center justify-center">{t('loading Sidebar')}</div>;
+    return <div className="min-h-screen bg-gray-100 flex items-center justify-center">{t('loading_sidebar')}</div>;
   }
 
   const userRole = data.me.role;
   const allowedItems = sidebarItems.filter(item => item.roles.includes(userRole));
-  // const allowedItems = sidebarItems
-  // const notifications = []; 
-
-
-
   const notifications = notifData?.myNotifications || [];
   const unreadCount = notifications.filter((n: any) => !n.isRead).length;
 
@@ -254,7 +249,7 @@ const CombinedNav = ({ children }: CombinedNavProps) => {
             </button>
             <Link to="/dashboard" className="flex items-center space-x-2">
               <FaChurch className="text-2xl" />
-              <span className="text-lg font-bold hidden md:block">KKKT Usharika wa Mkimbizi</span>
+              <span className="text-lg font-bold hidden md:block">{t('nav_brand')}</span>
               <span className="text-lg font-bold md:hidden">KKKT</span>
             </Link>
           </div>
@@ -282,9 +277,9 @@ const CombinedNav = ({ children }: CombinedNavProps) => {
                   className="absolute right-0 mt-2 w-80 bg-[#93DA97] rounded-md shadow-lg z-50 max-h-96 overflow-y-auto"
                 >
                   <div className="p-2 text-[#2D3748]">
-                    <h3 className="px-4 py-2 font-bold border-b border-gray-400">Notifications</h3>
+                    <h3 className="px-4 py-2 font-bold border-b border-gray-400">{t('notifications_title')}</h3>
                     {notifications.length === 0 ? (
-                      <p className="px-4 py-2 italic">{t('No notifications')}</p>
+                      <p className="px-4 py-2 italic">{t('no_notifications')}</p>
                     ) : (
                       notifications.map((notif: any) => (
                         <div key={notif.id} className={`px-4 py-3 hover:bg-[#5E936C] hover:text-[#E8FFD7] border-b border-gray-300 ${!notif.isRead ? 'bg-white/50' : ''}`}>
@@ -352,14 +347,14 @@ const CombinedNav = ({ children }: CombinedNavProps) => {
                     className="block px-4 py-2 text-[#2D3748] hover:bg-[#5E936C] hover:text-[#E8FFD7]"
                     onClick={() => setProfileOpen(false)}
                   >
-                    {t('My Profile')}
+                    {t('profile_menu_profile')}
                   </Link>
                   <button
                     onClick={handleLogout}
                     className="block w-full text-left px-4 py-2 text-[#2D3748] hover:bg-[#5E936C] hover:text-[#E8FFD7]"
                   >
                     <FaSignOutAlt className="inline mr-2" />
-                    {t('Logout')}
+                    {t('profile_menu_logout')}
                   </button>
                 </motion.div>
               )}

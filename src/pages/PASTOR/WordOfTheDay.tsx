@@ -5,6 +5,7 @@ import {
 } from 'react-icons/fa';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useQuery, useMutation } from '@apollo/client';
+import { useTranslation } from 'react-i18next';
 import { CREATE_DEVOTIONAL, UPDATE_DEVOTIONAL, DELETE_DEVOTIONAL } from '../../api/mutations';
 import { GET_DEVOTIONALS } from '../../api/queries';
 import { format, parseISO } from 'date-fns';
@@ -23,7 +24,7 @@ const Toast = ({ message, type, onClose }: { message: string, type: 'success' | 
       initial={{ opacity: 0, y: -50, scale: 0.9 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, y: -20, scale: 0.9 }}
-      className={`fixed top-6 right-6 z-50 flex items-center gap-3 px-6 py-4 rounded-2xl shadow-2xl backdrop-blur-md border border-white/20 ${type === 'success' ? 'bg-[#1a3c2b]/90 text-white' : 'bg-red-500/90 text-white'
+      className={`fixed top-6 right-6 z-50 flex items-center gap-3 px-6 py-4 rounded-2xl shadow-2xl backdrop-blur-md border border-white/20 ${type === 'success' ? 'bg-[#1a3c2b]/95 text-white' : 'bg-red-500/95 text-white'
         }`}
     >
       <div className={`p-2 rounded-full ${type === 'success' ? 'bg-[#5E936C]' : 'bg-white/20'}`}>
@@ -54,6 +55,7 @@ interface Devotional {
 // --- Main Page ---
 
 const WordOfTheDay = () => {
+  const { t } = useTranslation();
   // Navigation & State
   const [activeView, setActiveView] = useState<'create' | 'library'>('create');
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
@@ -144,7 +146,7 @@ const WordOfTheDay = () => {
       setMediaRecorder(recorder);
       recorder.start();
       setIsRecording(true);
-    } catch { showToast('Microphone access denied', 'error'); }
+    } catch { showToast(t('microphone_denied'), 'error'); }
   };
 
   const stopRecording = () => {
@@ -184,15 +186,15 @@ const WordOfTheDay = () => {
 
       if (selectedDevotional) {
         await updateDevotional({ variables: { id: selectedDevotional.id, input } });
-        showToast('Devotional updated successfully', 'success');
+        showToast(t('devotional_updated_success'), 'success');
       } else {
         await createDevotional({ variables: { input } });
-        showToast('Devotional published successfully', 'success');
+        showToast(t('devotional_published_success'), 'success');
       }
       resetForm();
       setActiveView('library');
     } catch (err: any) {
-      showToast(err.message || 'Failed to save devotional', 'error');
+      showToast(err.message || t('save_devotional_fail'), 'error');
     } finally {
       setIsSubmitting(false);
     }
@@ -210,8 +212,8 @@ const WordOfTheDay = () => {
               <FaBook className="text-white text-lg" />
             </div>
             <div>
-              <h1 className="text-xl font-bold text-[#1a3c2b] tracking-tight">Pastoral Desk</h1>
-              <p className="text-xs text-gray-500 font-medium">Word of the Day Manager</p>
+              <h1 className="text-xl font-bold text-[#1a3c2b] tracking-tight">{t('pastoral_desk')}</h1>
+              <p className="text-xs text-gray-500 font-medium">{t('word_day_manager')}</p>
             </div>
           </div>
           <div className="flex bg-gray-100/80 p-1.5 rounded-xl">
@@ -220,11 +222,11 @@ const WordOfTheDay = () => {
                 key={view}
                 onClick={() => { if (view === 'create') resetForm(); setActiveView(view as any); }}
                 className={`px-6 py-2 rounded-lg text-sm font-bold transition-all duration-300 ${activeView === view
-                    ? 'bg-white text-[#1a3c2b] shadow-md'
-                    : 'text-gray-500 hover:text-gray-700'
+                  ? 'bg-white text-[#1a3c2b] shadow-md'
+                  : 'text-gray-500 hover:text-gray-700'
                   }`}
               >
-                {view === 'create' ? 'Studio' : 'Library'}
+                {t(view)}
               </button>
             ))}
           </div>
@@ -250,7 +252,7 @@ const WordOfTheDay = () => {
                       <div className="w-3 h-3 rounded-full bg-red-400"></div>
                       <div className="w-3 h-3 rounded-full bg-yellow-400"></div>
                       <div className="w-3 h-3 rounded-full bg-green-400"></div>
-                      <span className="ml-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Editor Canvas</span>
+                      <span className="ml-4 text-xs font-bold text-gray-400 uppercase tracking-wider">{t('editor_canvas')}</span>
                     </div>
 
                     {/* Inputs */}
@@ -260,7 +262,7 @@ const WordOfTheDay = () => {
                         value={formData.title}
                         onChange={handleInputChange}
                         className="text-4xl font-black text-[#1a3c2b] placeholder-gray-300 outline-none bg-transparent w-full"
-                        placeholder="Enter Title Here..."
+                        placeholder={t('enter_title_placeholder')}
                         autoFocus
                         required
                       />
@@ -271,7 +273,7 @@ const WordOfTheDay = () => {
                           value={formData.scripture}
                           onChange={handleInputChange}
                           className="text-lg font-serif italic text-gray-600 placeholder-gray-300 outline-none bg-transparent w-full border-b border-dashed border-transparent focus:border-gray-200 transition"
-                          placeholder="Add Scripture Reference (e.g. John 3:16)..."
+                          placeholder={t('scripture_placeholder')}
                         />
                       </div>
                       <textarea
@@ -279,7 +281,7 @@ const WordOfTheDay = () => {
                         value={formData.content}
                         onChange={handleInputChange}
                         className="flex-1 w-full resize-none outline-none text-lg text-gray-700 leading-relaxed placeholder-gray-200"
-                        placeholder="Start writing your daily inspiration..."
+                        placeholder={t('content_placeholder')}
                         required
                       />
                     </div>
@@ -290,10 +292,10 @@ const WordOfTheDay = () => {
                 <div className="xl:col-span-4 flex flex-col gap-6">
                   {/* Publish Card */}
                   <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6">
-                    <h3 className="font-bold text-[#1a3c2b] mb-4 flex items-center gap-2"><div className="w-1.5 h-4 bg-[#5E936C] rounded-full"></div> Publishing</h3>
+                    <h3 className="font-bold text-[#1a3c2b] mb-4 flex items-center gap-2"><div className="w-1.5 h-4 bg-[#5E936C] rounded-full"></div> {t('publishing')}</h3>
                     <div className="space-y-4">
                       <div>
-                        <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">Publish Date</label>
+                        <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">{t('publish_date')}</label>
                         <input
                           type="date"
                           name="publishDate"
@@ -307,14 +309,14 @@ const WordOfTheDay = () => {
                         disabled={isSubmitting}
                         className="w-full py-4 rounded-xl bg-[#1a3c2b] text-white font-bold text-lg hover:bg-[#2d5c43] active:scale-95 transition-all shadow-xl shadow-green-900/20 flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-wait"
                       >
-                        {isSubmitting ? <FaSpinner className="animate-spin" /> : <><FaCheck /> {selectedDevotional ? 'Save Changes' : 'Publish Now'}</>}
+                        {isSubmitting ? <FaSpinner className="animate-spin" /> : <><FaCheck /> {selectedDevotional ? t('save_changes') : t('publish_now')}</>}
                       </button>
                     </div>
                   </div>
 
                   {/* Media Card */}
                   <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6">
-                    <h3 className="font-bold text-[#1a3c2b] mb-4 flex items-center gap-2"><div className="w-1.5 h-4 bg-[#5E936C] rounded-full"></div> Media Assets</h3>
+                    <h3 className="font-bold text-[#1a3c2b] mb-4 flex items-center gap-2"><div className="w-1.5 h-4 bg-[#5E936C] rounded-full"></div> {t('media_assets')}</h3>
 
                     <div className="space-y-4">
                       {/* Image */}
@@ -327,7 +329,7 @@ const WordOfTheDay = () => {
                         ) : (
                           <label className="flex flex-col items-center justify-center h-full cursor-pointer text-gray-400 hover:text-[#5E936C] transition">
                             <FaImage className="text-3xl mb-2" />
-                            <span className="text-xs font-bold">Upload Cover</span>
+                            <span className="text-xs font-bold">{t('upload_cover')}</span>
                             <input type="file" onChange={handleImageChange} className="hidden" accept="image/*" />
                           </label>
                         )}
@@ -335,14 +337,14 @@ const WordOfTheDay = () => {
 
                       {/* Audio */}
                       <div className="bg-gray-50 rounded-xl p-3 border border-gray-100">
-                        <label className="text-xs font-bold text-gray-500 uppercase mb-2 block">Audio Message</label>
+                        <label className="text-xs font-bold text-gray-500 uppercase mb-2 block">{t('audio_message')}</label>
                         <div className="flex gap-2">
                           <button
                             type="button"
                             onClick={isRecording ? stopRecording : startRecording}
                             className={`flex-1 py-3 rounded-lg flex items-center justify-center gap-2 font-bold transition-colors ${isRecording ? 'bg-red-500 text-white animate-pulse' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
                           >
-                            {isRecording ? 'Stop' : <><FaMicrophone /> Record</>}
+                            {isRecording ? t('stop_recording') : <><FaMicrophone /> {t('record_audio')}</>}
                           </button>
                           <label className="px-4 py-3 bg-gray-200 text-gray-600 rounded-lg cursor-pointer hover:bg-gray-300 transition flex items-center">
                             <FaUpload />
@@ -356,10 +358,10 @@ const WordOfTheDay = () => {
                       <div className="bg-gray-50 rounded-xl p-3 border border-gray-100 flex items-center justify-between">
                         <div className="flex items-center gap-3">
                           <div className="bg-white p-2 rounded-lg shadow-sm"><FaVideo className="text-[#5E936C]" /></div>
-                          <span className="text-sm font-medium text-gray-600 truncate max-w-[150px]">{videoFile ? videoFile.name : 'No video selected'}</span>
+                          <span className="text-sm font-medium text-gray-600 truncate max-w-[150px]">{videoFile ? videoFile.name : t('no_video_selected')}</span>
                         </div>
                         <label className="text-xs font-bold text-[#5E936C] cursor-pointer hover:underline">
-                          Choose
+                          {t('choose_video')}
                           <input type="file" onChange={(e) => { if (e.target.files?.[0]) setVideoFile(e.target.files[0]); }} className="hidden" accept="video/*" />
                         </label>
                       </div>
@@ -379,7 +381,7 @@ const WordOfTheDay = () => {
                     <FaSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
                     <input
                       type="text"
-                      placeholder="Search devotionals..."
+                      placeholder={t('search_devotionals')}
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
                       className="w-full pl-11 pr-4 py-3 bg-gray-50 rounded-xl outline-none focus:ring-2 focus:ring-[#5E936C] transition"
@@ -387,7 +389,7 @@ const WordOfTheDay = () => {
                   </div>
                   <div className="flex items-center gap-2 px-4 py-3 bg-gray-50 rounded-xl text-gray-500 font-medium">
                     <FaFilter />
-                    <span>{filteredDevotionals.length} Items</span>
+                    <span>{t('items_count', { count: filteredDevotionals.length })}</span>
                   </div>
                 </div>
 
@@ -404,7 +406,7 @@ const WordOfTheDay = () => {
                             <div className="w-full h-full flex items-center justify-center bg-gradient-to-tr from-[#E8FFD7] to-white"><FaBook className="text-4xl text-[#5E936C]/30" /></div>
                           )}
                           <div className="absolute top-3 left-3 bg-black/50 backdrop-blur-sm text-white px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide">
-                            {d.publishedAt ? format(parseISO(d.publishedAt), 'MMM dd') : 'Draft'}
+                            {d.publishedAt ? format(parseISO(d.publishedAt), 'MMM dd') : t('draft')}
                           </div>
                           {/* Overlay Actions */}
                           <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3 backdrop-blur-[2px]">
@@ -420,7 +422,7 @@ const WordOfTheDay = () => {
                           <p className="text-sm text-gray-500 line-clamp-3 mb-4 flex-1">{d.content}</p>
 
                           <div className="pt-4 border-t border-gray-50 flex justify-between items-center text-xs text-gray-400">
-                            <span>Author: {d.author?.fullName || 'Me'}</span>
+                            <span>{t('author_label', { name: d.author?.fullName || 'Me' })}</span>
                           </div>
                         </div>
                       </div>

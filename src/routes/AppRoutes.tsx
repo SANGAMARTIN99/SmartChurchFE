@@ -22,6 +22,7 @@ import OfferingEntryPage from '../pages/SECRETARY/OfferingEntry';
 import BlogFeed from '../pages/BLOG/BlogFeed';
 import BlogPostDetail from '../pages/BLOG/BlogPostDetail';
 import GetCard from '../pages/MEMBER/GetCard';
+import MyGroups from '../pages/MEMBER/MyGroups';
 import ProfilePage from '../pages/Profile';
 
 
@@ -49,6 +50,7 @@ const AppRoutes = () => {
           <Route path="/member-prayer-requests" element={<MyPrayerRequests />} />
           <Route path="/my-announcements" element={<TodayAnnouncements />} />
           <Route path="/my-offerings-overview" element={<MyOfferingsOverview />} />
+          <Route path="/my-groups" element={<MyGroups />} />
           <Route path="/get-card" element={<GetCard />} />
 
 

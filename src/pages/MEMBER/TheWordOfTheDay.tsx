@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useQuery, useMutation } from '@apollo/client';
 import { motion, AnimatePresence } from 'framer-motion';
 import { format, parseISO } from 'date-fns';
+import { useTranslation } from 'react-i18next';
 import {
   FaBookOpen, FaPlay, FaPause, FaRegBookmark, FaBookmark, FaShareAlt,
   FaChevronLeft, FaChevronRight, FaPrayingHands, FaTwitter, FaWhatsapp, FaCalendarCheck
@@ -28,6 +29,7 @@ type Devotional = {
 };
 
 const TheWordOfTheDay: React.FC = () => {
+  const { t } = useTranslation();
   // pagination state for browsing devotionals by day (0 = today/latest)
   const [offset, setOffset] = useState<number>(0);
   const [amenCount, setAmenCount] = useState<number>(0);
@@ -165,7 +167,7 @@ const TheWordOfTheDay: React.FC = () => {
                   transition={{ delay: 0.2 }}
                 >
                   <div className="flex items-center gap-3 mb-4">
-                    <span className="bg-[#5E936C] text-white px-3 py-1 rounded-full text-xs font-bold tracking-wider uppercase">Word of the Day</span>
+                    <span className="bg-[#5E936C] text-white px-3 py-1 rounded-full text-xs font-bold tracking-wider uppercase">{t('Word of the Day')}</span>
                   </div>
                   <h1 className="text-4xl md:text-6xl font-black text-[#1a3c2b] mb-4 drop-shadow-sm leading-tight">
                     {devotional?.title}
@@ -173,7 +175,7 @@ const TheWordOfTheDay: React.FC = () => {
                   <div className="flex items-center gap-4 text-gray-600 font-medium">
                     <span>{publishedDate}</span>
                     <span className="w-1 h-1 bg-gray-400 rounded-full"></span>
-                    <span>By {devotional?.author?.fullName || 'Church Ministry'}</span>
+                    <span>{t('by_author', { author: devotional?.author?.fullName || t('church_ministry') })}</span>
                   </div>
                 </motion.div>
               </div>
@@ -203,7 +205,7 @@ const TheWordOfTheDay: React.FC = () => {
                       {isPlaying ? <FaPause /> : <FaPlay className="ml-1" />}
                     </button>
                     <div className="flex-1">
-                      <p className="text-xs font-bold text-[#5E936C] uppercase tracking-wide mb-1">Audio Message</p>
+                      <p className="text-xs font-bold text-[#5E936C] uppercase tracking-wide mb-1">{t('audio_message')}</p>
                       <div className="h-1 bg-gray-200 rounded-full overflow-hidden">
                         <motion.div
                           animate={{ width: isPlaying ? '100%' : '0%' }}
@@ -236,7 +238,7 @@ const TheWordOfTheDay: React.FC = () => {
                 <div className="flex items-center justify-between mt-12 pt-8 border-t border-gray-100">
                   <div className="flex gap-4">
                     <button onClick={onAmen} className={`flex items-center gap-2 px-5 py-3 rounded-full font-bold transition-all ${amened ? 'bg-[#1a3c2b] text-white shadow-lg' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
-                      <FaPrayingHands /> Amen <span className="opacity-80 ml-1">{amenCount}</span>
+                      <FaPrayingHands /> {t('amen')} <span className="opacity-80 ml-1">{amenCount}</span>
                     </button>
                     <button onClick={toggleBookmark} className={`w-12 h-12 flex items-center justify-center rounded-full transition-all ${bookmarked ? 'bg-[#5E936C] text-white shadow-lg' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
                       {bookmarked ? <FaBookmark /> : <FaRegBookmark />}
@@ -254,16 +256,16 @@ const TheWordOfTheDay: React.FC = () => {
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 {/* Journal */}
                 <div className="lg:col-span-2 bg-white rounded-3xl shadow-lg p-8">
-                  <h3 className="font-bold text-xl text-[#1a3c2b] mb-4">My Prayer Journal</h3>
+                  <h3 className="font-bold text-xl text-[#1a3c2b] mb-4">{t('my_prayer_journal')}</h3>
                   <textarea
                     value={journal}
                     onChange={(e) => setJournal(e.target.value)}
-                    placeholder="Reflect on today's word..."
+                    placeholder={t('journal_placeholder')}
                     className="w-full p-4 bg-[#F2F5F8] rounded-xl border-none focus:ring-2 focus:ring-[#5E936C] min-h-[150px] resize-none"
                   />
                   <div className="flex justify-end mt-4">
                     <button onClick={saveJournal} className="px-6 py-2 bg-[#1a3c2b] text-white rounded-lg font-bold hover:bg-[#2d5c43] transition">
-                      Save Entry
+                      {t('save_entry')}
                     </button>
                   </div>
                 </div>
@@ -271,26 +273,26 @@ const TheWordOfTheDay: React.FC = () => {
                 {/* Related / Nav */}
                 <div className="space-y-6">
                   <div className="bg-white rounded-3xl shadow-lg p-6">
-                    <h3 className="font-bold text-[#1a3c2b] mb-4">Navigation</h3>
+                    <h3 className="font-bold text-[#1a3c2b] mb-4">{t('navigation')}</h3>
                     <div className="flex gap-3">
                       <button
                         onClick={onPrev}
                         disabled={offset === 0}
                         className="flex-1 py-3 rounded-xl border border-gray-200 flex items-center justify-center gap-2 font-bold disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition"
                       >
-                        <FaChevronLeft /> Newer
+                        <FaChevronLeft /> {t('newer')}
                       </button>
                       <button
                         onClick={onNext}
                         className="flex-1 py-3 rounded-xl border border-gray-200 flex items-center justify-center gap-2 font-bold hover:bg-gray-50 transition"
                       >
-                        Older <FaChevronRight />
+                        {t('older')} <FaChevronRight />
                       </button>
                     </div>
                   </div>
 
                   <div className="bg-white rounded-3xl shadow-lg p-6">
-                    <h3 className="font-bold text-[#1a3c2b] mb-4">More Devotionals</h3>
+                    <h3 className="font-bold text-[#1a3c2b] mb-4">{t('more_devotionals')}</h3>
                     <div className="space-y-4">
                       {related.map(d => (
                         <div key={d.id} className="flex gap-3 items-start group cursor-pointer hover:bg-gray-50 p-2 rounded-lg transition">

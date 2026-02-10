@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import { useQuery } from '@apollo/client';
 import { FaUsers, FaSearch, FaDownload, FaFilePdf } from 'react-icons/fa';
+import { useTranslation } from 'react-i18next';
 import { GET_RECENT_OFFERINGS, GET_STREETS_AND_GROUPS } from '../../api/queries';
 import { handleExportDownload } from '../../utils/export';
 
 const MemberContributions: React.FC = () => {
+  const { t } = useTranslation();
   // Defaults: current month
   const now = new Date();
   const yyyy = now.getFullYear();
@@ -56,7 +58,7 @@ const MemberContributions: React.FC = () => {
   const totalTransactions = filtered.length;
 
   if (loading) return (<div className="min-h-screen bg-[#E8FFD7] flex items-center justify-center"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#5E936C]"></div></div>);
-  if (error) return (<div className="min-h-screen bg-[#E8FFD7] flex items-center justify-center text-red-600">Failed to load member contributions.</div>);
+  if (error) return (<div className="min-h-screen bg-[#E8FFD7] flex items-center justify-center text-red-600">{t('load_contributions_failed')}</div>);
 
   return (
     <div className="flex h-screen bg-[#E8FFD7] overflow-hidden">
@@ -66,8 +68,8 @@ const MemberContributions: React.FC = () => {
             <div className="flex items-center mb-4 md:mb-0">
               <div className="bg-[#5E936C] p-3 rounded-full mr-4"><FaUsers className="text-2xl text-white" /></div>
               <div>
-                <h1 className="text-2xl font-bold text-[#5E936C]">Member Contributions</h1>
-                <p className="text-gray-600">Individual giving analytics and breakdown</p>
+                <h1 className="text-2xl font-bold text-[#5E936C]">{t('Member Contributions')}</h1>
+                <p className="text-gray-600">{t('contributions_subtitle')}</p>
               </div>
             </div>
             <div className="flex space-x-2">
@@ -102,7 +104,7 @@ const MemberContributions: React.FC = () => {
               <FaSearch className="absolute left-3 top-3 text-gray-400" />
               <input
                 type="text"
-                placeholder="Search member..."
+                placeholder={t('search_member_placeholder')}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#5E936C]"
@@ -114,7 +116,7 @@ const MemberContributions: React.FC = () => {
                 onChange={(e) => setStreetFilter(e.target.value)}
                 className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-[#5E936C]"
               >
-                <option value="all">All Streets</option>
+                <option value="all">{t('all_streets')}</option>
                 {(streetsData?.streets || []).map((s: any) => (
                   <option key={s.id} value={s.name}>{s.name}</option>
                 ))}
@@ -126,11 +128,11 @@ const MemberContributions: React.FC = () => {
                 onChange={(e) => setTypeFilter(e.target.value)}
                 className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-[#5E936C]"
               >
-                <option value="all">All Types</option>
-                <option value="tithe">Tithe</option>
-                <option value="special">Special</option>
-                <option value="general">General</option>
-                <option value="pledge">Pledge</option>
+                <option value="all">{t('all_types')}</option>
+                <option value="tithe">{t('tithe')}</option>
+                <option value="special">{t('special')}</option>
+                <option value="general">{t('general')}</option>
+                <option value="pledge">{t('pledge')}</option>
               </select>
             </div>
             <div>
@@ -154,15 +156,15 @@ const MemberContributions: React.FC = () => {
           {/* Metrics */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
             <div className="bg-white rounded-xl shadow-md p-6 border-l-4 border-[#5E936C]">
-              <p className="text-gray-500">Total Contributions</p>
+              <p className="text-gray-500">{t('total_contributions')}</p>
               <h3 className="text-2xl font-bold text-[#5E936C]">{fmt(totalContributions)}</h3>
             </div>
             <div className="bg-white rounded-xl shadow-md p-6 border-l-4 border-[#93DA97]">
-              <p className="text-gray-500">Contributing Members</p>
+              <p className="text-gray-500">{t('contributing_members')}</p>
               <h3 className="text-2xl font-bold text-[#5E936C]">{rows.length}</h3>
             </div>
             <div className="bg-white rounded-xl shadow-md p-6 border-l-4 border-[#4A8C5F]">
-              <p className="text-gray-500">Avg per Member</p>
+              <p className="text-gray-500">{t('avg_per_member')}</p>
               <h3 className="text-2xl font-bold text-[#5E936C]">{fmt(rows.length ? totalContributions / rows.length : 0)}</h3>
             </div>
           </div>
@@ -170,18 +172,18 @@ const MemberContributions: React.FC = () => {
           {/* Table */}
           <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
             <div className="p-4 border-b border-gray-200 flex justify-between items-center">
-              <h3 className="text-lg font-semibold text-[#5E936C]">Members</h3>
-              <span className="text-sm text-gray-500">{totalTransactions} transactions</span>
+              <h3 className="text-lg font-semibold text-[#5E936C]">{t('members_title')}</h3>
+              <span className="text-sm text-gray-500">{totalTransactions} {t('transactions')}</span>
             </div>
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Member</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Street</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contributions</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Date</th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('Member')}</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('street')}</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('Contributions')}</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('last_date')}</th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">{t('total')}</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
@@ -196,7 +198,7 @@ const MemberContributions: React.FC = () => {
                   ))}
                   {rows.length === 0 && (
                     <tr>
-                      <td colSpan={5} className="px-6 py-10 text-center text-gray-500">No contributions match your filters.</td>
+                      <td colSpan={5} className="px-6 py-10 text-center text-gray-500">{t('no_contributions_match')}</td>
                     </tr>
                   )}
                 </tbody>
