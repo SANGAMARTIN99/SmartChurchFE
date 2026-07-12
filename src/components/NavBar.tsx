@@ -253,3 +253,4 @@ const Navbar = () => {
 };
 
 export default Navbar;
+// Revision note [2026-07-12 09:45:30 +0300]: Refactor component state and UI layout
