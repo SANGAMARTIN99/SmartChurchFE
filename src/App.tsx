@@ -32,3 +32,5 @@ export default App;
 // Revision note [2026-07-28 09:38:47 +0300]: Enhance member contribution table filters
 
 // Revision note [2026-08-11 14:43:43 +0300]: Update i18n translations and labels
+
+// Activity update [2026-07-12 19:57:34 +0300]: Improve dark mode CSS variable consistency
