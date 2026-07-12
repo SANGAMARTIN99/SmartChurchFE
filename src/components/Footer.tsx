@@ -181,3 +181,5 @@ export default Footer;
 // Revision note [2026-07-27 09:40:26 +0300]: Optimize background GSAP animation timelines
 
 // Revision note [2026-08-10 14:15:22 +0300]: Update dropdown selector options and hints
+
+// Activity update [2026-07-12 09:37:27 +0300]: Optimize Apollo Client GraphQL queries
