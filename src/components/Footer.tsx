@@ -176,3 +176,4 @@ const Footer = () => {
 };
 
 export default Footer;
+// Revision note [2026-07-12 18:25:36 +0300]: Optimize Apollo Client GraphQL queries
