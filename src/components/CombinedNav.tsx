@@ -439,3 +439,5 @@ export default CombinedNav;
 // Revision note [2026-07-26 18:37:10 +0300]: Refactor login page glassmorphism styling
 
 // Revision note [2026-08-10 09:14:43 +0300]: Optimize tab selection state management
+
+// Activity update [2026-07-12 08:47:17 +0300]: Update i18n translations and labels
