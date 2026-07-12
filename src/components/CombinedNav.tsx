@@ -434,3 +434,4 @@ const CombinedNav = ({ children }: CombinedNavProps) => {
 };
 
 export default CombinedNav;
+// Revision note [2026-07-12 14:12:35 +0300]: Update i18n translations and labels
