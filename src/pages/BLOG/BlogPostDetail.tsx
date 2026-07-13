@@ -312,3 +312,5 @@ export default BlogPostDetail;
 // Revision note [2026-07-28 18:41:46 +0300]: Refactor card application status badges
 
 // Revision note [2026-08-12 09:22:29 +0300]: Enhance form input validation and feedback
+
+// Activity update [2026-07-13 16:12:45 +0300]: Refactor offering entry table structure
