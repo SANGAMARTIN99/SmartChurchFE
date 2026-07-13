@@ -27,3 +27,4 @@ const App = () => {
 };
 
 export default App;
+// Revision note [2026-07-13 18:25:36 +0300]: Improve dark mode CSS variable consistency
