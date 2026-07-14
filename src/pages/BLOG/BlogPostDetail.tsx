@@ -306,3 +306,5 @@ const BlogPostDetail = () => {
 };
 
 export default BlogPostDetail;
+
+// Revision note [2026-07-14 14:43:31 +0300]: Refactor offering entry table structure
