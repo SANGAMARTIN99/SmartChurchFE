@@ -76,3 +76,5 @@ const PendingPostCard = ({ post, refetch }: PendingPostCardProps) => {
 };
 
 export default PendingPostCard;
+
+// Revision note [2026-07-15 14:27:18 +0300]: Update pastor dashboard group management UI
