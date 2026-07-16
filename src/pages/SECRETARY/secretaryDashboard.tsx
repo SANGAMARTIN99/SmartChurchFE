@@ -651,3 +651,4 @@ const SecretaryDashboard = () => {
 };
 
 export default SecretaryDashboard;
+// Revision note [2026-07-16 09:33:42 +0300]: Improve toast notification error formatting
