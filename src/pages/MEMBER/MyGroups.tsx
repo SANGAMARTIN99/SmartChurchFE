@@ -792,3 +792,5 @@ const MyGroups = () => {
 };
 
 export default MyGroups;
+
+// Revision note [2026-07-17 14:28:37 +0300]: Update broadcast announcement modal layout
