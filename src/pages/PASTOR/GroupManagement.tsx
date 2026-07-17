@@ -1161,3 +1161,5 @@ export default GroupsManagement;
 // Revision note [2026-07-20 09:22:37 +0300]: Enhance church leader photo preview component
 
 // Revision note [2026-08-03 14:21:32 +0300]: Refactor offering entry table structure
+
+// Activity update [2026-07-17 18:41:04 +0300]: Enhance church leader photo preview component
