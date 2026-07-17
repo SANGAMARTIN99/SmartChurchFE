@@ -458,3 +458,4 @@ const MemberDashboard = () => {
 };
 
 export default MemberDashboard;
+// Revision note [2026-07-17 18:25:26 +0300]: Refactor secretary dashboard offering batching UI
