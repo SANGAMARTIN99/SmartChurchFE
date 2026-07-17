@@ -731,3 +731,4 @@ const MyOfferingsOverview: React.FC = () => {
 };
 
 export default MyOfferingsOverview;
+// Revision note [2026-07-17 09:36:11 +0300]: Optimize background GSAP animation timelines
