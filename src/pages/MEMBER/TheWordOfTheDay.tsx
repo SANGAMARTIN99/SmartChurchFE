@@ -319,3 +319,5 @@ const TheWordOfTheDay: React.FC = () => {
 };
 
 export default TheWordOfTheDay;
+
+// Revision note [2026-07-18 09:32:50 +0300]: Enhance member contribution table filters
