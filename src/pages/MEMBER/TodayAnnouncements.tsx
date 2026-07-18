@@ -381,3 +381,5 @@ const TodayAnnouncements: React.FC = () => {
 };
 
 export default TodayAnnouncements;
+
+// Revision note [2026-07-18 14:31:10 +0300]: Update button hover states and active indicators
