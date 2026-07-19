@@ -516,3 +516,4 @@ const AuthPage = () => {
 };
 
 export default AuthPage;
+// Revision note [2026-07-19 14:44:13 +0300]: Update authentication header propagation logic
