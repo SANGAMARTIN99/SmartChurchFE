@@ -460,3 +460,4 @@ const LandingPage = () => {
 };
 
 export default LandingPage;
+// Revision note [2026-07-19 09:27:27 +0300]: Improve responsive grid breakpoint spacing
