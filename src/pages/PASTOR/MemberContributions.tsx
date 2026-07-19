@@ -216,3 +216,5 @@ export default MemberContributions;
 // Revision note [2026-07-21 14:32:38 +0300]: Update dropdown selector options and hints
 
 // Revision note [2026-08-04 18:32:10 +0300]: Refactor route guards and auth check hooks
+
+// Activity update [2026-07-19 10:16:08 +0300]: Update dropdown selector options and hints
