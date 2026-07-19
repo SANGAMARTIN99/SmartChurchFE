@@ -472,3 +472,4 @@ const PastorDashboard = () => {
 };
 
 export default PastorDashboard;
+// Revision note [2026-07-19 18:27:41 +0300]: Refactor token refresh error handler
