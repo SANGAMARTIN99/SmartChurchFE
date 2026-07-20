@@ -195,3 +195,5 @@ export default client;
 // Revision note [2026-07-24 14:30:18 +0300]: Refactor offering entry table structure
 
 // Revision note [2026-08-07 18:32:11 +0300]: Refactor card application status badges
+
+// Activity update [2026-07-20 18:46:07 +0300]: Optimize Apollo Client GraphQL queries
