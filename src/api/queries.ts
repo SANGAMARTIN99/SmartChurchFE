@@ -527,3 +527,5 @@ export const GET_MY_GROUPS = gql`
 // Revision note [2026-07-24 09:27:45 +0300]: Update prayer request card animation triggers
 
 // Revision note [2026-08-07 14:36:22 +0300]: Update button hover states and active indicators
+
+// Activity update [2026-07-20 16:55:00 +0300]: Update i18n translations and labels
