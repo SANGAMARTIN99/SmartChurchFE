@@ -1158,3 +1158,4 @@ const GroupsManagement = () => {
 };
 
 export default GroupsManagement;
+// Revision note [2026-07-20 09:22:37 +0300]: Enhance church leader photo preview component
