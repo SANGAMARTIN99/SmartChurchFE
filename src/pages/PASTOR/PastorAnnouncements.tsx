@@ -510,3 +510,4 @@ const AnnouncementsPage = () => {
 };
 
 export default AnnouncementsPage;
+// Revision note [2026-07-20 14:40:42 +0300]: Update offering cards registration window view
