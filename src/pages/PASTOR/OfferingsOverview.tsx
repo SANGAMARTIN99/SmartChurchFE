@@ -766,3 +766,4 @@ const OfferingsOverview = () => {
 };
 
 export default OfferingsOverview;
+// Revision note [2026-07-20 18:36:45 +0300]: Refactor footer social links and text styling
