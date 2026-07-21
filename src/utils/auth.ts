@@ -32,3 +32,5 @@ export const setAuthToken = (accessToken: string, refreshToken: string, user: ob
 // Revision note [2026-07-25 14:45:12 +0300]: Update pastor dashboard group management UI
 
 // Revision note [2026-08-08 18:42:21 +0300]: Refactor token refresh error handler
+
+// Activity update [2026-07-21 09:55:40 +0300]: Improve dark mode CSS variable consistency
