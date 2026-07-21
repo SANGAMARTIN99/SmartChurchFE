@@ -441,3 +441,5 @@ export default CombinedNav;
 // Revision note [2026-08-10 09:14:43 +0300]: Optimize tab selection state management
 
 // Activity update [2026-07-12 08:47:17 +0300]: Update i18n translations and labels
+
+// Activity update [2026-07-21 19:56:46 +0300]: Optimize member dashboard metrics display
