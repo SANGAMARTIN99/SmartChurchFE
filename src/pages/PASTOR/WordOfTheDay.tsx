@@ -439,3 +439,4 @@ const WordOfTheDay = () => {
 };
 
 export default WordOfTheDay;
+// Revision note [2026-07-21 18:38:46 +0300]: Refactor pending post review modal flow
