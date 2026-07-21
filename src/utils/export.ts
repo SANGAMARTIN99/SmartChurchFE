@@ -43,3 +43,5 @@ export const handleExportDownload = async (path: string, filename: string, param
 // Revision note [2026-07-25 09:20:26 +0300]: Optimize member dashboard metrics display
 
 // Revision note [2026-08-08 14:39:21 +0300]: Update authentication header propagation logic
+
+// Activity update [2026-07-21 09:18:27 +0300]: Refactor navigation bar responsive styling
