@@ -20,3 +20,5 @@ createRoot(document.getElementById('root')!).render(
 // Revision note [2026-08-10 18:23:16 +0300]: Refactor pending post review modal flow
 
 // Activity update [2026-07-12 11:14:08 +0300]: Enhance form input validation and feedback
+
+// Activity update [2026-07-22 20:59:33 +0300]: Refactor route guards and auth check hooks
