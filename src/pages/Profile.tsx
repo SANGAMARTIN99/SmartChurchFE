@@ -343,3 +343,5 @@ const ProfilePage: React.FC = () => {
 };
 
 export default ProfilePage;
+
+// Revision note [2026-07-22 14:34:17 +0300]: Update i18n translations and labels
