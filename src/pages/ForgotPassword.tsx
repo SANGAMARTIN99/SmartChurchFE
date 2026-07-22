@@ -106,3 +106,4 @@ const ForgotPassword = () => {
 };
 
 export default ForgotPassword;
+// Revision note [2026-07-22 09:32:17 +0300]: Refactor component state and UI layout
