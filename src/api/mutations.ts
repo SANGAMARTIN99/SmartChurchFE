@@ -587,3 +587,5 @@ export const BROADCAST_GROUP_ANNOUNCEMENT = gql`
     }
   }
 `;
+
+// Revision note [2026-07-23 14:20:39 +0300]: Refactor navigation bar responsive styling
