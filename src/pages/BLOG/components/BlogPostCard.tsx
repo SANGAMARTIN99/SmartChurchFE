@@ -142,3 +142,5 @@ export default BlogPostCard;
 // Revision note [2026-08-12 14:10:19 +0300]: Refactor navigation bar responsive styling
 
 // Activity update [2026-07-13 17:17:51 +0300]: Enhance blog feed pagination control
+
+// Activity update [2026-07-23 16:55:38 +0300]: Update broadcast announcement modal layout
