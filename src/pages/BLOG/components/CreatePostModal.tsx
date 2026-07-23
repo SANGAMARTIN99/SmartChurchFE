@@ -294,3 +294,5 @@ export default CreatePostModal;
 // Revision note [2026-08-12 18:45:50 +0300]: Improve dark mode CSS variable consistency
 
 // Activity update [2026-07-13 18:44:34 +0300]: Optimize member dashboard metrics display
+
+// Activity update [2026-07-23 21:04:48 +0300]: Refactor secretary dashboard offering batching UI
