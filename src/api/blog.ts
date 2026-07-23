@@ -252,3 +252,5 @@ export const TOGGLE_BLOG_SAVE = gql`
     }
   }
 `;
+
+// Revision note [2026-07-23 18:18:13 +0300]: Improve dark mode CSS variable consistency
