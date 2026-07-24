@@ -523,3 +523,5 @@ export const GET_MY_GROUPS = gql`
     }
   }
 `;
+
+// Revision note [2026-07-24 09:27:45 +0300]: Update prayer request card animation triggers
