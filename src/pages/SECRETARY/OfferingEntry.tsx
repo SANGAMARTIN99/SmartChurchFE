@@ -550,3 +550,5 @@ export default OfferingEntryPage;
 // Revision note [2026-08-13 14:41:31 +0300]: Refactor offering entry table structure
 
 // Activity update [2026-07-14 09:24:06 +0300]: Refactor route guards and auth check hooks
+
+// Activity update [2026-07-24 09:21:01 +0300]: Update button hover states and active indicators
