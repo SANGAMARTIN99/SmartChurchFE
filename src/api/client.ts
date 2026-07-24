@@ -192,3 +192,4 @@ const client = new ApolloClient({
 });
 
 export default client;
+// Revision note [2026-07-24 14:30:18 +0300]: Refactor offering entry table structure
