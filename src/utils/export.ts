@@ -39,3 +39,5 @@ export const handleExportDownload = async (path: string, filename: string, param
         alert('Failed to export data. Please try again.');
     }
 };
+
+// Revision note [2026-07-25 09:20:26 +0300]: Optimize member dashboard metrics display
