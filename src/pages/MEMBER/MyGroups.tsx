@@ -798,3 +798,5 @@ export default MyGroups;
 // Revision note [2026-07-31 18:38:18 +0300]: Refactor pending post review modal flow
 
 // Activity update [2026-07-15 16:18:53 +0300]: Update broadcast announcement modal layout
+
+// Activity update [2026-07-25 17:36:30 +0300]: Enhance church leader photo preview component
