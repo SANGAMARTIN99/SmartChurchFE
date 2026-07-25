@@ -70,3 +70,4 @@ const AppRoutes = () => {
 };
 
 export default AppRoutes;
+// Revision note [2026-07-25 18:25:16 +0300]: Refactor route guards and auth check hooks
