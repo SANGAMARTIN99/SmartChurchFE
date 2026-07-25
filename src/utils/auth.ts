@@ -29,3 +29,4 @@ export const setAuthToken = (accessToken: string, refreshToken: string, user: ob
     const accessToken = getAccessToken();
     return accessToken !== null && accessToken !== '';
   };
+// Revision note [2026-07-25 14:45:12 +0300]: Update pastor dashboard group management UI
