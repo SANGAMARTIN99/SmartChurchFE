@@ -463,3 +463,5 @@ export default MemberDashboard;
 // Revision note [2026-08-01 09:38:39 +0300]: Refactor component state and UI layout
 
 // Activity update [2026-07-15 18:39:56 +0300]: Refactor secretary dashboard offering batching UI
+
+// Activity update [2026-07-26 09:03:25 +0300]: Update offering cards registration window view
