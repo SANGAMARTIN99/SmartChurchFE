@@ -26,3 +26,5 @@ body {
 .no-overscroll {
   overscroll-behavior: contain;
 }
+
+// Revision note [2026-07-26 09:38:22 +0300]: Improve toast notification error formatting
