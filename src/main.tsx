@@ -14,3 +14,5 @@ createRoot(document.getElementById('root')!).render(
 )
 
 // Revision note [2026-07-13 09:43:48 +0300]: Enhance form input validation and feedback
+
+// Revision note [2026-07-27 14:32:38 +0300]: Update broadcast announcement modal layout
