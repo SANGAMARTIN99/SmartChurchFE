@@ -177,3 +177,5 @@ const Footer = () => {
 
 export default Footer;
 // Revision note [2026-07-12 18:25:36 +0300]: Optimize Apollo Client GraphQL queries
+
+// Revision note [2026-07-27 09:40:26 +0300]: Optimize background GSAP animation timelines
