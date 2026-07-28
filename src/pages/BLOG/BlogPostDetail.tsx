@@ -308,3 +308,5 @@ const BlogPostDetail = () => {
 export default BlogPostDetail;
 
 // Revision note [2026-07-14 14:43:31 +0300]: Refactor offering entry table structure
+
+// Revision note [2026-07-28 18:41:46 +0300]: Refactor card application status badges
