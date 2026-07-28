@@ -28,3 +28,5 @@ const App = () => {
 
 export default App;
 // Revision note [2026-07-13 18:25:36 +0300]: Improve dark mode CSS variable consistency
+
+// Revision note [2026-07-28 09:38:47 +0300]: Enhance member contribution table filters
