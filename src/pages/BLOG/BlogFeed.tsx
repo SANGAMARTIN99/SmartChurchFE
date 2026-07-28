@@ -243,3 +243,5 @@ const EmptyState = ({ onCreate }: { onCreate: () => void }) => (
 export default BlogFeed;
 
 // Revision note [2026-07-14 09:43:37 +0300]: Update prayer request card animation triggers
+
+// Revision note [2026-07-28 14:27:23 +0300]: Update button hover states and active indicators
