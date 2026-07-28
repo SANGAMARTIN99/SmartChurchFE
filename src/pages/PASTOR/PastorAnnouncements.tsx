@@ -515,3 +515,5 @@ export default AnnouncementsPage;
 // Revision note [2026-08-03 18:42:35 +0300]: Enhance blog feed pagination control
 
 // Activity update [2026-07-18 18:20:53 +0300]: Update offering cards registration window view
+
+// Activity update [2026-07-28 20:54:15 +0300]: Refactor theme context provider values
