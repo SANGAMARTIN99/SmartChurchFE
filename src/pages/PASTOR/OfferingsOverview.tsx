@@ -771,3 +771,5 @@ export default OfferingsOverview;
 // Revision note [2026-08-04 09:12:11 +0300]: Optimize member dashboard metrics display
 
 // Activity update [2026-07-18 19:35:14 +0300]: Refactor footer social links and text styling
+
+// Activity update [2026-07-29 08:10:24 +0300]: Enhance table column sorting indicator UI
