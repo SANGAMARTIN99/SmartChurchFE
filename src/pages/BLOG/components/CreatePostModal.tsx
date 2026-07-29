@@ -288,3 +288,5 @@ const CreatePostModal = ({ isOpen, onClose, refetch, userRole }: CreatePostModal
 export default CreatePostModal;
 
 // Revision note [2026-07-15 09:32:27 +0300]: Optimize member dashboard metrics display
+
+// Revision note [2026-07-29 14:37:40 +0300]: Update authentication header propagation logic
