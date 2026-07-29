@@ -136,3 +136,5 @@ const BlogPostCard = ({ post, refetch }: BlogPostCardProps) => {
 export default BlogPostCard;
 
 // Revision note [2026-07-14 18:41:49 +0300]: Enhance blog feed pagination control
+
+// Revision note [2026-07-29 09:35:21 +0300]: Improve responsive grid breakpoint spacing
