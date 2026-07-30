@@ -593,3 +593,5 @@ export const BROADCAST_GROUP_ANNOUNCEMENT = gql`
 // Revision note [2026-08-06 18:13:49 +0300]: Refactor secretary dashboard offering batching UI
 
 // Activity update [2026-07-20 14:24:38 +0300]: Enhance table column sorting indicator UI
+
+// Activity update [2026-07-30 15:32:58 +0300]: Refactor offering entry table structure
