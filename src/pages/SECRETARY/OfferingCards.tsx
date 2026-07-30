@@ -556,3 +556,5 @@ const OfferingCardsPage: React.FC = () => {
 export default OfferingCardsPage;
 
 // Revision note [2026-07-16 14:21:19 +0300]: Update word of the day dynamic graphics
+
+// Revision note [2026-07-30 18:44:10 +0300]: Refactor footer social links and text styling
