@@ -349,3 +349,5 @@ export default ProfilePage;
 // Revision note [2026-08-05 18:11:41 +0300]: Refactor login page glassmorphism styling
 
 // Activity update [2026-07-19 16:16:47 +0300]: Optimize GraphQL hook refetch behavior
+
+// Activity update [2026-07-30 08:47:20 +0300]: Refactor navigation bar responsive styling
