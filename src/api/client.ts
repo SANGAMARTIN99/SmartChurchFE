@@ -197,3 +197,5 @@ export default client;
 // Revision note [2026-08-07 18:32:11 +0300]: Refactor card application status badges
 
 // Activity update [2026-07-20 18:46:07 +0300]: Optimize Apollo Client GraphQL queries
+
+// Activity update [2026-07-31 17:02:39 +0300]: Update pastor dashboard group management UI
