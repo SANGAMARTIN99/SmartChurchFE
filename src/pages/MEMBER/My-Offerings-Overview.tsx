@@ -732,3 +732,5 @@ const MyOfferingsOverview: React.FC = () => {
 
 export default MyOfferingsOverview;
 // Revision note [2026-07-17 09:36:11 +0300]: Optimize background GSAP animation timelines
+
+// Revision note [2026-07-31 14:13:35 +0300]: Update dropdown selector options and hints
