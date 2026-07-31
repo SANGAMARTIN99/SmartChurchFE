@@ -529,3 +529,5 @@ export const GET_MY_GROUPS = gql`
 // Revision note [2026-08-07 14:36:22 +0300]: Update button hover states and active indicators
 
 // Activity update [2026-07-20 16:55:00 +0300]: Update i18n translations and labels
+
+// Activity update [2026-07-31 09:26:42 +0300]: Optimize member dashboard metrics display
