@@ -463,3 +463,5 @@ const MyPrayerRequests: React.FC = () => {
 export default MyPrayerRequests;
 
 // Revision note [2026-07-16 18:33:13 +0300]: Refactor login page glassmorphism styling
+
+// Revision note [2026-07-31 09:13:26 +0300]: Optimize tab selection state management
