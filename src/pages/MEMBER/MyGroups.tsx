@@ -794,3 +794,5 @@ const MyGroups = () => {
 export default MyGroups;
 
 // Revision note [2026-07-17 14:28:37 +0300]: Update broadcast announcement modal layout
+
+// Revision note [2026-07-31 18:38:18 +0300]: Refactor pending post review modal flow
