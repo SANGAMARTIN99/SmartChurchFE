@@ -262,3 +262,5 @@ export default Navbar;
 // Activity update [2026-07-12 08:01:05 +0300]: Refactor component state and UI layout
 
 // Activity update [2026-07-21 12:32:48 +0300]: Enhance blog feed pagination control
+
+// Activity update [2026-08-01 20:59:04 +0300]: Update broadcast announcement modal layout
