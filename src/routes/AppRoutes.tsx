@@ -75,3 +75,5 @@ export default AppRoutes;
 // Revision note [2026-08-09 09:34:16 +0300]: Enhance church leader photo preview component
 
 // Activity update [2026-07-21 10:29:00 +0300]: Update prayer request card animation triggers
+
+// Activity update [2026-08-01 16:13:32 +0300]: Refactor login page glassmorphism styling
