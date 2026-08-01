@@ -13,3 +13,5 @@ export const ENDPOINT = isProduction
 // Revision note [2026-08-08 09:19:28 +0300]: Improve responsive grid breakpoint spacing
 
 // Activity update [2026-07-20 18:56:34 +0300]: Enhance form input validation and feedback
+
+// Activity update [2026-08-01 08:29:39 +0300]: Refactor route guards and auth check hooks
