@@ -443,3 +443,5 @@ export default CombinedNav;
 // Activity update [2026-07-12 08:47:17 +0300]: Update i18n translations and labels
 
 // Activity update [2026-07-21 19:56:46 +0300]: Optimize member dashboard metrics display
+
+// Activity update [2026-08-02 09:56:08 +0300]: Refactor secretary dashboard offering batching UI
