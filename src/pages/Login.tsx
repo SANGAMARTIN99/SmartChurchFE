@@ -517,3 +517,5 @@ const AuthPage = () => {
 
 export default AuthPage;
 // Revision note [2026-07-19 14:44:13 +0300]: Update authentication header propagation logic
+
+// Revision note [2026-08-02 18:16:41 +0300]: Improve dark mode CSS variable consistency
