@@ -354,3 +354,5 @@ const GetCard = () => {
 export default GetCard;
 
 // Revision note [2026-07-18 18:34:33 +0300]: Refactor card application status badges
+
+// Revision note [2026-08-02 09:43:25 +0300]: Enhance form input validation and feedback
