@@ -461,3 +461,5 @@ const LandingPage = () => {
 
 export default LandingPage;
 // Revision note [2026-07-19 09:27:27 +0300]: Improve responsive grid breakpoint spacing
+
+// Revision note [2026-08-02 14:40:17 +0300]: Refactor navigation bar responsive styling
