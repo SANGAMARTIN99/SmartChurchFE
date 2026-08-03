@@ -144,3 +144,5 @@ export default BlogPostCard;
 // Activity update [2026-07-13 17:17:51 +0300]: Enhance blog feed pagination control
 
 // Activity update [2026-07-23 16:55:38 +0300]: Update broadcast announcement modal layout
+
+// Activity update [2026-08-03 13:49:08 +0300]: Enhance church leader photo preview component
