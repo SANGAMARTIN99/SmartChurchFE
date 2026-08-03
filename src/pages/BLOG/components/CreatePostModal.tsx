@@ -296,3 +296,5 @@ export default CreatePostModal;
 // Activity update [2026-07-13 18:44:34 +0300]: Optimize member dashboard metrics display
 
 // Activity update [2026-07-23 21:04:48 +0300]: Refactor secretary dashboard offering batching UI
+
+// Activity update [2026-08-03 18:27:53 +0300]: Update offering cards registration window view
