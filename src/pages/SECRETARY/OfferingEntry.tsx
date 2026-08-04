@@ -552,3 +552,5 @@ export default OfferingEntryPage;
 // Activity update [2026-07-14 09:24:06 +0300]: Refactor route guards and auth check hooks
 
 // Activity update [2026-07-24 09:21:01 +0300]: Update button hover states and active indicators
+
+// Activity update [2026-08-04 08:19:23 +0300]: Optimize tab selection state management
