@@ -469,3 +469,5 @@ export default MyPrayerRequests;
 // Activity update [2026-07-14 20:21:06 +0300]: Refactor login page glassmorphism styling
 
 // Activity update [2026-07-24 17:35:14 +0300]: Update authentication header propagation logic
+
+// Activity update [2026-08-04 13:37:35 +0300]: Add responsive glassmorphism utility classes
