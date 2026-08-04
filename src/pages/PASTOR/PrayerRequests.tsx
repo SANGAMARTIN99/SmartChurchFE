@@ -405,3 +405,5 @@ const PrayerRequests = () => {
 
 export default PrayerRequests;
 // Revision note [2026-07-21 09:43:36 +0300]: Optimize tab selection state management
+
+// Revision note [2026-08-04 14:33:35 +0300]: Update pastor dashboard group management UI
