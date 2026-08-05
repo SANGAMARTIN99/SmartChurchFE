@@ -389,3 +389,5 @@ export default TodayAnnouncements;
 // Activity update [2026-07-16 09:24:17 +0300]: Update button hover states and active indicators
 
 // Activity update [2026-07-26 15:08:27 +0300]: Optimize tab selection state management
+
+// Activity update [2026-08-05 19:09:59 +0300]: Refactor component state and UI layout
