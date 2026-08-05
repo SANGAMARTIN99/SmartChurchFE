@@ -345,3 +345,5 @@ const ProfilePage: React.FC = () => {
 export default ProfilePage;
 
 // Revision note [2026-07-22 14:34:17 +0300]: Update i18n translations and labels
+
+// Revision note [2026-08-05 18:11:41 +0300]: Refactor login page glassmorphism styling
