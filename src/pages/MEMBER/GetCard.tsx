@@ -360,3 +360,5 @@ export default GetCard;
 // Activity update [2026-07-16 15:40:53 +0300]: Refactor card application status badges
 
 // Activity update [2026-07-26 18:41:41 +0300]: Update dropdown selector options and hints
+
+// Activity update [2026-08-05 20:51:11 +0300]: Update i18n translations and labels
