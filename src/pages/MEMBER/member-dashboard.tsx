@@ -465,3 +465,5 @@ export default MemberDashboard;
 // Activity update [2026-07-15 18:39:56 +0300]: Refactor secretary dashboard offering batching UI
 
 // Activity update [2026-07-26 09:03:25 +0300]: Update offering cards registration window view
+
+// Activity update [2026-08-05 11:55:10 +0300]: Refactor theme context provider values
