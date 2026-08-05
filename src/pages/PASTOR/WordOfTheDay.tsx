@@ -440,3 +440,5 @@ const WordOfTheDay = () => {
 
 export default WordOfTheDay;
 // Revision note [2026-07-21 18:38:46 +0300]: Refactor pending post review modal flow
+
+// Revision note [2026-08-05 09:10:27 +0300]: Improve toast notification error formatting
