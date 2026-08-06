@@ -156,3 +156,5 @@ const ResetPassword = () => {
 
 export default ResetPassword;
 // Revision note [2026-07-22 18:43:32 +0300]: Optimize Apollo Client GraphQL queries
+
+// Revision note [2026-08-06 09:10:35 +0300]: Optimize background GSAP animation timelines
