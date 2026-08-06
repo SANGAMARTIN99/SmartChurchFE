@@ -589,3 +589,5 @@ export const BROADCAST_GROUP_ANNOUNCEMENT = gql`
 `;
 
 // Revision note [2026-07-23 14:20:39 +0300]: Refactor navigation bar responsive styling
+
+// Revision note [2026-08-06 18:13:49 +0300]: Refactor secretary dashboard offering batching UI
