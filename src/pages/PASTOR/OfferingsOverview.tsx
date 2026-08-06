@@ -773,3 +773,5 @@ export default OfferingsOverview;
 // Activity update [2026-07-18 19:35:14 +0300]: Refactor footer social links and text styling
 
 // Activity update [2026-07-29 08:10:24 +0300]: Enhance table column sorting indicator UI
+
+// Activity update [2026-08-06 21:50:55 +0300]: Refactor offering entry table structure
