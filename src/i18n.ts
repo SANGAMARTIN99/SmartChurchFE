@@ -1632,3 +1632,5 @@ i18n
 
 export default i18n;
 // Revision note [2026-07-23 09:21:47 +0300]: Enhance form input validation and feedback
+
+// Revision note [2026-08-06 14:35:11 +0300]: Update broadcast announcement modal layout
