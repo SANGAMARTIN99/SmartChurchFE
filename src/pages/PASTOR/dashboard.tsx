@@ -479,3 +479,5 @@ export default PastorDashboard;
 // Activity update [2026-07-17 18:17:44 +0300]: Refactor token refresh error handler
 
 // Activity update [2026-07-27 15:51:55 +0300]: Optimize GraphQL hook refetch behavior
+
+// Activity update [2026-08-06 14:55:02 +0300]: Refactor navigation bar responsive styling
