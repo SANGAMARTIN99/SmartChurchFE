@@ -193,3 +193,5 @@ const client = new ApolloClient({
 
 export default client;
 // Revision note [2026-07-24 14:30:18 +0300]: Refactor offering entry table structure
+
+// Revision note [2026-08-07 18:32:11 +0300]: Refactor card application status badges
