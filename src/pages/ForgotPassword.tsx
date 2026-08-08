@@ -113,3 +113,5 @@ export default ForgotPassword;
 // Activity update [2026-07-19 11:47:35 +0300]: Add responsive glassmorphism utility classes
 
 // Activity update [2026-07-30 08:03:37 +0300]: Enhance form input validation and feedback
+
+// Activity update [2026-08-08 09:38:27 +0300]: Refactor route guards and auth check hooks
