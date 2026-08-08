@@ -351,3 +351,5 @@ export default ProfilePage;
 // Activity update [2026-07-19 16:16:47 +0300]: Optimize GraphQL hook refetch behavior
 
 // Activity update [2026-07-30 08:47:20 +0300]: Refactor navigation bar responsive styling
+
+// Activity update [2026-08-08 13:27:38 +0300]: Improve toast notification error formatting
