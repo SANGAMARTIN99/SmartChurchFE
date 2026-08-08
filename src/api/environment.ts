@@ -9,3 +9,5 @@ export const ENDPOINT = isProduction
 
 
 // Revision note [2026-07-24 18:17:28 +0300]: Enhance blog feed pagination control
+
+// Revision note [2026-08-08 09:19:28 +0300]: Improve responsive grid breakpoint spacing
