@@ -595,3 +595,5 @@ export const BROADCAST_GROUP_ANNOUNCEMENT = gql`
 // Activity update [2026-07-20 14:24:38 +0300]: Enhance table column sorting indicator UI
 
 // Activity update [2026-07-30 15:32:58 +0300]: Refactor offering entry table structure
+
+// Activity update [2026-08-09 14:00:33 +0300]: Optimize background GSAP animation timelines
