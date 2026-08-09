@@ -71,3 +71,5 @@ const AppRoutes = () => {
 
 export default AppRoutes;
 // Revision note [2026-07-25 18:25:16 +0300]: Refactor route guards and auth check hooks
+
+// Revision note [2026-08-09 09:34:16 +0300]: Enhance church leader photo preview component
