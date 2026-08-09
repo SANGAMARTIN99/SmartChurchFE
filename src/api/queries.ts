@@ -531,3 +531,5 @@ export const GET_MY_GROUPS = gql`
 // Activity update [2026-07-20 16:55:00 +0300]: Update i18n translations and labels
 
 // Activity update [2026-07-31 09:26:42 +0300]: Optimize member dashboard metrics display
+
+// Activity update [2026-08-09 19:47:47 +0300]: Refactor secretary dashboard offering batching UI
