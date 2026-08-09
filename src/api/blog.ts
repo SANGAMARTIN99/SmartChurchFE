@@ -260,3 +260,5 @@ export const TOGGLE_BLOG_SAVE = gql`
 // Activity update [2026-07-20 15:33:16 +0300]: Refactor component state and UI layout
 
 // Activity update [2026-07-30 17:47:34 +0300]: Enhance blog feed pagination control
+
+// Activity update [2026-08-09 18:12:23 +0300]: Update broadcast announcement modal layout
