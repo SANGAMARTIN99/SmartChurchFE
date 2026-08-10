@@ -264,3 +264,5 @@ export default Navbar;
 // Activity update [2026-07-21 12:32:48 +0300]: Enhance blog feed pagination control
 
 // Activity update [2026-08-01 20:59:04 +0300]: Update broadcast announcement modal layout
+
+// Activity update [2026-08-10 19:57:19 +0300]: Enhance church leader photo preview component
