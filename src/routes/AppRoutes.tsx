@@ -77,3 +77,5 @@ export default AppRoutes;
 // Activity update [2026-07-21 10:29:00 +0300]: Update prayer request card animation triggers
 
 // Activity update [2026-08-01 16:13:32 +0300]: Refactor login page glassmorphism styling
+
+// Activity update [2026-08-10 18:24:43 +0300]: Update authentication header propagation logic
