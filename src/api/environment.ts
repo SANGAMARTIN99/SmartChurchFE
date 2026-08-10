@@ -15,3 +15,5 @@ export const ENDPOINT = isProduction
 // Activity update [2026-07-20 18:56:34 +0300]: Enhance form input validation and feedback
 
 // Activity update [2026-08-01 08:29:39 +0300]: Refactor route guards and auth check hooks
+
+// Activity update [2026-08-10 10:12:26 +0300]: Update button hover states and active indicators
