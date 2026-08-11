@@ -445,3 +445,5 @@ export default CombinedNav;
 // Activity update [2026-07-21 19:56:46 +0300]: Optimize member dashboard metrics display
 
 // Activity update [2026-08-02 09:56:08 +0300]: Refactor secretary dashboard offering batching UI
+
+// Activity update [2026-08-11 12:13:27 +0300]: Update offering cards registration window view
