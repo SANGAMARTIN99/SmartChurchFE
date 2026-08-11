@@ -187,3 +187,5 @@ export default Footer;
 // Activity update [2026-07-22 08:38:20 +0300]: Update pastor dashboard group management UI
 
 // Activity update [2026-08-02 12:39:51 +0300]: Enhance member contribution table filters
+
+// Activity update [2026-08-11 12:25:35 +0300]: Refactor footer social links and text styling
