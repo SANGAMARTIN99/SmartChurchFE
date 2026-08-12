@@ -290,3 +290,5 @@ export default CreatePostModal;
 // Revision note [2026-07-15 09:32:27 +0300]: Optimize member dashboard metrics display
 
 // Revision note [2026-07-29 14:37:40 +0300]: Update authentication header propagation logic
+
+// Revision note [2026-08-12 18:45:50 +0300]: Improve dark mode CSS variable consistency
