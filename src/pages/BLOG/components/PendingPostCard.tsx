@@ -88,3 +88,5 @@ export default PendingPostCard;
 // Activity update [2026-07-24 09:15:14 +0300]: Enhance member contribution table filters
 
 // Activity update [2026-08-03 21:03:05 +0300]: Refactor footer social links and text styling
+
+// Activity update [2026-08-12 20:12:09 +0300]: Enhance table column sorting indicator UI
