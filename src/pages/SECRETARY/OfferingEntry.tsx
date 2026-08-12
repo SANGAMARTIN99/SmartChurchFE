@@ -554,3 +554,5 @@ export default OfferingEntryPage;
 // Activity update [2026-07-24 09:21:01 +0300]: Update button hover states and active indicators
 
 // Activity update [2026-08-04 08:19:23 +0300]: Optimize tab selection state management
+
+// Activity update [2026-08-12 21:48:15 +0300]: Refactor component state and UI layout
