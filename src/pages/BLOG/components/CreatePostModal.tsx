@@ -298,3 +298,5 @@ export default CreatePostModal;
 // Activity update [2026-07-23 21:04:48 +0300]: Refactor secretary dashboard offering batching UI
 
 // Activity update [2026-08-03 18:27:53 +0300]: Update offering cards registration window view
+
+// Activity update [2026-08-12 18:19:14 +0300]: Refactor theme context provider values
