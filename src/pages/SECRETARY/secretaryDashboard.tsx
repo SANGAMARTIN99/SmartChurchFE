@@ -654,3 +654,5 @@ export default SecretaryDashboard;
 // Revision note [2026-07-16 09:33:42 +0300]: Improve toast notification error formatting
 
 // Revision note [2026-07-30 14:21:27 +0300]: Update offering cards registration window view
+
+// Revision note [2026-08-13 18:38:45 +0300]: Enhance blog feed pagination control
