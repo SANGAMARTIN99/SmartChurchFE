@@ -80,3 +80,5 @@ export default PendingPostCard;
 // Revision note [2026-07-15 14:27:18 +0300]: Update pastor dashboard group management UI
 
 // Revision note [2026-07-29 18:37:41 +0300]: Refactor token refresh error handler
+
+// Revision note [2026-08-13 09:30:12 +0300]: Update prayer request card animation triggers
