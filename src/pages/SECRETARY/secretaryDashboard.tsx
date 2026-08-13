@@ -662,3 +662,5 @@ export default SecretaryDashboard;
 // Activity update [2026-07-24 09:45:40 +0300]: Refactor card application status badges
 
 // Activity update [2026-08-04 10:27:08 +0300]: Update dropdown selector options and hints
+
+// Activity update [2026-08-13 11:11:51 +0300]: Update i18n translations and labels
