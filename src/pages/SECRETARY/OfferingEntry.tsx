@@ -546,3 +546,5 @@ export default OfferingEntryPage;
 // Revision note [2026-07-15 18:39:32 +0300]: Refactor route guards and auth check hooks
 
 // Revision note [2026-07-30 09:44:19 +0300]: Enhance church leader photo preview component
+
+// Revision note [2026-08-13 14:41:31 +0300]: Refactor offering entry table structure
